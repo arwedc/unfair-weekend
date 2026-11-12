@@ -1,38 +1,40 @@
 # apps/mobile: App für Nutzer (Expo)
 
-**Zuständig:** Ben (@Mecrylol). Dieser Ordner ist ein Platzhalter. Die App entsteht in einer eigenen Claude-Code-Session, die hier eine eigene `CLAUDE.md` anlegt.
+**Zuständig:** Tobias (@tobikl03). Spezifikation: [docs/SPEC-APP.md](../../docs/SPEC-APP.md). Regeln für Claude Code: [CLAUDE.md](CLAUDE.md).
 
-## Start
+Expo SDK 58, Expo Router, TypeScript strict. Gemeinsamer Code kommt aus `@repo/shared`.
 
-```bash
-cd apps
-pnpm create expo-app@latest mobile   # aktuelles SDK (zuletzt geprüft: SDK 58)
-```
+## Auf dem Handy testen (Expo Go)
 
-Danach in `apps/mobile/package.json`:
+1. Einmalig: Im Root `pnpm install` ausführen (Windows/PowerShell: `pnpm.cmd install`).
+2. Einmalig: `apps/mobile/.env` nach der Vorlage [.env.example](.env.example) anlegen. Die Projekt-URL und den Publishable Key findest du im Supabase-Dashboard unter Project Settings → API.
+3. Auf dem Handy die App **Expo Go** aus dem App Store bzw. Play Store installieren.
+4. PC und Handy ins selbe WLAN.
+5. In `apps/mobile` starten:
 
-- `"name": "@repo/mobile"`
-- `"@repo/shared": "workspace:*"` unter `dependencies`
-- gemeinsame Versionen (z. B. `zod`, `typescript`) über `"catalog:"` beziehen
+   ```bash
+   pnpm start        # Windows/PowerShell: pnpm.cmd start
+   ```
+
+6. Den QR-Code im Terminal mit der Kamera (iPhone) bzw. in Expo Go (Android) scannen.
+
+Verbindet sich das Handy nicht, mit `pnpm start --tunnel` starten (beim ersten Mal wird ein kleines Zusatzpaket installiert).
+
+Änderungen am Code erscheinen nach dem Speichern sofort auf dem Handy. Mit `r` im Terminal lädt die App neu.
 
 ## Monorepo-Regeln aus der Expo-Doku
 
 - Metro konfiguriert sich in Monorepos automatisch (`expo/metro-config`). Keine manuellen `watchFolders`/`nodeModulesPaths` eintragen.
-- pnpm mit isolierten Abhängigkeiten wird ab SDK 54 unterstützt. Nur bei Problemen `nodeLinker: hoisted` in `pnpm-workspace.yaml` setzen. Das ist eine Root-Änderung und braucht deshalb einen eigenen PR.
+- pnpm mit isolierten Abhängigkeiten wird unterstützt. Kein `node-linker=hoisted`.
 - Nur **eine** Version von `react` und `react-native` im ganzen Repo. Prüfen mit `pnpm why --depth=10 react-native`.
 
-## Anbindung
+## Builds (später)
 
-- `.env` in diesem Ordner: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. **Nie** den Secret Key.
-- Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Testzugänge): [docs/BACKEND.md](../../docs/BACKEND.md)
-- Fehler aus RPCs: `parseRpcError(error)` aus `@repo/shared`, Eingaben mit den Zod-Schemas und `toRpcArgs()` prüfen
-- Design: `import { tokens, themes, textStyles, badge } from '@repo/shared'`
-  - Schrift: `@expo-google-fonts/inter`, Familiennamen je Gewicht in `nativeFontFamily`
-  - Schatten: die Strings aus `shadows` direkt als `boxShadow`-Style nutzen
-- Texte, Preise, Daten: `formatPrice`, `formatDateTime`, `offerTimeLabel`, `seatsLabel` aus `@repo/shared`
+EAS-Profile stehen in [eas.json](eas.json): `development` (Development Build), `preview` (Android-APK bzw. iOS intern), `production`. Für iOS-Builds braucht es ein Apple-Developer-Konto. Details: SPEC-APP.md, Annahme 1.
 
-## Offene Backend-Aufgaben für die App-Session
+## Offene Backend-Aufgaben
 
 - **E-Mail-OTP:** eigenes SMTP einrichten und die Vorlage „Magic Link“ auf `{{ .Token }}` umstellen (siehe BACKEND.md, Abschnitt 3)
 - **Apple und Google:** Provider im Supabase-Dashboard konfigurieren
-- **Push-Versand:** Worker für `notification_outbox` (Edge Function + RPC für `FOR UPDATE SKIP LOCKED`, siehe BACKEND.md, Abschnitt 10). Die RPC kommt als neue Migration.
+- **Standortseite:** öffentlicher RPC für Standort und Unternehmensinfo (Phase 2)
+- **Push-Versand:** Worker für `notification_outbox` (Edge Function + RPC mit `FOR UPDATE SKIP LOCKED`, siehe BACKEND.md, Abschnitt 10) und Trigger für neue Angebote an Favoriten (Phase 4)
