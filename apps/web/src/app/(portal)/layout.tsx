@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { logout } from '@/app/actions';
 import { Logo } from '@/components/logo';
-import { Button } from '@/components/ui';
+import { Button, buttonClass } from '@/components/ui';
 import { LOCATION_STATUS_LABELS } from '@repo/shared';
 import { requireAccount } from '@/lib/auth';
 
@@ -29,6 +29,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <Logo />
           </Link>
           <div className="flex items-center gap-3">
+            <nav aria-label="Portal" className="flex items-center gap-1">
+              <Link href="/angebote" className={buttonClass('ghost', 'px-3')}>
+                Angebote
+              </Link>
+              <Link href="/profil" className={buttonClass('ghost', 'px-3')}>
+                Profil
+              </Link>
+            </nav>
             <Suspense fallback={null}>
               <LocationName />
             </Suspense>
