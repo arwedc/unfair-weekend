@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Keine Node- oder DOM-Typen: Das Paket muss in Hermes, Browser und Node laufen.
+    "types": []
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,127 @@
+# unfair-weekend
+
+Plattform für kurzfristige, vergünstigte Angebote lokaler Unternehmen in Münster (z. B. Kochkurse). Nutzer sichern sich Angebote per Gutscheincode, ohne Payment und ohne Gebühren. MVP-Test mit 5–15 Partnern.
+
+- **Backend:** Supabase (Postgres, Auth, Storage, Edge Functions, pg_cron), Region Frankfurt
+- **Website** für Unternehmen und Admin: Next.js in `apps/web` (@arwedc)
+- **App** für Nutzer: Expo in `apps/mobile` (Ben, @Mecrylol)
+
+Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes): `docs/BACKEND.md` (entsteht in Phase 4).
+
+## Projektstruktur
+
+```
+apps/
+  mobile/            Expo-App (Ben). Eigene CLAUDE.md.
+  web/               Next.js-Website (@arwedc). Eigene CLAUDE.md.
+packages/
+  shared/            @repo/shared: Typen, Zod-Schemas, Konstanten, Design-Tokens, Hilfsfunktionen
+    src/constants/   Kategorien, Statuswerte, Fehlercodes
+    src/tokens/      Design-Tokens (Farben, Abstände, Radien, Schatten, Typografie)
+    src/utils/       Preise, Rabatte, Datum (Europe/Berlin), Zeitlabels
+tooling/             Skripte für DB-Tests, Migrations-Probelauf, Seed (ab Phase 2)
+supabase/
+  migrations/        Schema als Migrationsdateien (einzige Quelle der Wahrheit)
+  functions/         Edge Functions
+  tests/             SQL-Tests (pgTAP)
+  config.toml        CLI-Konfiguration (wir starten KEIN lokales Supabase)
+docs/                SPEC.md, BACKEND.md, design-referenz/
+```
+
+## Befehle
+
+| Befehl                                       | Zweck                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm install`                               | Abhängigkeiten installieren (nach jedem Pull von `main`)                              |
+| `pnpm check`                                 | Alles prüfen: Format, Lint, Typecheck, Unit-Tests                                     |
+| `pnpm typecheck` / `pnpm lint` / `pnpm test` | einzeln                                                                               |
+| `pnpm format`                                | Prettier auf alles anwenden                                                           |
+| `pnpm supabase <befehl>`                     | Supabase CLI aus dem Repo (gleiche Version für alle)                                  |
+| `pnpm supabase migration new <name>`         | neue, leere Migrationsdatei anlegen                                                   |
+| `pnpm supabase db push`                      | Migrationen ins Dev-Projekt spielen (**nur nach ausdrücklicher Bestätigung**)         |
+| `pnpm db:check`                              | Probelauf: offene Migrationen in Transaktion einspielen und zurückrollen (ab Phase 2) |
+| `pnpm db:test`                               | SQL-Tests gegen Dev, alles in Transaktionen mit Rollback (ab Phase 3)                 |
+| `pnpm db:types`                              | Typen aus dem Dev-Projekt nach `packages/shared` generieren (ab Phase 3)              |
+
+Paket-Befehle gezielt: `pnpm --filter @repo/shared test`.
+
+## Konventionen
+
+- **Sprache:** Oberfläche, Fehlermeldungen, Doku und Kommentare auf Deutsch. Bezeichner (Tabellen, Spalten, Funktionen, Variablen) auf Englisch in snake_case (SQL) bzw. camelCase (TS). Statuswerte so wie in der DB (`aktiv`, `storniert`, `eingeloest`, `no_show`, `abgelaufen`), ASCII ohne Umlaute.
+- **Geld:** immer ganze Cent (EUR) als Integer, Spalten heißen `*_cents`. Anzeige nur über `formatPrice()`.
+- **Zeit:** in der DB `timestamptz` (UTC). Angezeigt wird immer in Europe/Berlin, nur über die Helfer in `@repo/shared` (`formatDateTime`, `offerTimeLabel` …), nie über `toLocaleString()` des Geräts.
+- **Geschäftsregeln laufen nur serverseitig** in Postgres-Funktionen (RPCs). Clients validieren mit den Zod-Schemas aus `@repo/shared` nur für schnelles Feedback. Die Wahrheit liegt im Server.
+- **Fehler aus RPCs** kommen als fester Code in `message` (z. B. `AUSGEBUCHT`, `GESPERRT`, `FRIST_ABGELAUFEN`). App und Web übersetzen sie über die Codes in `@repo/shared`, nie über freie Texte. Ein neuer Code kommt immer gleichzeitig in die DB und nach `packages/shared` (mit deutschem Text).
+- **`@repo/shared` ist plattformneutral:**
+  - kein DOM, kein Node, kein React (ESLint erzwingt das)
+  - einzige Laufzeit-Abhängigkeit ist zod
+  - exportiert TypeScript-Quellcode ohne Build-Schritt
+- **TypeScript strict** (inkl. `noUncheckedIndexedAccess`). Kein `any`, keine `@ts-ignore` ohne Begründung.
+- **Design:**
+  - Komponenten nutzen nur semantische Tokens (`themes.light.text.primary`, `accent.solid`, `badge.deal` …), keine Hex-Werte.
+  - Keine Logos, Farben, Illustrationen oder Texte anderer Apps.
+  - Akzent „Glut“: `#FF5A1F` (Markenton) und `#D63A0A` (Flächen mit weißem Text).
+- **Gemeinsame Versionen** (zod, typescript …) stehen im Catalog in `pnpm-workspace.yaml`. In Paketen `"catalog:"` verwenden. React/React Native darf es nur in einer Version geben (Expo-Vorgabe).
+- **Tests:** Vitest für `packages/shared` (neben der Datei: `*.test.ts`), pgTAP für SQL (`supabase/tests/`).
+
+## Supabase: kein lokales Supabase, kein Docker
+
+Wir entwickeln beide direkt gegen **ein gemeinsames Dev-Projekt in der Cloud**. Jede Schemaänderung wirkt sofort beim anderen. Docker wird nirgends benötigt und auch nicht als Option genutzt.
+
+- **Schemaänderungen nie im Dashboard klicken**, immer als Migrationsdatei in `supabase/migrations/`.
+- **Nur hinzufügen:** Neue Tabellen, Spalten und Funktionen sind okay. Umbenennen, Löschen oder Ändern bestehender Strukturen nur nach Absprache mit dem anderen.
+- **Bestehende Migrationen werden nie geändert**, es kommen nur neue dazu.
+- **Reihenfolge bei einer Schemaänderung:**
+  1. `main` pullen
+  2. `pnpm supabase migration new <name>` und SQL schreiben
+  3. `pnpm db:check` (Probelauf mit Rollback)
+  4. kleiner Schema-PR (`backend/...`)
+  5. der andere reviewt kurz
+  6. mergen
+  7. `pnpm supabase db push` ins Dev-Projekt
+  8. `pnpm db:types` und die Typen committen
+  9. erst danach das Feature bauen, das die Änderung nutzt
+- **Vor jedem `supabase db push` fragt Claude Code ausdrücklich nach.** Nie ohne Bestätigung pushen.
+- **Nie die Datenbank zurücksetzen** (`db reset`, `drop schema` o. ä.), ohne dass beide zugestimmt haben.
+- **Hat doch jemand im Dashboard geklickt:** `db pull`/`db diff` brauchen Docker, deshalb nicht verwenden. Stattdessen liest Claude den Ist-Zustand lesend aus (Katalogabfragen über `SUPABASE_DB_URL` oder Supabase-MCP im Read-only-Modus) und schreibt eine neue Migration von Hand, die genau diesen Zustand beschreibt (idempotent, z. B. `if not exists`).
+- **Supabase-MCP-Server nur lesend** (`read_only=true`). Schreibende Änderungen laufen ausschließlich über Migrationsdateien und die CLI.
+- **Testdaten** tragen ein erkennbares Präfix, z. B. „TEST Ben …“ oder „TEST Arwed …“. Seed-Daten nicht verändern.
+- **Nach jedem Pull von `main`:** `pnpm install` und die Typen prüfen bzw. mit `pnpm db:types` neu generieren.
+- **Neue Tabellen:** RLS aktivieren, Grants explizit setzen, Policies für alle drei Rollen (Nutzer, Standort, Admin) durchdenken, Indizes auf Policy- und FK-Spalten.
+- **Funktionen mit `security definer`** immer mit `set search_path = ''` und voll qualifizierten Namen. Helfer liegen im nicht exponierten Schema `private`.
+
+## Zusammenarbeit (zwei Entwickler parallel)
+
+**Zuständigkeiten**
+
+- Ben (@Mecrylol): `apps/mobile`
+- @arwedc: `apps/web`
+- Jeder arbeitet auf seinem eigenen Rechner mit einer eigenen Claude-Code-Session.
+
+**Git und GitHub**
+
+- `main` ist geschützt, Änderungen kommen nur per Pull Request.
+- Branches: `app/...` (Mobile), `web/...` (Website), `backend/...` (Supabase, shared, Root).
+- Kleine PRs, oft mergen. `main` mindestens täglich in den eigenen Branch holen.
+- **Eigene Ordner** (`apps/mobile` bzw. `apps/web`) darf jeder frei ändern.
+- **Gemeinsame Bereiche** (`supabase/`, `packages/`, `tooling/`, Root-Konfiguration, `docs/`, `.github/`):
+  - Änderungen nur in einem eigenen, kleinen PR, den der andere kurz reviewt
+  - keine gemeinsamen Änderungen nebenbei in einem Feature-PR verstecken
+- Commit-Messages: kurz, Deutsch, mit Bereich vorne, z. B. `shared: Zeitlabel für Zeiträume`, `backend: claim_voucher`, `app: Feed-Screen`.
+- PR-Vorlage mit Checkliste: `.github/pull_request_template.md`.
+
+**Secrets**
+
+- Nur in `.env`-Dateien, nie committen. Vorlage: `.env.example` (Root), dazu `apps/web/.env.local` und `apps/mobile/.env`.
+- Das Repo ist **öffentlich**: keine Passwörter, Keys, Projekt-Refs oder echten Personendaten in Code, Doku oder Seed.
+- Der Secret Key (`sb_secret_…`) gehört nur in lokale Skripte und Server-Code, nie in die App oder in `NEXT_PUBLIC_`-Variablen.
+- Später kommt ein zweites Supabase-Projekt für den Live-Betrieb. Deshalb sind alle URLs und Keys über `.env` austauschbar. Nichts hart codieren.
+
+## Checkliste für Claude Code
+
+- Zu Beginn: `git pull` auf `main` bzw. `main` in den Branch holen, `pnpm install`.
+- Vor `supabase db push`, vor dem Einspielen von Seeds, vor Edge-Function-Deploys und vor allem, was Daten im Dev-Projekt dauerhaft ändert: **ausdrücklich nachfragen**.
+- Nach Schemaänderungen: Typen neu generieren, `docs/BACKEND.md` und die Fehlercodes in `packages/shared` aktualisieren.
+- Vor dem Commit: `pnpm check`. Bei DB-Änderungen zusätzlich `pnpm db:check` bzw. `pnpm db:test`.
+- Zur Supabase-, Expo- und Next.js-API die aktuelle offizielle Doku prüfen, nicht aus dem Gedächtnis arbeiten.
+- Skills `supabase` und `postgres-best-practices` für Schema, RLS und Funktionen nutzen, falls installiert.
