@@ -19,5 +19,7 @@
 # Eigene Bereiche: apps/mobile → Ben (@Mecrylol), apps/web → @arwedc
 /apps/mobile/
 /apps/web/
-# Datenbank: Migrations-PRs (db/...) merged Ben selbst, siehe Regel in CLAUDE.md
+# Datenbank: Migrations-PRs (db/...) merged Ben selbst, siehe Regel in CLAUDE.md.
+# Dazu gehören die aus der DB generierten Typen.
 /supabase/
+/packages/shared/src/types/
