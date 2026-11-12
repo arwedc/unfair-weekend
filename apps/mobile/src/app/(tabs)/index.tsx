@@ -1,3 +1,3 @@
-import { SetupPreviewScreen } from '@/screens/setup/SetupPreviewScreen';
+import { FeedScreen } from '@/screens/feed/FeedScreen';
 
-export default SetupPreviewScreen;
+export default FeedScreen;
