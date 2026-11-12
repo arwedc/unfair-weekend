@@ -1,0 +1,18 @@
+# Expo
+.expo/
+dist/
+expo-env.d.ts
+.metro-health-check*
+
+# Native Ordner entstehen beim Build (Continuous Native Generation)
+/ios
+/android
+.kotlin/
+
+# Zertifikate und Schlüssel nie committen
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
