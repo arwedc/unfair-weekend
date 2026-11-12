@@ -13,7 +13,10 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "supabase": "supabase"
+    "supabase": "supabase",
+    "db:check": "pnpm --filter @repo/db-tools db:check",
+    "db:test": "pnpm --filter @repo/db-tools db:test",
+    "db:types": "pnpm --filter @repo/db-tools db:types"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

@@ -6,4 +6,4 @@ coverage/
 .expo/
 supabase/.temp/
 supabase/migrations/
-packages/shared/src/types/database.types.ts
+

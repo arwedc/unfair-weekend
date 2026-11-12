@@ -19,7 +19,7 @@ packages/
     src/constants/   Kategorien, Statuswerte, Fehlercodes
     src/tokens/      Design-Tokens (Farben, Abstände, Radien, Schatten, Typografie)
     src/utils/       Preise, Rabatte, Datum (Europe/Berlin), Zeitlabels
-tooling/             Skripte für DB-Tests, Migrations-Probelauf, Seed (ab Phase 2)
+tooling/db/          @repo/db-tools: Probelauf, SQL-Test-Runner, Typgenerierung, Seed
 supabase/
   migrations/        Schema als Migrationsdateien (einzige Quelle der Wahrheit)
   functions/         Edge Functions
@@ -30,20 +30,28 @@ docs/                SPEC.md, BACKEND.md, design-referenz/
 
 ## Befehle
 
-| Befehl                                       | Zweck                                                                                 |
-| -------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `pnpm install`                               | Abhängigkeiten installieren (nach jedem Pull von `main`)                              |
-| `pnpm check`                                 | Alles prüfen: Format, Lint, Typecheck, Unit-Tests                                     |
-| `pnpm typecheck` / `pnpm lint` / `pnpm test` | einzeln                                                                               |
-| `pnpm format`                                | Prettier auf alles anwenden                                                           |
-| `pnpm supabase <befehl>`                     | Supabase CLI aus dem Repo (gleiche Version für alle)                                  |
-| `pnpm supabase migration new <name>`         | neue, leere Migrationsdatei anlegen                                                   |
-| `pnpm supabase db push --remote --yes`       | Migrationen ins Dev-Projekt spielen (nach `pnpm db:check`, siehe feste Regel unten)   |
-| `pnpm db:check`                              | Probelauf: offene Migrationen in Transaktion einspielen und zurückrollen (ab Phase 2) |
-| `pnpm db:test`                               | SQL-Tests gegen Dev, alles in Transaktionen mit Rollback (ab Phase 3)                 |
-| `pnpm db:types`                              | Typen aus dem Dev-Projekt nach `packages/shared` generieren (ab Phase 3)              |
+| Befehl                                            | Zweck                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `pnpm install`                                    | Abhängigkeiten installieren (nach jedem Pull von `main`)                                 |
+| `pnpm check`                                      | Alles prüfen: Format, Lint, Typecheck, Unit-Tests                                        |
+| `pnpm typecheck` / `pnpm lint` / `pnpm test`      | einzeln                                                                                  |
+| `pnpm format`                                     | Prettier auf alles anwenden                                                              |
+| `pnpm supabase <befehl>`                          | Supabase CLI aus dem Repo (gleiche Version für alle)                                     |
+| `pnpm supabase migration new <name> < /dev/null`  | neue, leere Migrationsdatei anlegen (siehe Hinweis unten)                                |
+| `pnpm supabase db push --remote --yes`            | Migrationen ins Dev-Projekt spielen (nach `pnpm db:check`, siehe feste Regel unten)      |
+| `pnpm db:check`                                   | Probelauf: offene Migrationen in einer Transaktion einspielen und zurückrollen           |
+| `pnpm db:test`                                    | wie `db:check`, danach alle SQL-Tests (`supabase/tests/*.test.sql`), alles zurückgerollt |
+| `pnpm db:test -- claim`                           | nur Testdateien, deren Name „claim“ enthält                                              |
+| `pnpm db:types`                                   | Typen aus dem Dev-Projekt nach `packages/shared/src/types/database.types.ts`             |
+| `pnpm supabase functions deploy <name> --use-api` | Edge Function deployen, ohne Docker (**nur nach ausdrücklicher Bestätigung**)            |
 
 Paket-Befehle gezielt: `pnpm --filter @repo/shared test`.
+
+**Fallstricke der Supabase CLI v3:**
+
+- Ohne `--remote` zielt sie auf ein lokales Supabase (Docker). Gegen das Dev-Projekt immer `--remote` angeben.
+- `migration new` liest den SQL-Inhalt aus stdin, wenn keine Konsole angeschlossen ist (z. B. in Claude Code). Ohne `< /dev/null` bleibt sie hängen.
+- Befehle, die die Datenbank brauchen, lesen das Passwort aus der Umgebungsvariable `SUPABASE_DB_PASSWORD`. Die `.env` lädt die CLI nicht selbst, deshalb vorher `set -a && source .env && set +a` ausführen. Die `pnpm db:*`-Skripte laden die `.env` selbst.
 
 ## Konventionen
 
