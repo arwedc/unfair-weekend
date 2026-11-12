@@ -1,14 +1,39 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { requireSession } from '@/lib/auth';
-import { OfferForm } from './offer-form';
+import { OfferForm } from '@/components/offers/offer-form';
+import { requireAccount } from '@/lib/auth';
+import { getMinDiscountPercent, getMyLocationAddress } from '@/lib/offers/queries';
+import { createOfferAction } from '../actions';
 
 export const metadata: Metadata = { title: 'Neues Angebot' };
 
-async function FormWithLocation() {
-  const location = await requireSession();
-  return <OfferForm defaultAddress={location.address} />;
+async function NewOfferForm() {
+  const { location } = await requireAccount();
+
+  if (location.status !== 'approved') {
+    return (
+      <p className="rounded-card bg-accent-subtle px-4 py-3 text-callout text-accent-on-subtle">
+        Dein Standort ist noch nicht freigeschaltet. Sobald wir ihn geprüft haben, kannst du hier
+        Angebote anlegen.
+      </p>
+    );
+  }
+
+  const [address, minDiscountPercent] = await Promise.all([
+    getMyLocationAddress(location.id),
+    getMinDiscountPercent(),
+  ]);
+
+  return (
+    <OfferForm
+      mode="create"
+      action={createOfferAction}
+      locationId={location.id}
+      minDiscountPercent={minDiscountPercent}
+      initialValues={{ ...address, type: 'einzeltermin' }}
+    />
+  );
 }
 
 export default function NewOfferPage() {
@@ -17,12 +42,11 @@ export default function NewOfferPage() {
       <Link href="/angebote" className="text-subhead text-text-link hover:underline">
         ← Zurück zur Übersicht
       </Link>
-      <h1 className="mt-3 text-title2 text-text-primary">Neues Angebot</h1>
-      <p className="mt-1 mb-6 text-callout text-text-secondary">
-        Kurzfristig, vergünstigt, ohne Gebühren. Nutzer sichern sich Plätze per Gutscheincode.
-      </p>
-      <Suspense fallback={<p className="text-callout text-text-tertiary">Lädt …</p>}>
-        <FormWithLocation />
+      <h1 className="mb-6 mt-2 text-title2 text-text-primary">Neues Angebot</h1>
+      <Suspense
+        fallback={<p className="text-callout text-text-tertiary">Formular wird geladen …</p>}
+      >
+        <NewOfferForm />
       </Suspense>
     </>
   );

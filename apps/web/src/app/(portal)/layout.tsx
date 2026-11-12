@@ -3,11 +3,21 @@ import { Suspense } from 'react';
 import { logout } from '@/app/actions';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui';
-import { requireSession } from '@/lib/auth';
+import { LOCATION_STATUS_LABELS } from '@repo/shared';
+import { requireAccount } from '@/lib/auth';
 
 async function LocationName() {
-  const location = await requireSession();
-  return <span className="hidden text-subhead text-text-secondary sm:inline">{location.name}</span>;
+  const { location } = await requireAccount();
+  return (
+    <span className="hidden text-subhead text-text-secondary sm:inline">
+      {location.name}
+      {location.status !== 'approved' && (
+        <span className="ml-2 rounded-badge bg-accent-subtle px-1.5 py-0.5 text-caption text-accent-on-subtle">
+          {LOCATION_STATUS_LABELS[location.status]}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {

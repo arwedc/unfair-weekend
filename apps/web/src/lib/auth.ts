@@ -1,36 +1,48 @@
 import 'server-only';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getLocation, type Location } from '@/lib/mock/data';
-import { SESSION_COOKIE } from '@/lib/session-cookie';
+import type { Enums } from '@repo/shared';
+import { createClient } from '@/lib/supabase/server';
 
-/*
- * MOCK-Anmeldung: Das Cookie enthält nur die Standort-ID, ohne Signatur.
- * Wird durch Supabase Auth (E-Mail + Passwort) ersetzt. Nicht produktiv nutzen.
+/** Standort aus `get_my_account().location` (siehe docs/BACKEND.md). */
+export interface PortalLocation {
+  id: string;
+  name: string;
+  status: Enums<'location_status'>;
+  status_reason: string | null;
+  company_id: string;
+  company_name: string;
+}
+
+export interface PortalAccount {
+  userId: string;
+  location: PortalLocation;
+}
+
+interface MyAccountJson {
+  user_id: string;
+  role: Enums<'app_role'>;
+  location: PortalLocation | null;
+}
+
+/**
+ * Angemeldeter Standort-Account oder `null`.
+ * Nutzer- und Admin-Konten ohne Standort zählen hier nicht als angemeldet.
  */
+export async function getAccount(): Promise<PortalAccount | null> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims) return null;
 
-export async function getSession(): Promise<Location | null> {
-  const id = (await cookies()).get(SESSION_COOKIE)?.value;
-  return id ? getLocation(id) : null;
+  const { data, error } = await supabase.rpc('get_my_account');
+  if (error || !data) return null;
+  const account = data as unknown as MyAccountJson;
+  if (!account.location) return null;
+  return { userId: account.user_id, location: account.location };
 }
 
-/** Für Seiten und Server Actions: angemeldeter Standort oder Umleitung zum Login. */
-export async function requireSession(): Promise<Location> {
-  const location = await getSession();
-  if (!location) redirect('/login');
-  return location;
-}
-
-export async function startSession(locationId: string): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE, locationId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
-  });
-}
-
-export async function endSession(): Promise<void> {
-  (await cookies()).delete(SESSION_COOKIE);
+/** Für Seiten im Portal: ohne Standort-Account zurück zum Login. */
+export async function requireAccount(): Promise<PortalAccount> {
+  const account = await getAccount();
+  if (!account) redirect('/login?grund=kein-standort');
+  return account;
 }

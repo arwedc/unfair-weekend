@@ -1,14 +1,28 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Logo } from '@/components/logo';
 import { Card } from '@/components/ui';
-import { listDemoLogins, MOCK_PASSWORD } from '@/lib/mock/data';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Anmelden' };
 
-export default function LoginPage() {
-  const demoLogins = listDemoLogins();
+const REASONS: Record<string, string> = {
+  'kein-standort':
+    'Dieses Konto gehört zu keinem Standort. Die Website ist nur für Partner. Bitte mit dem Standort-Zugang anmelden.',
+};
 
+async function ReasonNotice({ searchParams }: { searchParams: Promise<{ grund?: string }> }) {
+  const { grund } = await searchParams;
+  const text = grund ? REASONS[grund] : undefined;
+  if (!text) return null;
+  return (
+    <p className="mb-4 rounded-card bg-accent-subtle px-4 py-3 text-callout text-accent-on-subtle">
+      {text}
+    </p>
+  );
+}
+
+export default function LoginPage({ searchParams }: { searchParams: Promise<{ grund?: string }> }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
       <div className="mb-8 text-center">
@@ -18,24 +32,18 @@ export default function LoginPage() {
           Melde dich mit dem Zugang deines Standorts an.
         </p>
       </div>
-
+      <Suspense fallback={null}>
+        <ReasonNotice searchParams={searchParams} />
+      </Suspense>
       <Card className="p-6">
         <LoginForm />
       </Card>
-
-      <div className="mt-6 rounded-card border border-dashed border-border-strong p-4 text-footnote text-text-secondary">
-        <p className="font-semibold text-text-primary">Demo-Zugänge (Mock)</p>
-        <ul className="mt-2 space-y-1">
-          {demoLogins.map((login) => (
-            <li key={login.email}>
-              <code>{login.email}</code> · {login.name}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2">
-          Passwort: <code>{MOCK_PASSWORD}</code>
+      {process.env.NODE_ENV !== 'production' && (
+        <p className="mt-6 text-center text-footnote text-text-tertiary">
+          Entwicklung: Seed-Zugänge wie <code>seed-kochwerk-altstadt@example.com</code> mit dem
+          Passwort aus <code>SEED_TEST_PASSWORD</code> (siehe docs/BACKEND.md).
         </p>
-      </div>
+      )}
     </main>
   );
 }
