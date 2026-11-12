@@ -202,6 +202,20 @@ Zählt einen Aufruf der Detailseite. Derselbe angemeldete Nutzer zählt höchste
 
 Die Admin-Einstellungen (z. B. `min_discount_percent` für das Angebotsformular).
 
+#### `get_locations_public(p_location_ids)` → 0 bis n Zeilen
+
+Freigeschaltete Standorte mit Unternehmensinfo, für die Standortseite der App (eine ID) und die Liste der Lieblingsorte (mehrere IDs). Sortiert nach `name`, dann `id`. Unbekannte und nicht freigeschaltete IDs fehlen im Ergebnis. Pro Aufruf zählen höchstens die ersten 100 IDs.
+
+Rückgabe pro Zeile: `id, name, street, postal_code, city, lat, lng, phone, website, company_id, company_name, company_description, company_logo_path`
+
+Die Angebote eines Standorts liefert `list_offers(p_location_ids => [id])`.
+
+#### `list_offer_created_at(p_offer_ids)` → 0 bis n Zeilen
+
+Veröffentlichungszeit zu Angeboten aus `list_offers`, für den Abschnitt „Neu dabei“ der App. Gleiche Sichtbarkeit wie `list_offers` (nur holbare Angebote), neueste zuerst. Pro Aufruf zählen höchstens die ersten 100 IDs.
+
+Rückgabe pro Zeile: `id, created_at`
+
 ### Nutzer (App)
 
 | RPC                     | Parameter                                               | Rückgabe                                                                                                                                                                                                                                                                                                                                               | Fehlercodes                                                                                                                                                                                                                      |

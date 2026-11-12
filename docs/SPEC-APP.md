@@ -41,11 +41,15 @@ Nutzer in Münster entdecken kurzfristige, vergünstigte Angebote lokaler Untern
 
 Die Events `code_geholt`, `code_storniert`, `code_eingeloest` und `no_show` schreibt das Backend selbst. Die App protokolliert nur „Angebot angesehen“ über `log_offer_view`.
 
+**Für die App ergänzt (Migration `app_oeffentlich`):**
+
+- `get_locations_public(p_location_ids)`: freigeschaltete Standorte mit Unternehmensinfo, für die Standortseite und die Lieblingsorte.
+- `list_offer_created_at(p_offer_ids)`: Veröffentlichungszeit holbarer Angebote, für „Neu dabei“.
+
 **Was noch fehlt (kommt als eigener kleiner DB-PR):**
 
-1. **Standortseite:** Es gibt keine öffentliche Abfrage für einen Standort mit Unternehmensinfo. Geplant ist ein neuer RPC, z. B. `get_location(p_location_id)`, am Anfang von Phase 2.
-2. **Push-Versand:** eine Edge Function, die die `notification_outbox` abarbeitet (pg_cron + pg_net, Secret Key aus Vault im `apikey`-Header, `verify_jwt = false`, `withSupabase({ auth: 'secret' })` aus `@supabase/server`), dazu ein RPC zum Abholen mit `FOR UPDATE SKIP LOCKED` (Vorlage in BACKEND.md).
-3. **Neue Angebote an Favoriten:** ein Trigger auf neue Angebote schreibt Outbox-Einträge an Nutzer mit passendem Favorit (Standort oder Kategorie), höchstens einer pro Nutzer und Angebot. Dafür braucht das Enum `notification_type` einen neuen Wert. Bestehende RPCs bleiben unverändert.
+1. **Push-Versand:** eine Edge Function, die die `notification_outbox` abarbeitet (pg_cron + pg_net, Secret Key aus Vault im `apikey`-Header, `verify_jwt = false`, `withSupabase({ auth: 'secret' })` aus `@supabase/server`), dazu ein RPC zum Abholen mit `FOR UPDATE SKIP LOCKED` (Vorlage in BACKEND.md).
+2. **Neue Angebote an Favoriten:** ein Trigger auf neue Angebote schreibt Outbox-Einträge an Nutzer mit passendem Favorit (Standort oder Kategorie), höchstens einer pro Nutzer und Angebot. Dafür braucht das Enum `notification_type` einen neuen Wert. Bestehende RPCs bleiben unverändert.
 
 Schon vorhanden und nicht nachzubauen: die Erinnerung vor Start (pg_cron-Job `unfair-enqueue-reminders`, einmal pro Code) und die Absage-Einträge aus `cancel_offer`.
 
@@ -147,6 +151,6 @@ Getroffen, wo nichts festgelegt war. Wer etwas anders will, ändert es hier und 
 7. **App-Name und Kennungen sind Platzhalter:** Anzeigename „unfair weekend“, Bundle-ID und Paketname `de.unfairweekend.app`, URL-Schema `unfairweekend`. Vor dem ersten Store-Build festlegen; die Bundle-ID lässt sich danach nicht mehr ändern.
 8. **Suche läuft in der App.** `list_offers` hat keine Textsuche. Bei 5–15 Partnern durchsucht die App die geladenen Angebote (Titel, Standort, Unternehmen). Bei mehr Angeboten kommt ein Such-Parameter als neuer RPC dazu.
 9. **Zeitfilter in der App.** „Heute“, „Morgen“ und „Wochenende“ filtert die App über `relevant_at` und die Datumshelfer (Europe/Berlin).
-10. **„Neu dabei“** sind die zuletzt veröffentlichten Angebote. Falls `list_offers` kein Veröffentlichungsdatum liefert, nutzt der Abschnitt die neuesten Standorte oder entfällt, bis der Standort-RPC aus Phase 2 da ist.
+10. **„Neu dabei“** sind die zuletzt veröffentlichten Angebote. Das Veröffentlichungsdatum kommt aus `list_offer_created_at`, weil `list_offers` es nicht liefert und bestehende RPCs unverändert bleiben.
 11. **Ort fest auf Münster.** Die Ortszeile oben ist eine Überschrift, kein Auswahlmenü. Es gibt nur Münster.
 12. **Schriftgröße begrenzt.** Dynamische Schriftgrößen des Systems werden bis Faktor 1,6 übernommen (Badges bis 1,3), damit Karten nicht zerbrechen.

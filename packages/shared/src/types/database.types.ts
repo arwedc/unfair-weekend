@@ -709,6 +709,24 @@ export type Database = {
       };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       get_admin_metrics: { Args: { p_from?: string; p_to?: string }; Returns: Json };
+      get_locations_public: {
+        Args: { p_location_ids: string[] };
+        Returns: {
+          city: string;
+          company_description: string;
+          company_id: string;
+          company_logo_path: string;
+          company_name: string;
+          id: string;
+          lat: number;
+          lng: number;
+          name: string;
+          phone: string;
+          postal_code: string;
+          street: string;
+          website: string;
+        }[];
+      };
       get_my_account: { Args: Record<PropertyKey, never>; Returns: Json };
       get_my_vouchers: {
         Args: Record<PropertyKey, never>;
@@ -809,6 +827,13 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      list_offer_created_at: {
+        Args: { p_offer_ids: string[] };
+        Returns: {
+          created_at: string;
+          id: string;
+        }[];
       };
       list_offers: {
         Args: {
