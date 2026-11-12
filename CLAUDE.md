@@ -6,7 +6,7 @@ Plattform für kurzfristige, vergünstigte Angebote lokaler Unternehmen in Müns
 - **Website** für Unternehmen und Admin: Next.js in `apps/web` (@arwedc)
 - **App** für Nutzer: Expo in `apps/mobile` (Ben, @Mecrylol)
 
-Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Rechte, Testzugänge): [docs/BACKEND.md](docs/BACKEND.md). Einrichtung eines neuen Rechners: [README.md](README.md).
+Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Rechte, Testzugänge): [docs/BACKEND.md](docs/BACKEND.md). Einrichtung eines neuen Rechners: [README.md](README.md). Andere KI-Agents (Codex, ChatGPT …) lesen [AGENTS.md](AGENTS.md), die auf diese Datei verweist. Neue Regeln hier eintragen und die Kurzfassung in `AGENTS.md` mitpflegen.
 
 ## Projektstruktur
 
