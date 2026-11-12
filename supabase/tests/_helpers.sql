@@ -9,6 +9,25 @@
 create schema tests;
 grant usage on schema tests to anon, authenticated;
 
+-- Ablage für IDs innerhalb einer Testdatei: tests.set_id('nutzer', …), tests.id('nutzer')
+create table tests.ids (k text primary key, v uuid);
+grant select, insert on tests.ids to anon, authenticated;
+
+create function tests.set_id(p_key text, p_value uuid)
+returns uuid
+language sql
+as $$
+  insert into tests.ids (k, v) values (p_key, p_value) returning v;
+$$;
+
+create function tests.id(p_key text)
+returns uuid
+language sql
+stable
+as $$
+  select v from tests.ids where k = p_key;
+$$;
+
 -- Auth-Konto anlegen (löst den Trigger handle_new_user aus → Profil)
 create function tests.create_user(p_email text, p_meta jsonb default '{}'::jsonb)
 returns uuid
@@ -98,6 +117,33 @@ as $$
     'Prinzipalmarkt 1, 48143 Münster', 51.9625, 7.6280, p_type, p_starts_at, p_ends_at
   )
   returning id;
+$$;
+
+-- Code direkt anlegen (z. B. für laufende oder vergangene Termine) und die
+-- belegten Plätze des Angebots passend erhöhen.
+create function tests.create_voucher(
+  p_offer_id uuid,
+  p_user_id uuid,
+  p_seats integer default 1,
+  p_status public.voucher_status default 'aktiv'
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.vouchers (offer_id, user_id, seats, token, short_code, status, cancel_reason)
+  values (
+    p_offer_id, p_user_id, p_seats, private.generate_token(), private.generate_short_code(), p_status,
+    case when p_status = 'storniert' then 'nutzer'::public.voucher_cancel_reason end
+  )
+  returning id into v_id;
+  if p_status in ('aktiv', 'eingeloest', 'no_show') then
+    update public.offers set seats_taken = seats_taken + p_seats where id = p_offer_id;
+  end if;
+  return v_id;
+end;
 $$;
 
 -- Als Konto auftreten (wie ein Request mit diesem JWT)

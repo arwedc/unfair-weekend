@@ -16,7 +16,9 @@
     "supabase": "supabase",
     "db:check": "pnpm --filter @repo/db-tools db:check",
     "db:test": "pnpm --filter @repo/db-tools db:test",
-    "db:types": "pnpm --filter @repo/db-tools db:types"
+    "db:types": "pnpm --filter @repo/db-tools db:types",
+    "db:test:race": "pnpm --filter @repo/db-tools db:test:race",
+    "db:seed": "pnpm --filter @repo/db-tools db:seed"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

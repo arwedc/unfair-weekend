@@ -10,7 +10,9 @@
     "db:check": "tsx src/run.ts --migrations-only",
     "db:test": "tsx src/run.ts",
     "db:types": "tsx src/gen-types.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:test:race": "tsx src/concurrency.ts race",
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "pg": "catalog:",
