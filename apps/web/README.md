@@ -38,5 +38,6 @@ Daraus entstehen Klassen wie `bg-accent-solid`, `text-text-secondary`, `rounded-
 ## Anbindung
 
 - `.env.local` in diesem Ordner: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Den Secret Key nur serverseitig und nie mit `NEXT_PUBLIC_`.
-- Backend-Vertrag (Tabellen, RPCs, Fehlercodes): `docs/BACKEND.md` (entsteht in Phase 4)
+- Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Testzugänge): [docs/BACKEND.md](../../docs/BACKEND.md)
+- Fehler aus RPCs: `parseRpcError(error)` aus `@repo/shared`, Eingaben mit den Zod-Schemas und `toRpcArgs()` prüfen
 - ESLint: eigene `eslint.config.js` (Next.js), kann die Root-Konfiguration importieren und erweitern.
