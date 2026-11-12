@@ -1,0 +1,22 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling/*
+
+# Gemeinsame Versionen für alle Pakete. In einer package.json: "zod": "catalog:".
+# Expo verbietet doppelte react/react-native-Versionen, deshalb gehören
+# geteilte Abhängigkeiten hierher und nicht einzeln in die Apps.
+catalog:
+  '@eslint/js': ^10.0.1
+  '@types/node': ^22.20.5
+  eslint: ^10.14.0
+  eslint-config-prettier: ^10.1.8
+  globals: ^17.14.0
+  prettier: ~3.9.10
+  supabase: ^3.1.0
+  # TypeScript 7 wird von typescript-eslint noch nicht unterstützt;
+  # 6.0 entspricht auch dem Expo-SDK-58-Template.
+  typescript: ~6.0.3
+  typescript-eslint: ^8.72.2
+  vitest: ^5.1.0
+  zod: ^4.6.7

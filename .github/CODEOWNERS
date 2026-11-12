@@ -1,0 +1,22 @@
+# Wer muss welche Änderungen freigeben?
+#
+# Zusammen mit dem Branch-Schutz (Approvals: 0 + „Require review from Code Owners“) gilt:
+# - Gemeinsame Bereiche: Freigabe durch einen Owner nötig. Die Autorin/der Autor
+#   zählt nicht, also reviewt automatisch der jeweils andere.
+# - Eigene Bereiche (apps/mobile, apps/web) haben bewusst KEINEN Owner,
+#   damit jeder dort ohne Review mergen kann. Zuständigkeit: siehe CLAUDE.md.
+#
+# Die letzte passende Zeile gewinnt.
+
+# Standard: alles Gemeinsame (Root-Konfiguration, Doku, .github …)
+*               @Mecrylol @arwedc
+
+# Gemeinsame Bereiche: nur in eigenen, kleinen PRs ändern
+/supabase/      @Mecrylol @arwedc
+/packages/      @Mecrylol @arwedc
+/tooling/       @Mecrylol @arwedc
+
+# Eigene Bereiche: ohne Owner = frei änderbar
+# apps/mobile → Ben (@Mecrylol), apps/web → @arwedc
+/apps/mobile/
+/apps/web/

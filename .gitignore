@@ -1,0 +1,30 @@
+# Abhängigkeiten
+node_modules/
+
+# Secrets: nur .env.example wird committet
+.env
+.env.*
+!.env.example
+
+# Build- und Tool-Ausgaben
+dist/
+coverage/
+*.tsbuildinfo
+.turbo/
+.next/
+.expo/
+web-build/
+
+# Supabase CLI (lokale Link-Infos, nie committen)
+supabase/.temp/
+supabase/.branches/
+
+# System / Editor
+.DS_Store
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Claude Code: persönliche Einstellungen bleiben lokal
+.claude/settings.local.json
