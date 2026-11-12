@@ -3,8 +3,8 @@
 # Zusammen mit dem Branch-Schutz (Approvals: 0 + „Require review from Code Owners“) gilt:
 # - Gemeinsame Bereiche: Freigabe durch einen Owner nötig. Die Autorin/der Autor
 #   zählt nicht, also reviewt automatisch der jeweils andere.
-# - Eigene Bereiche (apps/mobile, apps/web) haben bewusst KEINEN Owner,
-#   damit jeder dort ohne Review mergen kann. Zuständigkeit: siehe CLAUDE.md.
+# - Eigene Bereiche (apps/mobile, apps/web) und supabase/ haben bewusst KEINEN
+#   Owner, damit dort ohne Review gemergt werden kann. Siehe CLAUDE.md.
 #
 # Die letzte passende Zeile gewinnt.
 
@@ -12,11 +12,12 @@
 *               @Mecrylol @arwedc
 
 # Gemeinsame Bereiche: nur in eigenen, kleinen PRs ändern
-/supabase/      @Mecrylol @arwedc
 /packages/      @Mecrylol @arwedc
 /tooling/       @Mecrylol @arwedc
 
-# Eigene Bereiche: ohne Owner = frei änderbar
-# apps/mobile → Ben (@Mecrylol), apps/web → @arwedc
+# Ohne Owner = ohne Review mergebar
+# Eigene Bereiche: apps/mobile → Ben (@Mecrylol), apps/web → @arwedc
 /apps/mobile/
 /apps/web/
+# Datenbank: Migrations-PRs (db/...) merged Ben selbst, siehe Regel in CLAUDE.md
+/supabase/
