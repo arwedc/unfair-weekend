@@ -6,7 +6,7 @@ Plattform für kurzfristige, vergünstigte Angebote lokaler Unternehmen in Müns
 - **Website** für Unternehmen und Admin: Next.js in `apps/web` (@arwedc)
 - **App** für Nutzer: Expo in `apps/mobile` (Ben, @Mecrylol)
 
-Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes): `docs/BACKEND.md` (entsteht in Phase 4).
+Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Rechte, Testzugänge): [docs/BACKEND.md](docs/BACKEND.md). Einrichtung eines neuen Rechners: [README.md](README.md).
 
 ## Projektstruktur
 
@@ -30,20 +30,22 @@ docs/                SPEC.md, BACKEND.md, design-referenz/
 
 ## Befehle
 
-| Befehl                                            | Zweck                                                                                    |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `pnpm install`                                    | Abhängigkeiten installieren (nach jedem Pull von `main`)                                 |
-| `pnpm check`                                      | Alles prüfen: Format, Lint, Typecheck, Unit-Tests                                        |
-| `pnpm typecheck` / `pnpm lint` / `pnpm test`      | einzeln                                                                                  |
-| `pnpm format`                                     | Prettier auf alles anwenden                                                              |
-| `pnpm supabase <befehl>`                          | Supabase CLI aus dem Repo (gleiche Version für alle)                                     |
-| `pnpm supabase migration new <name> < /dev/null`  | neue, leere Migrationsdatei anlegen (siehe Hinweis unten)                                |
-| `pnpm supabase db push --remote --yes`            | Migrationen ins Dev-Projekt spielen (nach `pnpm db:check`, siehe feste Regel unten)      |
-| `pnpm db:check`                                   | Probelauf: offene Migrationen in einer Transaktion einspielen und zurückrollen           |
-| `pnpm db:test`                                    | wie `db:check`, danach alle SQL-Tests (`supabase/tests/*.test.sql`), alles zurückgerollt |
-| `pnpm db:test -- claim`                           | nur Testdateien, deren Name „claim“ enthält                                              |
-| `pnpm db:types`                                   | Typen aus dem Dev-Projekt nach `packages/shared/src/types/database.types.ts`             |
-| `pnpm supabase functions deploy <name> --use-api` | Edge Function deployen, ohne Docker (**nur nach ausdrücklicher Bestätigung**)            |
+| Befehl                                            | Zweck                                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `pnpm install`                                    | Abhängigkeiten installieren (nach jedem Pull von `main`)                                                |
+| `pnpm check`                                      | Alles prüfen: Format, Lint, Typecheck, Unit-Tests                                                       |
+| `pnpm typecheck` / `pnpm lint` / `pnpm test`      | einzeln                                                                                                 |
+| `pnpm format`                                     | Prettier auf alles anwenden                                                                             |
+| `pnpm supabase <befehl>`                          | Supabase CLI aus dem Repo (gleiche Version für alle)                                                    |
+| `pnpm supabase migration new <name> < /dev/null`  | neue, leere Migrationsdatei anlegen (siehe Hinweis unten)                                               |
+| `pnpm supabase db push --remote --yes`            | Migrationen ins Dev-Projekt spielen (nach `pnpm db:check`, siehe feste Regel unten)                     |
+| `pnpm db:check`                                   | Probelauf: offene Migrationen in einer Transaktion einspielen und zurückrollen                          |
+| `pnpm db:test`                                    | wie `db:check`, danach alle SQL-Tests (`supabase/tests/*.test.sql`), alles zurückgerollt                |
+| `pnpm db:test -- claim`                           | nur Testdateien, deren Name „claim“ enthält                                                             |
+| `pnpm db:types`                                   | Typen aus dem Dev-Projekt nach `packages/shared/src/types/database.types.ts`                            |
+| `pnpm db:test:race`                               | echtes Wettrennen: 10 parallele Anfragen auf den letzten Platz (temporäre Daten, danach aufgeräumt)     |
+| `pnpm db:seed`                                    | Seed einspielen: Testkonten + `supabase/seed.sql`, idempotent (**nur nach ausdrücklicher Bestätigung**) |
+| `pnpm supabase functions deploy <name> --use-api` | Edge Function deployen, ohne Docker (**nur nach ausdrücklicher Bestätigung**)                           |
 
 Paket-Befehle gezielt: `pnpm --filter @repo/shared test`.
 
@@ -129,7 +131,8 @@ Wir entwickeln beide direkt gegen **ein gemeinsames Dev-Projekt in der Cloud**. 
 - Zu Beginn: `git pull` auf `main` bzw. `main` in den Branch holen, `pnpm install`.
 - `supabase db push` ins **Dev-Projekt** nach erfolgreichem `pnpm db:check` ohne Rückfrage (feste Regel oben). Ins **Live-Projekt** nur mit Bens ausdrücklichem OK.
 - Vor dem Einspielen von Seeds, vor Edge-Function-Deploys und vor allem anderen, was Daten im Dev-Projekt dauerhaft ändert: **ausdrücklich nachfragen**.
-- Nach Schemaänderungen: Typen neu generieren, `docs/BACKEND.md` und die Fehlercodes in `packages/shared` aktualisieren.
+- Nach Schemaänderungen: Typen neu generieren, `docs/BACKEND.md` und die Fehlercodes in `packages/shared` aktualisieren, neue SQL-Tests in `supabase/tests/` ergänzen.
+- Vor dem Bauen eines Features in App oder Website: `docs/BACKEND.md` lesen. Was dort fehlt, ist eine Backend-Änderung (eigener PR), kein Workaround im Client.
 - Vor dem Commit: `pnpm check`. Bei DB-Änderungen zusätzlich `pnpm db:check` bzw. `pnpm db:test`.
 - Zur Supabase-, Expo- und Next.js-API die aktuelle offizielle Doku prüfen, nicht aus dem Gedächtnis arbeiten.
 - Skills `supabase` und `postgres-best-practices` für Schema, RLS und Funktionen nutzen, falls installiert.
