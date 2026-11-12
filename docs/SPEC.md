@@ -297,3 +297,12 @@ Getroffen, weil sie nicht blockieren. Widerspruch jederzeit möglich, dann folgt
     - Das Passwort kommt aus `.env` (`SEED_TEST_PASSWORD`), weil das Repo öffentlich ist.
     - App-Testkonten bekommen zusätzlich ein Passwort, weil E-Mail-OTP an Fantasie-Adressen nicht zugestellt wird. Ob die App dafür einen Dev-Login baut, entscheidet die App-Session.
 27. **Statuswerte** stehen in ASCII (`eingeloest`), Bezeichner sind englisch in snake_case. Die Oberfläche ist deutsch.
+
+**Ergänzt in Phase 2**
+
+28. **Rechte per Standard entzogen:** Neue Tabellen und Funktionen in `public` sind für `anon`/`authenticated` nicht automatisch freigegeben (in diesem Projekt war das vorher anders). Jede Migration vergibt Rechte ausdrücklich.
+29. **Grenzen für Angebote:** höchstens 90 Tage Dauer, Beginn höchstens 1 Jahr in der Zukunft, 1–1000 Plätze, 1–20 Plätze pro Person, Originalpreis bis 100.000 €.
+30. **Standort-Koordinaten** sind optional (Angebote haben eigene, Pflicht). Das Geocoding übernimmt die Edge Function `geocode` (OpenStreetMap/Nominatim mit Cache), aufrufbar nur von Standort-Accounts und Admins.
+31. **Aufrufe zählen:** Derselbe angemeldete Nutzer zählt pro Angebot höchstens einmal in 30 Minuten. Anonyme Aufrufe zählen jedes Mal.
+32. **Erinnerungen:** Codes, die erst innerhalb des Erinnerungsfensters geholt werden, bekommen keine Erinnerung.
+33. **Fehlercodes:** `message` = Code, `detail` = genauer deutscher Text vom Server (z. B. „Es sind nur noch 2 Plätze frei.“). `parseRpcError()` zeigt bevorzugt diesen Text. Ein Test in `tooling/db` prüft, dass SQL und `packages/shared` dieselben Codes kennen.

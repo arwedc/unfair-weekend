@@ -1,0 +1,27 @@
+{
+  "name": "@repo/db-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Werkzeuge für das gemeinsame Supabase-Dev-Projekt: Migrations-Probelauf, SQL-Tests, Seed, Typen.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "db:check": "tsx src/run.ts --migrations-only",
+    "db:test": "tsx src/run.ts",
+    "db:types": "tsx src/gen-types.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pg": "catalog:",
+    "@repo/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "eslint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
