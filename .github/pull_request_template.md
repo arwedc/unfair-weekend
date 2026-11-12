@@ -6,7 +6,8 @@
 
 - [ ] `apps/mobile` (eigener Bereich)
 - [ ] `apps/web` (eigener Bereich)
-- [ ] **Gemeinsam**: `supabase/`, `packages/`, `tooling/` oder Root-Konfiguration → eigener, kleiner PR, der andere reviewt
+- [ ] **Datenbank**: `supabase/` → Branch `db/...`, ohne Review mergebar
+- [ ] **Gemeinsam**: `packages/`, `tooling/` oder Root-Konfiguration → eigener, kleiner PR, der andere reviewt
 
 ## Checkliste
 
@@ -22,7 +23,8 @@
 - [ ] Nur hinzugefügt (neue Tabellen/Spalten/Funktionen). Umbenennen/Löschen/Ändern ist abgesprochen mit: …
 - [ ] RLS für neue Tabellen aktiviert, Policies für alle Rollen geprüft
 - [ ] `pnpm db:check` (Probelauf mit Rollback) erfolgreich
-- [ ] Nach dem Merge: `supabase db push` (mit ausdrücklicher Bestätigung) und Typen neu generiert (`pnpm db:types`) und committet
+- [ ] Bereits ins Dev-Projekt gepusht (`pnpm supabase db push --remote --yes`), Typen neu generiert (`pnpm db:types`) und in diesem PR committet
+- [ ] Zwei-Satz-Zusammenfassung für den anderen steht in der PR-Beschreibung
 
 ### Doku
 
