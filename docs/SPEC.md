@@ -306,3 +306,9 @@ Getroffen, weil sie nicht blockieren. Widerspruch jederzeit möglich, dann folgt
 31. **Aufrufe zählen:** Derselbe angemeldete Nutzer zählt pro Angebot höchstens einmal in 30 Minuten. Anonyme Aufrufe zählen jedes Mal.
 32. **Erinnerungen:** Codes, die erst innerhalb des Erinnerungsfensters geholt werden, bekommen keine Erinnerung.
 33. **Fehlercodes:** `message` = Code, `detail` = genauer deutscher Text vom Server (z. B. „Es sind nur noch 2 Plätze frei.“). `parseRpcError()` zeigt bevorzugt diesen Text. Ein Test in `tooling/db` prüft, dass SQL und `packages/shared` dieselben Codes kennen.
+
+**Ergänzt in Phase 3**
+
+34. **Geocoding:** Der öffentliche Nominatim-Server sperrt Anfragen aus der Supabase-Cloud (HTTP 403). Die Edge Function fragt deshalb zuerst Nominatim und weicht dann auf Photon (komoot, ebenfalls OpenStreetMap, ohne Schlüssel) aus. Für den Live-Betrieb mit mehr Last ist ein Anbieter mit eigenem Schlüssel sinnvoll (z. B. Geoapify oder LocationIQ).
+35. **Seed:** Alle Testkonten heißen `seed-…@example.com` und haben dasselbe Passwort (`SEED_TEST_PASSWORD` aus `.env`). Unternehmen und Angebote sind erfunden, die Adressen sind echte Straßen in Münster, die Bilder Platzhalter von picsum.photos. Die Zeiten sind relativ zum Einspiel-Zeitpunkt, die Angebote „altern“ also. Den Seed erneut anzupassen ist eine eigene Aufgabe (Abstimmung nötig).
+36. **SQL-Tests** legen ihre Fixtures selbst in der Test-Transaktion an und greifen nicht auf den Seed zurück. Nur der Sperr-Test braucht ein holbares Angebot und zwei Nutzer aus dem Seed; fehlen sie, wird er übersprungen.

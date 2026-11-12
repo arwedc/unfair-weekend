@@ -11,10 +11,13 @@
  *   pnpm db:check                   nur Migrationen (Schritt 1)
  *   pnpm db:test                    Migrationen + alle Tests
  *   pnpm db:test -- claim           nur Testdateien, deren Name „claim“ enthält
+ *
+ * Danach (ohne Filter) der Sperr-Test für claim_voucher, siehe concurrency.ts.
  */
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type pg from 'pg';
+import { runLockTest } from './concurrency';
 import { createClient, describePgError } from './db';
 import { repoRoot } from './env';
 import { readAppliedVersions, readMigrationFiles } from './migrations';
@@ -133,12 +136,13 @@ async function main(): Promise<void> {
   const client = createClient('unfair-db-run');
   await client.connect();
   let success: boolean;
+  let pending = 0;
   try {
     await client.query('begin');
     // Nicht ewig auf Sperren warten, falls im Dev-Projekt gerade jemand arbeitet.
     await client.query("set local lock_timeout = '10s'");
     await client.query("set local statement_timeout = '120s'");
-    await applyPendingMigrations(client);
+    pending = await applyPendingMigrations(client);
     success = options.migrationsOnly ? true : await runTests(client, options.filter);
   } catch (error) {
     if (!(error instanceof Error && error.message === 'Migration fehlgeschlagen.')) {
@@ -149,6 +153,16 @@ async function main(): Promise<void> {
     await client.query('rollback').catch(() => undefined);
     await client.end();
     console.log('Zurückgerollt: Im Dev-Projekt hat sich nichts verändert.');
+  }
+
+  // Sperr-Test mit zwei echten Verbindungen. Braucht das Schema im Dev-Projekt,
+  // läuft deshalb nur ohne offene Migrationen und ohne Dateifilter.
+  if (success && !options.migrationsOnly && !options.filter) {
+    if (pending > 0) {
+      console.log('Sperr-Test: übersprungen (offene Migrationen sind nur im Probelauf vorhanden).');
+    } else {
+      success = await runLockTest();
+    }
   }
   process.exitCode = success ? 0 : 1;
 }
