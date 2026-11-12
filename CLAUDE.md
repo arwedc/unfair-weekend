@@ -6,7 +6,7 @@ Plattform für kurzfristige, vergünstigte Angebote lokaler Unternehmen in Müns
 - **Website** für Unternehmen und Admin: Next.js in `apps/web` (@arwedc)
 - **App** für Nutzer: Expo in `apps/mobile` (Ben, @Mecrylol)
 
-Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes): `docs/BACKEND.md` (entsteht in Phase 4).
+Vollständige Anforderungen, Entscheidungen und Annahmen: [docs/SPEC.md](docs/SPEC.md). Backend-Vertrag (Tabellen, RPCs, Fehlercodes, Rechte, Testzugänge): [docs/BACKEND.md](docs/BACKEND.md). Einrichtung eines neuen Rechners: [README.md](README.md).
 
 ## Projektstruktur
 
@@ -131,7 +131,8 @@ Wir entwickeln beide direkt gegen **ein gemeinsames Dev-Projekt in der Cloud**. 
 - Zu Beginn: `git pull` auf `main` bzw. `main` in den Branch holen, `pnpm install`.
 - `supabase db push` ins **Dev-Projekt** nach erfolgreichem `pnpm db:check` ohne Rückfrage (feste Regel oben). Ins **Live-Projekt** nur mit Bens ausdrücklichem OK.
 - Vor dem Einspielen von Seeds, vor Edge-Function-Deploys und vor allem anderen, was Daten im Dev-Projekt dauerhaft ändert: **ausdrücklich nachfragen**.
-- Nach Schemaänderungen: Typen neu generieren, `docs/BACKEND.md` und die Fehlercodes in `packages/shared` aktualisieren.
+- Nach Schemaänderungen: Typen neu generieren, `docs/BACKEND.md` und die Fehlercodes in `packages/shared` aktualisieren, neue SQL-Tests in `supabase/tests/` ergänzen.
+- Vor dem Bauen eines Features in App oder Website: `docs/BACKEND.md` lesen. Was dort fehlt, ist eine Backend-Änderung (eigener PR), kein Workaround im Client.
 - Vor dem Commit: `pnpm check`. Bei DB-Änderungen zusätzlich `pnpm db:check` bzw. `pnpm db:test`.
 - Zur Supabase-, Expo- und Next.js-API die aktuelle offizielle Doku prüfen, nicht aus dem Gedächtnis arbeiten.
 - Skills `supabase` und `postgres-best-practices` für Schema, RLS und Funktionen nutzen, falls installiert.
