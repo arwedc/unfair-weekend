@@ -12,7 +12,7 @@ export function LocaleSwitcher() {
       action={setLocaleAction}
       role="group"
       aria-label={t.common.locale.label}
-      className="flex items-center rounded-button border border-border-default p-0.5"
+      className="flex shrink-0 items-center whitespace-nowrap rounded-button border border-border-default p-0.5"
     >
       {LOCALES.map((l) => (
         <button
@@ -23,7 +23,7 @@ export function LocaleSwitcher() {
           lang={l}
           aria-pressed={l === locale}
           title={t.common.locale.switchTo(LOCALE_NAMES[l])}
-          className={`min-h-8 rounded-button px-2.5 text-footnote font-semibold uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus ${
+          className={`min-h-8 min-w-11 rounded-button px-2.5 text-footnote font-semibold uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus ${
             l === locale
               ? 'bg-background-muted text-text-primary'
               : 'cursor-pointer text-text-tertiary hover:text-text-primary'

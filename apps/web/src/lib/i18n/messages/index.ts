@@ -6,6 +6,7 @@ import { reviewsDe, reviewsEn } from './sections/reviews';
 import { profileDe, profileEn } from './sections/profile';
 import { paymentsDe, paymentsEn } from './sections/payments';
 import { checkinDe, checkinEn } from './sections/checkin';
+import { adminDe, adminEn } from './sections/admin';
 
 /**
  * Texte der Website. Deutsch ist die Vorlage, Englisch muss dieselbe Form haben
@@ -19,6 +20,7 @@ const de = {
   profile: profileDe,
   payments: paymentsDe,
   checkin: checkinDe,
+  admin: adminDe,
 };
 
 export type Messages = typeof de;
@@ -31,6 +33,7 @@ const en: Messages = {
   profile: profileEn,
   payments: paymentsEn,
   checkin: checkinEn,
+  admin: adminEn,
 };
 
 const MESSAGES: Record<Locale, Messages> = { de, en };

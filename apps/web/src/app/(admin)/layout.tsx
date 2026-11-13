@@ -17,11 +17,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen">
       <header className="border-b border-border-subtle bg-surface-default">
-        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 py-2">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2">
           <Link href="/admin/zahlungen" aria-label={t.common.nav.toPayments}>
             <Logo />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <nav aria-label={t.common.nav.admin} className="flex items-center gap-1">
               <Link href="/admin/zahlungen" className={buttonClass('ghost', 'px-3')}>
                 {t.common.nav.payments}
