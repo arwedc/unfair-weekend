@@ -7,6 +7,7 @@ import type { Widen } from './widen';
 export const logicDe = {
   timeFilters: { alle: 'Alle', heute: 'Heute', morgen: 'Morgen', wochenende: 'Wochenende' },
   sections: {
+    lastMinute: 'Last Minute ⏰',
     trending: 'Gerade angesagt 🔥',
     highlights: 'Community-Lieblinge ⭐',
     deals: 'Mega-Rabatte 💥',
@@ -78,6 +79,7 @@ export const logicDe = {
 export const logicEn: Widen<typeof logicDe> = {
   timeFilters: { alle: 'All', heute: 'Today', morgen: 'Tomorrow', wochenende: 'Weekend' },
   sections: {
+    lastMinute: 'Last minute ⏰',
     trending: 'Trending now 🔥',
     highlights: 'Community favourites ⭐',
     deals: 'Mega deals 💥',

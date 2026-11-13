@@ -168,7 +168,7 @@ describe('buildSections', () => {
     key: string,
     ratings?: ReadonlyMap<string, LocationRatingSummary>,
   ) =>
-    buildSections(offers, { ratings })
+    buildSections(offers, { ratings, now: NOW })
       .find((section) => section.key === key)
       ?.offers.map((o) => o.id);
 
@@ -183,7 +183,7 @@ describe('buildSections', () => {
       }),
       offer({ id: 'b', capacity: 10, free_seats: 9, max_per_user: 1, location_id: 'l2' }),
     ];
-    const sections = buildSections(offers, { ratings: rated([['l1', 4.8, 12]]) });
+    const sections = buildSections(offers, { ratings: rated([['l1', 4.8, 12]]), now: NOW });
     expect(sections.map((s) => s.key)).toEqual([
       'trending',
       'highlights',
@@ -273,6 +273,28 @@ describe('buildSections', () => {
     const sections = buildSections(many);
     expect(sections.every((section) => section.offers.length <= 8)).toBe(true);
     expect(ids(many, 'rabatt')).toHaveLength(8);
+  });
+
+  it('zeigt unter „Last Minute“ nur heutige Angebote, das früheste zuerst', () => {
+    const offers = [
+      offer({
+        id: 'abend',
+        starts_at: at(0, '20:00'),
+        ends_at: at(0, '22:00'),
+        relevant_at: at(0, '20:00'),
+      }),
+      offer({
+        id: 'mittag',
+        starts_at: at(0, '14:00'),
+        ends_at: at(0, '16:00'),
+        relevant_at: at(0, '14:00'),
+      }),
+      offer({ id: 'morgen' }),
+    ];
+    const sections = buildSections(offers, { now: NOW });
+    expect(sections[0]?.key).toBe('last-minute');
+    expect(sections[0]?.title).toBe('Last Minute ⏰');
+    expect(ids(offers, 'last-minute')).toEqual(['mittag', 'abend']);
   });
 
   it('übersetzt die Titel', () => {

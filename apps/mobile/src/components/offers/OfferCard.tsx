@@ -10,6 +10,8 @@ import { useT } from '@/lib/i18n/context';
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
 import { badge, colors, fonts, radii, radius, space } from '@/theme';
 
+import { DiscountBand } from './DiscountBand';
+
 import { OfferImage } from './OfferImage';
 import { PriceRow } from './PriceRow';
 
@@ -29,7 +31,8 @@ export const COMPACT_CARD_WIDTH = 264;
 export function OfferCard({ offer, variant = 'large', onOpen, priority, style }: OfferCardProps) {
   const router = useRouter();
   const { t, locale } = useT();
-  const badges = offerBadges(offer, undefined, locale);
+  const badges = offerBadges(offer, undefined, locale).filter((item) => item.variant !== 'deal');
+  const savedCents = offer.original_price_cents - offer.deal_price_cents;
   const when = offerWhenText(offer, undefined, locale);
   const soldOut = offer.free_seats === 0;
   const compact = variant === 'compact';
@@ -65,13 +68,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
         />
         <View style={styles.badges}>
           {badges.map((item) => (
-            <Badge
-              key={item.label}
-              label={item.label}
-              variant={item.variant}
-              size={!compact && item.variant === 'deal' ? 'large' : 'default'}
-              onImage
-            />
+            <Badge key={item.label} label={item.label} variant={item.variant} onImage />
           ))}
         </View>
         <View style={styles.categoryTag} accessible={false}>
@@ -82,6 +79,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
             {t.parts.categoryShort[offer.category]}
           </Text>
         </View>
+        {!soldOut ? <DiscountBand percent={offer.discount_percent} compact={compact} /> : null}
       </View>
 
       <View style={styles.body}>
@@ -102,12 +100,17 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
           />
-          {!compact ? (
-            <Text variant="footnote" color={soldOut ? 'tertiary' : 'secondary'}>
-              {seatsLabel(offer.free_seats, locale)}
+          {savedCents > 0 ? (
+            <Text variant="footnote" numberOfLines={1} style={styles.saving}>
+              {t.parts.card.youSave(formatPrice(savedCents, { omitZeroCents: true, locale }))}
             </Text>
           ) : null}
         </View>
+        {!compact ? (
+          <Text variant="footnote" color={soldOut ? 'tertiary' : 'secondary'}>
+            {seatsLabel(offer.free_seats, locale)}
+          </Text>
+        ) : null}
       </View>
     </PressableScale>
   );
@@ -166,8 +169,11 @@ const styles = StyleSheet.create({
   metaText: { flexShrink: 1 },
   priceRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
+    columnGap: space[3],
     marginTop: space[1],
   },
+  // Ersparnis in Gold (dunkler Ton für Kontrast auf Weiß)
+  saving: { fontFamily: fonts.bold, color: colors.accent.strong },
 });

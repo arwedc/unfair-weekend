@@ -212,7 +212,7 @@ function seatsTaken(offer: Pick<Offer, 'capacity' | 'free_seats'>): number {
 }
 
 /**
- * Reihen für „Entdecken“: Gerade angesagt, Community-Lieblinge, Mega-Rabatte,
+ * Reihen für „Entdecken“: Last Minute (heute), Gerade angesagt, Community-Lieblinge, Mega-Rabatte,
  * Frisch reingekommen, Bring deine Crew, Schnäppchen. Ein Angebot darf in mehreren
  * Reihen stehen. Nur buchbare Angebote; leere Reihen fallen weg.
  */
@@ -220,6 +220,8 @@ export function buildSections(
   offers: readonly FeedOffer[],
   options: {
     locale?: Locale;
+    /** Für „Last Minute“ (heute in Berlin). Standard: jetzt. */
+    now?: DateInput;
     /** Bewertungen je Standort (`location_id`). Ohne sie fällt „Community-Lieblinge“ weg. */
     ratings?: ReadonlyMap<string, LocationRatingSummary>;
   } = {},
@@ -234,8 +236,17 @@ export function buildSections(
     minOffers,
   });
   const ratingOf = (offer: FeedOffer) => ratings.get(offer.location_id);
+  const now = options.now ?? new Date();
 
   const drafts: SectionDraft[] = [
+    // Heute noch machbar, was zuerst startet bzw. endet, steht vorn
+    draft(
+      'last-minute',
+      m.lastMinute,
+      available
+        .filter((offer) => matchesTimeFilter(offer, 'heute', now))
+        .sort((a, b) => a.relevant_at.localeCompare(b.relevant_at)),
+    ),
     // Wo gerade am meisten Plätze weggehen
     draft(
       'trending',

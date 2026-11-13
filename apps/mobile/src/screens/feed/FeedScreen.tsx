@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCircles } from '@/components/feed/CategoryCircles';
 import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
-import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import { Appear, EmptyState, IconButton, Input, SectionHeader, Text } from '@/components/ui';
 import { getCity, offersInCity } from '@/features/offers/cities';
@@ -117,7 +116,7 @@ export function FeedScreen() {
         }))
       : listMode
         ? []
-        : buildSections(visible, { locale, ratings });
+        : buildSections(visible, { locale, ratings, now: new Date() });
   // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
   // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
   const listItems = isPending || byCategory || !listMode ? [] : visible;
@@ -186,8 +185,6 @@ export function FeedScreen() {
           />
         </View>
       ) : null}
-
-      <FilterBar />
     </View>
   );
 
@@ -195,7 +192,13 @@ export function FeedScreen() {
     <View style={styles.header}>
       <View style={styles.intro}>
         {cityOffers.length > 0 ? (
-          <Text variant="headline" numberOfLines={1} style={styles.inset}>
+          <Text
+            variant="title2"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={styles.inset}
+          >
             {m.dealCount(cityOffers.length)}
           </Text>
         ) : null}
