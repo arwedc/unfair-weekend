@@ -74,8 +74,8 @@ export function Input({
           ref={ref}
           accessibilityLabel={label ?? rest.placeholder}
           placeholderTextColor={colors.text.tertiary}
-          selectionColor={colors.accent.solid}
-          cursorColor={colors.accent.solid}
+          selectionColor={colors.accent.strong}
+          cursorColor={colors.accent.strong}
           maxFontSizeMultiplier={MAX_FONT_SCALE}
           onFocus={(event) => {
             setFocused(true);

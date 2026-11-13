@@ -9,7 +9,7 @@ import { colors, fonts } from '@/theme';
 export default function TabsLayout() {
   return (
     <NativeTabs
-      tintColor={colors.accent.solid}
+      tintColor={colors.accent.strong}
       labelStyle={{ fontFamily: fonts.semibold }}
       // Die Leiste bleibt beim Scrollen immer voll sichtbar.
       minimizeBehavior="never"

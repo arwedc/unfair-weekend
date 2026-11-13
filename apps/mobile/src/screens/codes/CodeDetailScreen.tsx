@@ -163,8 +163,8 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         <RefreshControl
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
-          tintColor={colors.accent.solid}
-          colors={[colors.accent.solid]}
+          tintColor={colors.accent.strong}
+          colors={[colors.accent.strong]}
         />
       }
     >

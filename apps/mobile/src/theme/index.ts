@@ -4,8 +4,8 @@
  */
 import {
   badge,
+  black,
   duration,
-  glut,
   layout,
   nativeFontFamily,
   radii,
@@ -16,23 +16,69 @@ import {
   themes,
   type TextStyleName,
   type TextStyleToken,
+  type ThemeColors,
 } from '@repo/shared/tokens';
 import type { TextStyle } from 'react-native';
 
-/** Die App hat vorerst nur ein helles Theme (wie die Tokens). */
-export const colors = themes.light;
+/**
+ * Akzentfarbe der App „Gold“: warmes Goldgelb, Markenton #FCC753 (Stufe 400).
+ * Gilt nur in der App; die Website nutzt weiter „Glut“ aus @repo/shared.
+ * - 400 ist der Markenton für Flächen (Buttons, Chips, Badges, Nadeln). Darauf nur
+ *   schwarzer Text, weißer Text wäre zu schwach (1,6:1).
+ * - 700 ist der Arbeitston für Akzent-Text, Links und Icons auf Weiß (≥ 4,5:1).
+ * - 50–200 sind zarte Flächen (Hintergründe, Formen, Avatare).
+ */
+export const gold = {
+  50: '#FEF8EC',
+  100: '#FDEDC9',
+  200: '#FCDF9C',
+  300: '#FCD173',
+  400: '#FCC753',
+  500: '#EDA71D',
+  600: '#B87E14',
+  700: '#885C11',
+  800: '#66450F',
+  900: '#4A310D',
+  950: '#271A07',
+} as const;
+
+/** Farb-Tokens der App: wie in @repo/shared, dazu `accent.strong`. */
+type AppThemeColors = ThemeColors & { accent: ThemeColors['accent'] & { strong: string } };
+
+/** Farben der App: helles Theme aus den Tokens, Akzent auf Gold umgestellt. */
+export const colors = {
+  ...themes.light,
+  text: {
+    ...themes.light.text,
+    accent: gold[700],
+    onAccent: black,
+    link: gold[700],
+  },
+  border: { ...themes.light.border, focus: gold[600] },
+  accent: {
+    solid: gold[400],
+    solidPressed: gold[500],
+    vivid: gold[400],
+    /** Akzent für Icons, Linien und Text auf Weiß (aktives Herz, Tab, Ladekreis). */
+    strong: gold[700],
+    subtle: gold[50],
+    onSubtle: gold[800],
+    onSolid: black,
+  },
+  badge: { ...themes.light.badge, deal: { background: gold[400], foreground: black } },
+} as const satisfies AppThemeColors;
 
 /**
- * Zarte Akzent-Flächen aus der Glut-Palette, z. B. für Formen, Marker-Striche und Avatare.
+ * Zarte Akzent-Flächen aus der Gold-Palette, z. B. für Formen, Marker-Striche und Avatare.
  * Darauf nur dunkler Text oder `colors.accent.onSubtle`.
  */
 export const soft = {
   /** fast weiß mit Wärme, für große Hintergründe */
-  warm: glut[50],
-  /** zartes Apricot für Formen, Marker und Avatare */
-  tint: glut[100],
-  /** kräftigeres Apricot für kleine Flächen */
-  tintStrong: glut[200],
+  warm: gold[50],
+  /** zartes Hellgold für Formen, Marker und Avatare */
+  tint: gold[100],
+  /** kräftigeres Hellgold für kleine Flächen */
+  tintStrong: gold[200],
 } as const;
 
 export { badge, duration, layout, radii, radius, shadow, space };

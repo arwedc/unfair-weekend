@@ -48,7 +48,7 @@ export function FavoriteButton({ locationId, name }: FavoriteButtonProps) {
       <Heart
         size={24}
         strokeWidth={2}
-        color={favorite ? colors.accent.solid : colors.text.primary}
+        color={favorite ? colors.accent.strong : colors.text.primary}
         fill={favorite ? colors.accent.solid : 'transparent'}
       />
     </PressableScale>
