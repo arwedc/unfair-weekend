@@ -20,6 +20,7 @@ import {
 } from '@/components/ui';
 import {
   buildMapHtml,
+  MAP_PALETTE,
   parseMapMessage,
   selectPlaceScript,
   setPlacesScript,
@@ -38,11 +39,10 @@ const MAP_HTML = buildMapHtml({
   styleUrl: env.mapStyleUrl,
   colors: {
     pin: colors.accent.solid,
-    // Gewählte Nadel: tieferer Ton derselben Farbfamilie (und etwas größer).
-    // Bewusst nicht `vivid`, das ist der Punkt für den eigenen Standort.
-    pinActive: colors.accent.onSubtle,
+    // Gewählte Nadel: sanftes Koralle (und etwas größer). Eigener Standort: blauer Punkt.
+    pinActive: MAP_PALETTE.pinSelected,
     pinDot: colors.accent.onSolid,
-    user: colors.accent.vivid,
+    user: MAP_PALETTE.userLocation,
     background: colors.background.muted,
   },
 });

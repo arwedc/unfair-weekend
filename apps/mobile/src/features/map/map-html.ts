@@ -152,6 +152,10 @@ export const MAP_PALETTE = {
   motorway: '#FBE3A0',
   motorwayCasing: '#E9C46A',
   rail: '#C9CCD2',
+  /** Gewählte Nadel: sanftes Koralle, heller als die normale Nadel, aber nicht grell. */
+  pinSelected: '#F57C64',
+  /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den orangen Nadeln. */
+  userLocation: '#2F7FF0',
 } as const;
 
 /** Befehl für die WebView: eigenen Standort zeigen und hinfliegen. */
