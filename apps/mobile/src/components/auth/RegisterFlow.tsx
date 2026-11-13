@@ -9,12 +9,12 @@ import { Button, HighlightTitle, Input, ProgressBar, Text } from '@/components/u
 import { signUpWithEmail } from '@/features/auth/api';
 import {
   authErrorField,
-  checkEmailStep,
-  checkNameStep,
+  checkPasswordStep,
+  checkPersonStep,
   previousStep,
   registerProgress,
-  type EmailErrors,
-  type NameErrors,
+  type PasswordErrors,
+  type PersonErrors,
   type RegisterStep,
 } from '@/features/auth/register-logic';
 import { ApiError, errorMessage } from '@/lib/api-error';
@@ -22,6 +22,7 @@ import { useT } from '@/lib/i18n/context';
 import { colors, duration, space } from '@/theme';
 
 import { InterestPicker } from './InterestPicker';
+import { PasswordRules } from './PasswordRules';
 
 export interface RegisterFlowProps {
   /** Zurück zur Anmeldung („Du hast schon ein Konto?“). */
@@ -32,14 +33,14 @@ export interface RegisterFlowProps {
 
 /**
  * Registrierung in drei Schritten mit Fortschrittsbalken:
- * 1. Vor- und Nachname, 2. E-Mail und Passwort, 3. Interessen (freiwillig).
+ * 1. Vor- und Nachname und E-Mail, 2. Passwort (zweimal, mit Regeln), 3. Interessen (freiwillig).
  * Erst der letzte Schritt legt das Konto an. Mit Session schließt der LoginScreen von selbst.
  */
 export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps) {
   const { t, locale } = useT();
   const a = t.common.auth;
 
-  const [step, setStep] = useState<RegisterStep>('name');
+  const [step, setStep] = useState<RegisterStep>('person');
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -47,13 +48,13 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
   const [password, setPassword] = useState('');
   const [passwordRepeat, setPasswordRepeat] = useState('');
   const [interests, setInterests] = useState<OfferCategory[]>([]);
-  const [nameErrors, setNameErrors] = useState<NameErrors>({});
-  const [emailErrors, setEmailErrors] = useState<EmailErrors>({});
+  const [personErrors, setPersonErrors] = useState<PersonErrors>({});
+  const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const lastNameRef = useRef<TextInputInstance>(null);
-  const passwordRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
   const passwordRepeatRef = useRef<TextInputInstance>(null);
 
   const goTo = (next: RegisterStep, dir: 'forward' | 'back') => {
@@ -80,23 +81,23 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
     return () => subscription.remove();
   }, [step]);
 
-  const submitName = () => {
-    const result = checkNameStep(firstName, lastName, locale);
+  const submitPerson = () => {
+    const result = checkPersonStep(firstName, lastName, email, locale);
     if (!result.ok) {
-      setNameErrors(result.errors);
+      setPersonErrors(result.errors);
       return;
     }
-    setNameErrors({});
-    goTo('email', 'forward');
+    setPersonErrors({});
+    goTo('password', 'forward');
   };
 
-  const submitEmail = () => {
-    const result = checkEmailStep(email, password, passwordRepeat, locale);
+  const submitPassword = () => {
+    const result = checkPasswordStep(password, passwordRepeat, locale);
     if (!result.ok) {
-      setEmailErrors(result.errors);
+      setPasswordErrors(result.errors);
       return;
     }
-    setEmailErrors({});
+    setPasswordErrors({});
     goTo('interests', 'forward');
   };
 
@@ -109,17 +110,20 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
   };
 
   const createAccount = async () => {
-    const name = checkNameStep(firstName, lastName, locale);
-    if (!name.ok) {
-      setNameErrors(name.errors);
-      goTo('name', 'back');
+    // Sicherheitshalber alles nochmal prüfen und bei Bedarf zum passenden Schritt springen.
+    const person = checkPersonStep(firstName, lastName, email, locale);
+    if (!person.ok) {
+      setPersonErrors(person.errors);
+      goTo('person', 'back');
       return;
     }
-    const parsed = userSignUpSchema.safeParse({
-      email: email.trim().toLowerCase(),
-      password,
-      interests,
-    });
+    const passwordCheck = checkPasswordStep(password, passwordRepeat, locale);
+    if (!passwordCheck.ok) {
+      setPasswordErrors(passwordCheck.errors);
+      goTo('password', 'back');
+      return;
+    }
+    const parsed = userSignUpSchema.safeParse({ email: person.email, password, interests });
     if (!parsed.success) {
       const message = parsed.error.issues[0]?.message;
       setError(message ? translateValidationMessage(message, locale) : t.common.checkInput);
@@ -129,15 +133,18 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
     setError(null);
     setBusy(true);
     try {
-      const hasSession = await signUpWithEmail(parsed.data, name);
+      const hasSession = await signUpWithEmail(parsed.data, person);
       if (!hasSession) onConfirmationSent(parsed.data.email);
     } catch (caught) {
       const message = errorMessage(caught);
       const field = caught instanceof ApiError ? authErrorField(caught.code) : null;
-      if (field) {
-        // z. B. „E-Mail schon vergeben“: zurück zum Feld, an dem man es ändern kann.
-        setEmailErrors(field === 'email' ? { email: message } : { password: message });
-        goTo('email', 'back');
+      // z. B. „E-Mail schon vergeben“: zurück zum Schritt, in dem man es ändern kann.
+      if (field === 'email') {
+        setPersonErrors({ email: message });
+        goTo('person', 'back');
+      } else if (field === 'password') {
+        setPasswordErrors({ password: message });
+        goTo('password', 'back');
       } else {
         setError(message);
       }
@@ -148,21 +155,25 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
 
   const progress = registerProgress(step);
   const progressLabel = a.stepOf(progress.number, progress.total);
-  const stepName = { name: a.stepName, email: a.stepEmail, interests: a.stepInterests }[step];
+  const stepLabel = {
+    person: a.stepPerson,
+    password: a.stepPassword,
+    interests: a.stepInterests,
+  }[step];
   const entering = (direction === 'forward' ? FadeInRight : FadeInLeft)
     .duration(duration.base)
     .reduceMotion(ReduceMotion.System);
 
   let content: ReactNode;
-  if (step === 'name') {
+  if (step === 'person') {
     content = (
       <>
-        <StepHeader title={a.nameTitle} intro={a.nameIntro} />
+        <StepHeader title={a.personTitle} intro={a.personIntro} />
         <Input
           label={a.firstName}
           value={firstName}
           onChangeText={setFirstName}
-          error={nameErrors.firstName}
+          error={personErrors.firstName}
           autoFocus
           autoCapitalize="words"
           autoComplete="given-name"
@@ -176,45 +187,44 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
           label={a.lastName}
           value={lastName}
           onChangeText={setLastName}
-          error={nameErrors.lastName}
+          error={personErrors.lastName}
           autoCapitalize="words"
           autoComplete="family-name"
           textContentType="familyName"
           returnKeyType="next"
-          onSubmitEditing={submitName}
+          submitBehavior="submit"
+          onSubmitEditing={() => emailRef.current?.focus()}
         />
-        <Button label={t.common.next} size="lg" fullWidth onPress={submitName} />
-        <Button label={a.toSignIn} variant="ghost" onPress={onSignIn} />
-      </>
-    );
-  } else if (step === 'email') {
-    content = (
-      <>
-        <StepHeader title={a.emailTitle(firstName.trim())} intro={a.emailIntro} />
         <Input
+          ref={emailRef}
           label={a.emailLabel}
           icon={Mail}
           value={email}
           onChangeText={setEmail}
-          error={emailErrors.email}
+          error={personErrors.email}
           placeholder={a.emailPlaceholder}
-          autoFocus
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="email"
           textContentType="emailAddress"
           returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => passwordRef.current?.focus()}
+          onSubmitEditing={submitPerson}
         />
+        <Button label={t.common.next} size="lg" fullWidth onPress={submitPerson} />
+        <Button label={a.toSignIn} variant="ghost" onPress={onSignIn} />
+      </>
+    );
+  } else if (step === 'password') {
+    content = (
+      <>
+        <StepHeader title={a.passwordTitle(firstName.trim())} intro={a.passwordIntro} />
         <Input
-          ref={passwordRef}
           label={a.password}
           value={password}
           onChangeText={setPassword}
-          error={emailErrors.password}
-          hint={a.passwordHint}
+          error={passwordErrors.password}
+          autoFocus
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -224,21 +234,22 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
           submitBehavior="submit"
           onSubmitEditing={() => passwordRepeatRef.current?.focus()}
         />
+        <PasswordRules password={password} />
         <Input
           ref={passwordRepeatRef}
           label={a.passwordRepeat}
           value={passwordRepeat}
           onChangeText={setPasswordRepeat}
-          error={emailErrors.passwordRepeat}
+          error={passwordErrors.passwordRepeat}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="next"
-          onSubmitEditing={submitEmail}
+          onSubmitEditing={submitPassword}
         />
-        <Button label={t.common.next} size="lg" fullWidth onPress={submitEmail} />
+        <Button label={t.common.next} size="lg" fullWidth onPress={submitPassword} />
         <Button label={t.common.back} variant="ghost" onPress={back} />
       </>
     );
@@ -277,7 +288,7 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
             {progressLabel}
           </Text>
           <Text variant="footnote" color="tertiary">
-            {stepName}
+            {stepLabel}
           </Text>
         </View>
         <ProgressBar value={progress.value} accessibilityLabel={progressLabel} />
