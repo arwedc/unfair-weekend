@@ -76,7 +76,9 @@ export function ImagePicker({
 
   return (
     <div>
-      <p className="mb-1.5 text-subhead text-text-primary">Bilder</p>
+      <p className="mb-1.5 text-subhead text-text-primary">
+        Bilder <span className="text-text-tertiary">(optional)</span>
+      </p>
       {paths.map((p) => (
         <input key={p} type="hidden" name="image_paths" value={p} />
       ))}
@@ -154,8 +156,8 @@ export function ImagePicker({
         <p className="mt-1.5 text-footnote text-status-error-text">{shownError}</p>
       ) : (
         <p className="mt-1.5 text-footnote text-text-tertiary">
-          1 bis {OFFER_LIMITS.imagesMax} Bilder, JPEG/PNG/WebP, je höchstens 5 MB. Das erste ist das
-          Titelbild.
+          Bis zu {OFFER_LIMITS.imagesMax} Bilder, JPEG/PNG/WebP, je höchstens 5 MB. Das erste ist
+          das Titelbild. Ohne Bild zeigt die App einen Platzhalter.
         </p>
       )}
     </div>

@@ -369,7 +369,7 @@ export type Database = {
           description: string;
           ends_at: string;
           id?: string;
-          image_paths: string[];
+          image_paths?: string[];
           lat: number;
           lng: number;
           location_id: string;
@@ -489,6 +489,71 @@ export type Database = {
             columns: ['user_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reviews: {
+        Row: {
+          comment: string | null;
+          created_at: string;
+          hidden_at: string | null;
+          hidden_by: string | null;
+          hidden_reason: string | null;
+          id: string;
+          location_id: string;
+          rating: number;
+          updated_at: string;
+          user_id: string;
+          voucher_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          comment?: string | null;
+          created_at?: string;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
+          hidden_reason?: string | null;
+          id?: string;
+          location_id: string;
+          rating: number;
+          updated_at?: string;
+          user_id: string;
+          voucher_id: string;
+        };
+        Update: {
+          comment?: string | null;
+          created_at?: string;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
+          hidden_reason?: string | null;
+          id?: string;
+          location_id?: string;
+          rating?: number;
+          updated_at?: string;
+          user_id?: string;
+          voucher_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reviews_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_voucher_id_fkey';
+            columns: ['voucher_id'];
+            isOneToOne: true;
+            referencedRelation: 'vouchers';
             referencedColumns: ['id'];
           },
         ];
@@ -644,6 +709,19 @@ export type Database = {
           status: Database['public']['Enums']['voucher_status'];
         }[];
       };
+      claim_push_batch: {
+        Args: { p_limit?: number };
+        Returns: {
+          attempts: number;
+          notification_type: Database['public']['Enums']['notification_type'];
+          offer_id: string;
+          outbox_id: number;
+          payload: Json;
+          recipient_id: string;
+          tokens: string[];
+          voucher_id: string;
+        }[];
+      };
       claim_voucher: {
         Args: { p_offer_id: string; p_seats?: number };
         Returns: {
@@ -707,8 +785,31 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_review: {
+        Args: { p_comment?: string; p_rating: number; p_voucher_id: string };
+        Returns: {
+          comment: string;
+          created_at: string;
+          id: string;
+          location_id: string;
+          rating: number;
+          voucher_id: string;
+        }[];
+      };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
+      finish_push_batch: {
+        Args: { p_failed?: Json; p_invalid_tokens?: string[]; p_sent_ids?: number[] };
+        Returns: Json;
+      };
       get_admin_metrics: { Args: { p_from?: string; p_to?: string }; Returns: Json };
+      get_location_ratings: {
+        Args: { p_location_ids: string[] };
+        Returns: {
+          average_rating: number;
+          location_id: string;
+          review_count: number;
+        }[];
+      };
       get_locations_public: {
         Args: { p_location_ids: string[] };
         Returns: {
@@ -828,6 +929,17 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      list_location_reviews: {
+        Args: { p_limit?: number; p_location_id: string; p_offset?: number };
+        Returns: {
+          author_name: string;
+          comment: string;
+          created_at: string;
+          id: string;
+          offer_title: string;
+          rating: number;
+        }[];
+      };
       list_offer_created_at: {
         Args: { p_offer_ids: string[] };
         Returns: {
@@ -915,6 +1027,14 @@ export type Database = {
       };
       reject_location: { Args: { p_location_id: string; p_reason?: string }; Returns: Json };
       remove_offer: { Args: { p_offer_id: string; p_reason?: string }; Returns: Json };
+      set_review_hidden: {
+        Args: { p_hidden: boolean; p_reason?: string; p_review_id: string };
+        Returns: {
+          hidden_at: string;
+          hidden_reason: string;
+          id: string;
+        }[];
+      };
       unregister_push_token: { Args: { p_token: string }; Returns: undefined };
       update_my_company: {
         Args: { p_description?: string; p_logo_path?: string; p_name: string };
@@ -1073,7 +1193,7 @@ export type Database = {
         'angebot_angesehen' | 'code_geholt' | 'code_storniert' | 'code_eingeloest' | 'no_show';
       location_status: 'pending' | 'approved' | 'rejected';
       notification_status: 'pending' | 'processing' | 'sent' | 'failed';
-      notification_type: 'angebot_abgesagt' | 'erinnerung';
+      notification_type: 'angebot_abgesagt' | 'erinnerung' | 'neues_angebot';
       offer_category:
         | 'kochen_essen'
         | 'sport_bewegung'
@@ -1207,7 +1327,7 @@ export const Constants = {
       ],
       location_status: ['pending', 'approved', 'rejected'],
       notification_status: ['pending', 'processing', 'sent', 'failed'],
-      notification_type: ['angebot_abgesagt', 'erinnerung'],
+      notification_type: ['angebot_abgesagt', 'erinnerung', 'neues_angebot'],
       offer_category: [
         'kochen_essen',
         'sport_bewegung',

@@ -144,7 +144,7 @@ Lege eine `.github/CODEOWNERS` und eine Pull-Request-Vorlage mit Checkliste an (
 - Ein Angebot gehört zu einem Standort und ist nach dem Speichern sofort live. Ein Admin kann Angebote entfernen.
 - **Felder:**
   - Titel, Beschreibung, Kategorie
-  - 1–5 Bilder (das erste ist das Titelbild)
+  - 0–5 Bilder, optional (das erste ist das Titelbild)
   - Originalpreis und Deal-Preis
   - Kontingent (Plätze) und maximale Plätze pro Nutzer
   - Adresse plus lat/lng (Pflicht pro Angebot)
