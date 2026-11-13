@@ -10,7 +10,8 @@
     "backgroundColor": "#FFFFFF",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "de.unfairweekend.app"
+      "bundleIdentifier": "de.unfairweekend.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "de.unfairweekend.app",
@@ -34,6 +35,8 @@
         }
       ],
       "expo-secure-store",
+      "expo-apple-authentication",
+      "expo-web-browser",
       [
         "expo-location",
         {

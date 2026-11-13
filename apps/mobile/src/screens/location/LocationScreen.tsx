@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import { CloudOff, Globe, MapPin, Phone, SearchX, Sparkles } from 'lucide-react-native';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
+import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { Button, EmptyState, SectionHeader, Skeleton, Text } from '@/components/ui';
@@ -91,7 +92,12 @@ export function LocationScreen({ locationId }: { locationId: string }) {
         />
       }
     >
-      <Stack.Screen options={{ title: '' }} />
+      <Stack.Screen
+        options={{
+          title: '',
+          headerRight: () => <FavoriteButton locationId={place.id} name={place.company_name} />,
+        }}
+      />
 
       <View style={styles.head}>
         {place.company_logo_path ? (

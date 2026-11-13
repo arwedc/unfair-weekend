@@ -24,15 +24,17 @@ import {
   EmptyState,
   IconButton,
   PressableScale,
-  Sheet,
   Skeleton,
   Text,
   type SheetRef,
 } from '@/components/ui';
+import { ClaimSheet } from '@/components/vouchers/ClaimSheet';
+import { useAuth } from '@/features/auth/auth-context';
 import { logOfferView } from '@/features/offers/api';
 import { cancelPolicyText, offerBadges, offerWhenText } from '@/features/offers/feed-logic';
 import { useOffer, useSettings } from '@/features/offers/queries';
 import type { OfferDetail } from '@/features/offers/types';
+import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { openInMaps } from '@/lib/open-external';
 import { colors, layout, radii, shadow, space } from '@/theme';
@@ -129,6 +131,10 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
   const claimSheet = useRef<SheetRef>(null);
   const { data: offer, error, isPending, refetch } = useOffer(offerId);
   const { data: settings } = useSettings();
+  const { userId, account } = useAuth();
+  const myVoucher = useActiveVoucherForOffer(offerId);
+  // Ohne Konto oder ohne Namen geht es erst zur Anmeldung (dort wird auch der Name abgefragt).
+  const needsLogin = userId === null || account?.profileComplete !== true;
 
   useEffect(() => {
     void logOfferView(offerId);
@@ -292,7 +298,16 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
       </ScrollView>
 
       <View style={[styles.claimBar, { paddingBottom: insets.bottom + space[3] }]}>
-        {reason ? (
+        {myVoucher ? (
+          <Button
+            label="Deinen Code anzeigen"
+            icon={Ticket}
+            size="lg"
+            fullWidth
+            accessibilityHint="Du hast für dieses Angebot schon einen Code"
+            onPress={() => router.push({ pathname: '/code/[id]', params: { id: myVoucher.id } })}
+          />
+        ) : reason ? (
           <Text variant="callout" color="secondary" align="center">
             {reason}
           </Text>
@@ -303,21 +318,22 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
             size="lg"
             fullWidth
             haptic
-            accessibilityHint="Sichert dir deinen Platz mit einem Gutscheincode"
-            onPress={() => claimSheet.current?.present()}
+            accessibilityHint={
+              needsLogin
+                ? 'Dafür meldest du dich kurz an'
+                : 'Sichert dir deinen Platz mit einem Gutscheincode'
+            }
+            onPress={() => {
+              if (needsLogin) router.push('/anmelden');
+              else claimSheet.current?.present();
+            }}
           />
         )}
       </View>
 
       <BackButton />
 
-      <Sheet ref={claimSheet} title="Gleich geht's los">
-        <Text variant="body" color="secondary">
-          Um dir einen Code zu holen, brauchst du ein Konto. Die Anmeldung kommt mit dem nächsten
-          Update dieser Testversion.
-        </Text>
-        <Button label="Alles klar" fullWidth onPress={() => claimSheet.current?.dismiss()} />
-      </Sheet>
+      <ClaimSheet ref={claimSheet} offer={offer} />
     </View>
   );
 }
