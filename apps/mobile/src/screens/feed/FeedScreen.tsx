@@ -328,8 +328,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space[3],
-    paddingLeft: layout.screenPaddingX,
-    paddingRight: layout.screenPaddingX - space[2],
+    // Kein eigener Rand: Der schwebende Kopf (styles.top) setzt ihn schon, links wie rechts gleich.
   },
   cityMenu: { flexShrink: 1 },
   cityButton: {
