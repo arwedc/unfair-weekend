@@ -7,7 +7,7 @@ import { colors, layout, radius, space } from '@/theme';
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type Variant = 'primary' | 'dark' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type Size = 'md' | 'lg';
 
 export interface ButtonProps {
@@ -29,6 +29,8 @@ export interface ButtonProps {
 const variantColors: Record<Variant, { background: string; foreground: string; border?: string }> =
   {
     primary: { background: colors.accent.solid, foreground: colors.accent.onSolid },
+    /** Schwarz mit weißem Text: ruhige Hauptaktion, z. B. auf der Angebotsseite. */
+    dark: { background: colors.background.inverse, foreground: colors.text.inverse },
     secondary: { background: colors.background.muted, foreground: colors.text.primary },
     outline: {
       background: colors.surface.default,

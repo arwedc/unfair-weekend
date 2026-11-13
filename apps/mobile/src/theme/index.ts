@@ -5,6 +5,7 @@
 import {
   badge,
   duration,
+  glut,
   layout,
   nativeFontFamily,
   radii,
@@ -20,6 +21,19 @@ import type { TextStyle } from 'react-native';
 
 /** Die App hat vorerst nur ein helles Theme (wie die Tokens). */
 export const colors = themes.light;
+
+/**
+ * Zarte Akzent-Flächen aus der Glut-Palette, z. B. für Formen, Marker-Striche und Avatare.
+ * Darauf nur dunkler Text oder `colors.accent.onSubtle`.
+ */
+export const soft = {
+  /** fast weiß mit Wärme, für große Hintergründe */
+  warm: glut[50],
+  /** zartes Apricot für Formen, Marker und Avatare */
+  tint: glut[100],
+  /** kräftigeres Apricot für kleine Flächen */
+  tintStrong: glut[200],
+} as const;
 
 export { badge, duration, layout, radii, radius, shadow, space };
 export type { TextStyleName };

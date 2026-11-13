@@ -177,7 +177,7 @@ interface SectionDraft {
  */
 export function buildSections(
   offers: readonly FeedOffer[],
-  options: { cityName: string; now?: DateInput },
+  options: { cityName: string; now?: DateInput; favoriteIds?: readonly string[] },
 ): FeedSection[] {
   const now = options.now ?? new Date();
   const available = offers.filter((offer) => offer.free_seats > 0);
@@ -200,7 +200,15 @@ export function buildSections(
     minOffers: 1,
   });
 
+  // Favoriten in der gemerkten Reihenfolge (auch ausgebuchte, die will man ja im Blick behalten)
+  const byId = new Map(offers.map((offer) => [offer.id, offer]));
+  const favorites = (options.favoriteIds ?? []).flatMap((id) => {
+    const offer = byId.get(id);
+    return offer ? [offer] : [];
+  });
+
   const drafts: SectionDraft[] = [
+    time('favoriten', 'Deine Favoriten', favorites),
     time(
       'heute',
       `Heute in ${options.cityName}`,

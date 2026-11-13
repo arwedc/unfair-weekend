@@ -17,7 +17,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type pg from 'pg';
-import { runLockTest } from './concurrency';
+import { runLockTest, runPaidLockTest } from './concurrency';
 import { createClient, describePgError } from './db';
 import { repoRoot } from './env';
 import { readAppliedVersions, readMigrationFiles } from './migrations';
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
     if (pending > 0) {
       console.log('Sperr-Test: übersprungen (offene Migrationen sind nur im Probelauf vorhanden).');
     } else {
-      success = await runLockTest();
+      success = (await runLockTest()) && (await runPaidLockTest());
     }
   }
   process.exitCode = success ? 0 : 1;

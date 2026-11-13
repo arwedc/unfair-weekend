@@ -57,6 +57,18 @@ export const RPC_ERROR_MESSAGES = {
   BEREITS_BEWERTET: 'Diesen Ort hast du schon bewertet.',
   BEWERTUNG_NICHT_GEFUNDEN: 'Diese Bewertung gibt es nicht.',
 
+  // Zahlungen (Variante B, docs/SPEC-PAYMENTS.md)
+  ZAHLUNGEN_AUS: 'Buchen mit Bezahlung ist gerade nicht möglich.',
+  ZAHLUNG_ERFORDERLICH: 'Dieses Angebot kannst du nur noch mit Bezahlung in der App buchen.',
+  ANBIETER_NICHT_BEREIT: 'Dieser Anbieter kann gerade keine Buchungen mit Bezahlung annehmen.',
+  AUSZAHLUNGEN_EINRICHTEN:
+    'Bitte richte zuerst die Auszahlungen ein. Danach kannst du Angebote veröffentlichen.',
+  BETRAG_ZU_GERING: 'Buchungen mit Bezahlung gehen ab 0,50 €.',
+  BUCHUNG_NICHT_GEFUNDEN: 'Diese Buchung gibt es nicht.',
+  BUCHUNG_NICHT_AKTIV: 'Diese Buchung lässt sich nicht mehr stornieren.',
+  RESERVIERUNG_ABGELAUFEN: 'Deine Reservierung ist abgelaufen. Bitte starte die Buchung neu.',
+  NO_SHOW_BEZAHLT: 'Bezahlte Buchungen werden ohne Sperre als nicht erschienen markiert.',
+
   // Standorte und Admin
   KEIN_STANDORTKONTO: 'Dieses Konto gehört zu keinem Standort.',
   STANDORT_NICHT_FREIGESCHALTET: 'Der Standort ist noch nicht freigeschaltet.',

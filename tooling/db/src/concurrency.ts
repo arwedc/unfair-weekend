@@ -238,9 +238,132 @@ export async function runRaceTest(): Promise<boolean> {
   }
 }
 
+/**
+ * Sperr-Test für bezahlte Buchungen (Variante B), nur Rollback, keine Spuren.
+ *
+ * Verbindung A schaltet das Flag NUR in ihrer offenen Transaktion ein (für
+ * alle anderen bleibt es aus), gibt dem Standort ein bereites Stripe-Konto und
+ * reserviert per start_paid_booking. Verbindung B will auf dasselbe Angebot
+ * per claim_voucher und läuft in den Lock-Timeout. Beweis: Reservierung und
+ * Code-Vergabe sperren dieselbe Angebotszeile, können sich also nie überholen.
+ *
+ * Ein echtes Wettrennen mit Commits gibt es hier bewusst nicht: Dafür müsste
+ * das globale Flag im gemeinsamen Dev-Projekt eingeschaltet werden.
+ */
+export async function runPaidLockTest(): Promise<boolean> {
+  const setup = createClient('unfair-paylock-setup');
+  await setup.connect();
+  const candidate = await setup.query<{
+    offer_id: string;
+    location_id: string;
+    user_a: string;
+    user_b: string;
+    has_account: boolean;
+  }>(`
+    with offer as (
+      select f.id, f.location_id from public.list_offers(null, null, true, 100, 0) f
+      where f.free_seats >= 2 and f.deal_price_cents >= 50 order by f.relevant_at limit 1
+    ),
+    users as (
+      select p.id from public.profiles p, offer o
+      where p.role = 'nutzer' and p.first_name is not null and p.last_name is not null
+        and (p.blocked_until is null or p.blocked_until < now())
+        and not exists (select 1 from public.vouchers v where v.offer_id = o.id and v.user_id = p.id and v.status = 'aktiv')
+        and not exists (select 1 from public.paid_bookings b where b.offer_id = o.id and b.user_id = p.id and b.status = 'reserviert')
+      order by p.created_at limit 2
+    )
+    select o.id as offer_id, o.location_id,
+      (select id from users order by id limit 1) as user_a,
+      (select id from users order by id desc limit 1) as user_b,
+      exists (select 1 from public.stripe_accounts a where a.location_id = o.location_id) as has_account
+    from offer o
+  `);
+  await setup.end();
+
+  const row = candidate.rows[0];
+  if (!row || !row.user_a || row.user_a === row.user_b) {
+    console.log(
+      'Sperr-Test (Bezahlung): übersprungen (kein buchbares Angebot oder keine zwei Nutzer).',
+    );
+    return true;
+  }
+
+  const a = createClient('unfair-paylock-a');
+  const b = createClient('unfair-paylock-b');
+  await Promise.all([a.connect(), b.connect()]);
+  let passed = false;
+  try {
+    await a.query('begin');
+    await a.query('update public.payment_settings set payments_enabled = true where id');
+    if (row.has_account) {
+      await a.query(
+        'update public.stripe_accounts set transfers_active = true, payouts_enabled = true where location_id = $1',
+        [row.location_id],
+      );
+    } else {
+      await a.query(
+        `insert into public.stripe_accounts (location_id, stripe_account_id, payouts_enabled, transfers_active)
+         values ($1, 'acct_autotestlock', true, true)`,
+        [row.location_id],
+      );
+    }
+    await actAs(a, row.user_a);
+    await a.query('select * from public.start_paid_booking($1, 1)', [row.offer_id]);
+
+    await b.query('begin');
+    await b.query("set local lock_timeout = '1500ms'");
+    await actAs(b, row.user_b);
+    try {
+      await b.query('select * from public.claim_voucher($1, 1)', [row.offer_id]);
+      console.error('  ✗ Verbindung B kam trotz offener Reservierung von A durch.');
+    } catch (error) {
+      const code = (error as pg.DatabaseError).code;
+      if (code === '55P03') {
+        passed = true;
+      } else {
+        console.error(`  ✗ Unerwarteter Fehler in B: ${describePgError(error)}`);
+      }
+    }
+  } catch (error) {
+    console.error(`  ✗ Reservierung in A fehlgeschlagen: ${describePgError(error)}`);
+  } finally {
+    await Promise.all([
+      a.query('rollback').catch(() => undefined),
+      b.query('rollback').catch(() => undefined),
+    ]);
+    await Promise.all([a.end(), b.end()]);
+  }
+
+  // Gegenprobe: Flag ist für alle anderen weiterhin aus, nichts wurde gespeichert
+  const c = createClient('unfair-paylock-c');
+  await c.connect();
+  const after = await c.query<{ enabled: boolean; bookings: string }>(
+    `select (select payments_enabled from public.payment_settings) as enabled,
+            (select count(*) from public.paid_bookings where offer_id = $1 and user_id = $2) as bookings`,
+    [row.offer_id, row.user_a],
+  );
+  await c.end();
+  if (after.rows[0]?.enabled !== false || Number(after.rows[0]?.bookings) !== 0) {
+    passed = false;
+    console.error('  ✗ Flag oder Buchung ist nach dem Rollback noch da!');
+  }
+
+  console.log(
+    passed
+      ? '  ✓ Sperr-Test (Bezahlung): claim_voucher wartet auf die Reservierung, Flag bleibt aus, nichts gespeichert'
+      : '  ✗ Sperr-Test (Bezahlung) fehlgeschlagen',
+  );
+  return passed;
+}
+
 // Direktaufruf: tsx src/concurrency.ts race
 if (process.argv[1]?.endsWith('concurrency.ts')) {
   const mode = process.argv[2] ?? 'lock';
-  const ok = mode === 'race' ? await runRaceTest() : await runLockTest();
+  const ok =
+    mode === 'race'
+      ? await runRaceTest()
+      : mode === 'paylock'
+        ? await runPaidLockTest()
+        : await runLockTest();
   process.exitCode = ok ? 0 : 1;
 }

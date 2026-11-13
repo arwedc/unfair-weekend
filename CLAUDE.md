@@ -70,7 +70,7 @@ Paket-Befehle gezielt: `pnpm --filter @repo/shared test`.
 - **Design:**
   - Komponenten nutzen nur semantische Tokens (`themes.light.text.primary`, `accent.solid`, `badge.deal` …), keine Hex-Werte.
   - Keine Logos, Farben, Illustrationen oder Texte anderer Apps.
-  - Akzent „Glut“: `#FF5A1F` (Markenton) und `#D63A0A` (Flächen mit weißem Text).
+  - Akzent „Glut“, warmes mattes Orange: `#D9733A` (Markenton) und `#B0531D` (Flächen mit weißem Text).
 - **Gemeinsame Versionen** (zod, typescript …) stehen im Catalog in `pnpm-workspace.yaml`. In Paketen `"catalog:"` verwenden. React/React Native darf es nur in einer Version geben (Expo-Vorgabe).
 - **Tests:** Vitest für `packages/shared` (neben der Datei: `*.test.ts`), pgTAP für SQL (`supabase/tests/`).
 
