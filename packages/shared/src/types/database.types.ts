@@ -330,6 +330,69 @@ export type Database = {
           },
         ];
       };
+      offer_templates: {
+        Row: {
+          capacity: number;
+          category: Database['public']['Enums']['offer_category'];
+          created_at: string;
+          deal_price_cents: number;
+          description: string;
+          duration_minutes: number;
+          id: string;
+          image_paths: string[];
+          location_id: string;
+          max_per_user: number;
+          name: string;
+          original_price_cents: number;
+          title: string;
+          type: Database['public']['Enums']['offer_type'];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          capacity: number;
+          category: Database['public']['Enums']['offer_category'];
+          created_at?: string;
+          deal_price_cents: number;
+          description: string;
+          duration_minutes: number;
+          id?: string;
+          image_paths?: string[];
+          location_id: string;
+          max_per_user: number;
+          name: string;
+          original_price_cents: number;
+          title: string;
+          type: Database['public']['Enums']['offer_type'];
+          updated_at?: string;
+        };
+        Update: {
+          capacity?: number;
+          category?: Database['public']['Enums']['offer_category'];
+          created_at?: string;
+          deal_price_cents?: number;
+          description?: string;
+          duration_minutes?: number;
+          id?: string;
+          image_paths?: string[];
+          location_id?: string;
+          max_per_user?: number;
+          name?: string;
+          original_price_cents?: number;
+          title?: string;
+          type?: Database['public']['Enums']['offer_type'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'offer_templates_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       offers: {
         Row: {
           address: string;
@@ -785,6 +848,44 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_offer_template: {
+        Args: {
+          p_capacity: number;
+          p_category: Database['public']['Enums']['offer_category'];
+          p_deal_price_cents: number;
+          p_description: string;
+          p_duration_minutes: number;
+          p_image_paths: string[];
+          p_max_per_user: number;
+          p_name: string;
+          p_original_price_cents: number;
+          p_title: string;
+          p_type: Database['public']['Enums']['offer_type'];
+        };
+        Returns: {
+          capacity: number;
+          category: Database['public']['Enums']['offer_category'];
+          created_at: string;
+          deal_price_cents: number;
+          description: string;
+          duration_minutes: number;
+          id: string;
+          image_paths: string[];
+          location_id: string;
+          max_per_user: number;
+          name: string;
+          original_price_cents: number;
+          title: string;
+          type: Database['public']['Enums']['offer_type'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'offer_templates';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_review: {
         Args: { p_comment?: string; p_rating: number; p_voucher_id: string };
         Returns: {
@@ -797,6 +898,7 @@ export type Database = {
         }[];
       };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
+      delete_offer_template: { Args: { p_template_id: string }; Returns: undefined };
       finish_push_batch: {
         Args: { p_failed?: Json; p_invalid_tokens?: string[]; p_sent_ids?: number[] };
         Returns: Json;
@@ -1157,6 +1259,45 @@ export type Database = {
         SetofOptions: {
           from: '*';
           to: 'offers';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      update_offer_template: {
+        Args: {
+          p_capacity: number;
+          p_category: Database['public']['Enums']['offer_category'];
+          p_deal_price_cents: number;
+          p_description: string;
+          p_duration_minutes: number;
+          p_image_paths: string[];
+          p_max_per_user: number;
+          p_name: string;
+          p_original_price_cents: number;
+          p_template_id: string;
+          p_title: string;
+          p_type: Database['public']['Enums']['offer_type'];
+        };
+        Returns: {
+          capacity: number;
+          category: Database['public']['Enums']['offer_category'];
+          created_at: string;
+          deal_price_cents: number;
+          description: string;
+          duration_minutes: number;
+          id: string;
+          image_paths: string[];
+          location_id: string;
+          max_per_user: number;
+          name: string;
+          original_price_cents: number;
+          title: string;
+          type: Database['public']['Enums']['offer_type'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'offer_templates';
           isOneToOne: true;
           isSetofReturn: false;
         };
