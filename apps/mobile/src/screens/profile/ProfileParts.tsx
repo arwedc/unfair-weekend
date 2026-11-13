@@ -23,7 +23,7 @@ import {
 import { useProfileStats } from '@/features/profile/use-profile-stats';
 import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
-import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space, type FunTint } from '@/theme';
+import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
 const AVATAR = 76;
 
@@ -101,37 +101,17 @@ export function LevelBadge({ redeemed }: { redeemed: number }) {
   );
 }
 
-function StatTile({
-  emoji,
-  value,
-  label,
-  tint,
-}: {
-  emoji: string;
-  value: string;
-  label: string;
-  tint: FunTint;
-}) {
-  const tone = fun[tint];
+/** Ruhige Kachel: helles Grau, schwarze Zahl, graue Beschriftung. Farbe kommt nur vom Emoji. */
+function StatTile({ emoji, value, label }: { emoji: string; value: string; label: string }) {
   return (
-    <View
-      style={[styles.stat, { backgroundColor: tone.bg }]}
-      accessible
-      accessibilityLabel={`${label}: ${value}`}
-    >
+    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}`}>
       <Text style={styles.statEmoji} maxFontSizeMultiplier={1.2}>
         {emoji}
       </Text>
-      <Text
-        variant="title2"
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.6}
-        style={{ color: tone.ink }}
-      >
+      <Text variant="title2" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
         {value}
       </Text>
-      <Text variant="footnote" style={{ color: tone.ink }} numberOfLines={1}>
+      <Text variant="footnote" color="secondary" numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -154,22 +134,11 @@ export function StatsSection() {
           <View style={styles.stats}>
             <StatTile
               emoji="💸"
-              tint="mint"
               label={p.statSaved}
               value={formatPrice(stats.savedCents, { omitZeroCents: true, locale })}
             />
-            <StatTile
-              emoji="🎟️"
-              tint="peach"
-              label={p.statExperienced}
-              value={String(stats.experienced)}
-            />
-            <StatTile
-              emoji="⭐"
-              tint="lilac"
-              label={p.statReviewed}
-              value={String(stats.reviewed)}
-            />
+            <StatTile emoji="🎟️" label={p.statExperienced} value={String(stats.experienced)} />
+            <StatTile emoji="⭐" label={p.statReviewed} value={String(stats.reviewed)} />
           </View>
           <LevelBadge redeemed={stats.experienced} />
         </>
@@ -354,6 +323,9 @@ const styles = StyleSheet.create({
     padding: space[3],
     borderRadius: radius.card,
     borderCurve: 'continuous',
+    backgroundColor: colors.background.subtle,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.subtle,
     justifyContent: 'space-between',
     gap: space[1],
   },
