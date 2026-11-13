@@ -232,3 +232,11 @@ Getroffen, weil sie nicht blockieren. Widerspruch jederzeit möglich.
     - **Root-`.env`:** Dort steht der Sandbox-Secret-Key nur für das lokale Testskript.
     - **App:** Sie bekommt nur `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Die Website braucht keinen Stripe-Key, ihr Onboarding läuft über die Edge Function.
 18. **Hintergrund-Worker:** Er nutzt dieselben Vault-Secrets wie der Push-Versand (`project_url`, `push_worker_key`).
+
+**Ergänzt in Phase 1**
+
+19. **Sperre aus Variante A:** Eine No-Show-Sperre aus Variante A (`blocked_until`) hindert nicht am bezahlten Buchen. Wer vorab zahlt, verursacht beim Fernbleiben keinen Schaden, deshalb gibt es bei Bezahlung keine Sperre (siehe Spezifikation).
+20. **Nachweis gegen Überbuchung:** Für bezahlte Buchungen gibt es kein Wettrennen mit echten Commits. Dafür müsste das globale Flag im gemeinsamen Dev-Projekt eingeschaltet werden. Stattdessen gibt es zwei Nachweise:
+    - **SQL-Test:** Er prüft den letzten Platz (`AUSGEBUCHT`).
+    - **Sperr-Test** (`pnpm db:test`): `start_paid_booking` und `claim_voucher` sperren dieselbe Angebotszeile. Das Flag wird dafür nur innerhalb einer zurückgerollten Transaktion eingeschaltet.
+21. **Fremde, ungemergte Migrationen:** Liegt im Dev-Projekt eine Migration, die in `main` noch fehlt, bricht `db push` ab. Für den Push wird die Datei dann vorübergehend aus dem Branch des anderen in den Arbeitsordner gelegt, nicht committet und danach wieder entfernt. So geschehen am 13.11.2026 mit `20261113112530_angebotsvorlagen` von @arwedc.
