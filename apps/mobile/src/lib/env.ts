@@ -15,6 +15,11 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
+/** Schalter: „1“, „true“ oder „ja“ schalten ein, alles andere (auch leer) aus. */
+function flag(value: string | undefined): boolean {
+  return ['1', 'true', 'ja'].includes((value ?? '').trim().toLowerCase());
+}
+
 export const env = {
   supabaseUrl: required('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL),
   supabasePublishableKey: required(
@@ -22,4 +27,13 @@ export const env = {
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   ),
   mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE_URL,
+  /**
+   * Welche Login-Methoden die App anbietet. Erst einschalten, wenn sie in Supabase
+   * eingerichtet sind (SMTP, Apple, Google), sonst sehen Nutzer nur Fehlermeldungen.
+   */
+  auth: {
+    emailOtp: flag(process.env.EXPO_PUBLIC_AUTH_EMAIL_OTP),
+    apple: flag(process.env.EXPO_PUBLIC_AUTH_APPLE),
+    google: flag(process.env.EXPO_PUBLIC_AUTH_GOOGLE),
+  },
 } as const;

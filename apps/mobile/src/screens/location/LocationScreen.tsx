@@ -6,7 +6,7 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
-import { Button, EmptyState, SectionHeader, Skeleton, Text } from '@/components/ui';
+import { Appear, Button, EmptyState, SectionHeader, Skeleton, Text } from '@/components/ui';
 import { useLocation, useLocationOffers } from '@/features/offers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
@@ -187,7 +187,11 @@ export function LocationScreen({ locationId }: { locationId: string }) {
             message="Hier gibt es im Moment kein Angebot. Schau bald wieder vorbei."
           />
         ) : (
-          list.map((offer) => <OfferCard key={offer.id} offer={offer} />)
+          list.map((offer, index) => (
+            <Appear key={offer.id} index={index}>
+              <OfferCard offer={offer} />
+            </Appear>
+          ))
         )}
       </View>
     </ScrollView>

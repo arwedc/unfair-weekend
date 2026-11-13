@@ -1,4 +1,5 @@
 // Komponentenbibliothek der App. Screens bauen nur aus diesen Bausteinen.
+export { Appear, type AppearProps } from './Appear';
 export { Badge, type BadgeProps, type BadgeVariant } from './Badge';
 export { Button, type ButtonProps } from './Button';
 export { Card, type CardProps } from './Card';
