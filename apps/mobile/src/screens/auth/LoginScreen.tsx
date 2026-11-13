@@ -2,6 +2,7 @@ import {
   emailSchema,
   OFFER_CATEGORIES,
   OFFER_CATEGORY_LABELS,
+  passwordSchema,
   userSignUpSchema,
   type OfferCategory,
 } from '@repo/shared';
@@ -49,9 +50,10 @@ export function LoginScreen() {
 
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
+  const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [age, setAge] = useState('');
   const [interests, setInterests] = useState<OfferCategory[]>([]);
   const [confirmationSent, setConfirmationSent] = useState(false);
@@ -121,11 +123,29 @@ export function LoginScreen() {
     void run('password', () => signInWithPassword(parsedEmail.data, password));
   };
 
+  const continueRegistration = () => {
+    const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
+    if (!parsedEmail.success) {
+      setError(firstIssue(parsedEmail.error));
+      return;
+    }
+    const parsedPassword = passwordSchema.safeParse(password);
+    if (!parsedPassword.success) {
+      setError(firstIssue(parsedPassword.error));
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError('Die Passwörter stimmen nicht überein.');
+      return;
+    }
+    setError(null);
+    setRegisterStep(2);
+  };
+
   const register = () => {
     const parsed = userSignUpSchema.safeParse({
       email: email.trim().toLowerCase(),
       password,
-      username,
       ...(age.trim() ? { age: Number(age.trim()) } : {}),
       interests,
     });
@@ -214,6 +234,7 @@ export function LoginScreen() {
           onPress={() => {
             setConfirmationSent(false);
             setMode('login');
+            setRegisterStep(1);
             setPassword('');
           }}
         />
@@ -228,10 +249,34 @@ export function LoginScreen() {
           </Text>
           <Text variant="body" color="secondary">
             {mode === 'register'
-              ? 'E-Mail, Passwort und Nutzername reichen. Alter und Interessen sind freiwillig.'
+              ? registerStep === 1
+                ? 'Erstelle dein Konto mit E-Mail und Passwort.'
+                : 'Erzähl uns mehr über dich. Alle Angaben sind freiwillig.'
               : 'Melde dich an, um deine Codes und Favoriten wiederzufinden.'}
           </Text>
         </View>
+
+        {mode === 'register' ? (
+          <View style={styles.progress}>
+            <View style={styles.progressLabels}>
+              <Text variant="footnote" color="secondary">
+                Schritt {registerStep} von 2
+              </Text>
+              <Text variant="footnote" color="tertiary">
+                {registerStep === 1 ? 'Konto' : 'Über dich'}
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, registerStep === 2 && styles.progressComplete]} />
+              <View
+                style={[
+                  styles.progressFill,
+                  registerStep === 2 ? styles.progressComplete : styles.progressEmpty,
+                ]}
+              />
+            </View>
+          </View>
+        ) : null}
 
         {showSocialLogin ? (
           <View style={styles.providers}>
@@ -309,85 +354,108 @@ export function LoginScreen() {
               onPress={() => {
                 setError(null);
                 setMode('register');
+                setRegisterStep(1);
               }}
             />
           </>
         ) : (
           <>
-            <Input
-              label="Nutzername"
-              value={username}
-              onChangeText={setUsername}
-              placeholder="z. B. mia_muenster"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="username"
-              textContentType="username"
-              maxLength={20}
-              hint="3–20 Zeichen: Kleinbuchstaben, Zahlen oder Unterstriche."
-            />
-            <Input
-              label="E-Mail-Adresse"
-              icon={Mail}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="du@beispiel.de"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-            />
-            <Input
-              label="Passwort"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              hint="Mindestens 8 Zeichen."
-            />
-            <Input
-              label="Alter (optional)"
-              value={age}
-              onChangeText={setAge}
-              keyboardType="number-pad"
-              maxLength={3}
-              autoComplete="off"
-            />
-            <View style={styles.interests}>
-              <Text variant="subhead" color="secondary">
-                Interessen (optional)
-              </Text>
-              <View style={styles.chips}>
-                {OFFER_CATEGORIES.map((category) => (
-                  <Chip
-                    key={category}
-                    label={OFFER_CATEGORY_LABELS[category]}
-                    selected={interests.includes(category)}
-                    onPress={() => toggleInterest(category)}
+            {registerStep === 1 ? (
+              <>
+                <Input
+                  label="E-Mail-Adresse"
+                  icon={Mail}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="du@beispiel.de"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                />
+                <Input
+                  label="Passwort"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  hint="Mindestens 8 Zeichen."
+                />
+                <Input
+                  label="Passwort wiederholen"
+                  value={passwordConfirmation}
+                  onChangeText={setPasswordConfirmation}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={continueRegistration}
+                />
+                <Button label="Weiter" size="lg" fullWidth onPress={continueRegistration} />
+                <Button
+                  label="Schon ein Konto? Anmelden"
+                  variant="ghost"
+                  onPress={() => {
+                    setError(null);
+                    setRegisterStep(1);
+                    setMode('login');
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <View style={styles.interests}>
+                  <Input
+                    label="Alter (optional)"
+                    value={age}
+                    onChangeText={setAge}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    autoComplete="off"
                   />
-                ))}
-              </View>
-            </View>
-            <Button
-              label="Konto erstellen"
-              size="lg"
-              fullWidth
-              loading={busy === 'register'}
-              disabled={busy !== null && busy !== 'register'}
-              onPress={register}
-            />
-            <Button
-              label="Du hast schon ein Konto? Anmelden"
-              variant="ghost"
-              onPress={() => {
-                setError(null);
-                setMode('login');
-              }}
-            />
+                </View>
+                <View style={styles.interests}>
+                  <Text variant="subhead" color="secondary">
+                    Was interessiert dich?{' '}
+                    <Text variant="footnote" color="tertiary">
+                      (optional)
+                    </Text>
+                  </Text>
+                  <View style={styles.chips}>
+                    {OFFER_CATEGORIES.map((category) => (
+                      <Chip
+                        key={category}
+                        label={OFFER_CATEGORY_LABELS[category]}
+                        selected={interests.includes(category)}
+                        onPress={() => toggleInterest(category)}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Button
+                  label="Konto erstellen"
+                  size="lg"
+                  fullWidth
+                  loading={busy === 'register'}
+                  disabled={busy !== null && busy !== 'register'}
+                  onPress={register}
+                />
+                <Button
+                  label="Zurück"
+                  variant="ghost"
+                  onPress={() => {
+                    setError(null);
+                    setRegisterStep(1);
+                  }}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -476,6 +544,12 @@ const styles = StyleSheet.create({
   block: { gap: space[4] },
   intro: { gap: space[2], marginBottom: space[2] },
   providers: { gap: space[3] },
+  progress: { gap: space[2] },
+  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  progressTrack: { flexDirection: 'row', gap: space[1], height: 4 },
+  progressFill: { flex: 1, borderRadius: radius.badge, backgroundColor: colors.accent.strong },
+  progressEmpty: { backgroundColor: colors.border.strong },
+  progressComplete: { backgroundColor: colors.accent.strong },
   appleButton: { height: 56, alignSelf: 'stretch' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginVertical: space[1] },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border.strong },
