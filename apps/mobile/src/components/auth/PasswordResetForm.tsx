@@ -1,4 +1,4 @@
-import { emailSchema, otpVerifySchema, passwordSchema } from '@repo/shared';
+import { emailSchema, otpVerifySchema } from '@repo/shared';
 import { KeyRound, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -6,9 +6,12 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Input, Text } from '@/components/ui';
 import { cleanEmailCode, firstIssueMessage } from '@/features/auth/account';
 import { requestPasswordReset, updatePassword, verifyPasswordResetCode } from '@/features/auth/api';
+import { checkPasswordStep } from '@/features/auth/register-logic';
 import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, space } from '@/theme';
+
+import { PasswordRules } from './PasswordRules';
 
 export interface PasswordResetFormProps {
   initialEmail?: string;
@@ -71,13 +74,11 @@ export function PasswordResetForm({ initialEmail = '', onDone, onCancel }: Passw
       setError(firstIssueMessage(parsedCode.error, locale, t.common.checkInput));
       return;
     }
-    const parsedPassword = passwordSchema.safeParse(password);
-    if (!parsedPassword.success) {
-      setError(firstIssueMessage(parsedPassword.error, locale, t.common.checkInput));
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setError(a.passwordMismatch);
+    // Dieselben Regeln wie bei der Registrierung (Länge, Groß/klein, Zahl, zweimal gleich).
+    const passwordCheck = checkPasswordStep(password, passwordConfirmation, locale);
+    if (!passwordCheck.ok) {
+      const { password: passwordError, passwordRepeat } = passwordCheck.errors;
+      setError(passwordError ?? passwordRepeat ?? t.common.checkInput);
       return;
     }
     void run('save', async () => {
@@ -85,7 +86,7 @@ export function PasswordResetForm({ initialEmail = '', onDone, onCancel }: Passw
         await verifyPasswordResetCode(parsedCode.data.email, parsedCode.data.token);
         setVerified(true);
       }
-      await updatePassword(parsedPassword.data);
+      await updatePassword(password);
       onDone();
     });
   };
@@ -171,8 +172,8 @@ export function PasswordResetForm({ initialEmail = '', onDone, onCancel }: Passw
             autoCorrect={false}
             autoComplete="new-password"
             textContentType="newPassword"
-            hint={a.passwordHint}
           />
+          <PasswordRules password={password} />
           <Input
             label={a.passwordRepeat}
             value={passwordConfirmation}

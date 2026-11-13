@@ -90,13 +90,20 @@ export async function signInWithPassword(email: string, password: string): Promi
   if (error) throw toAuthError(error);
 }
 
-/** Registriert einen Nutzer per E-Mail und Passwort. Gibt zurück, ob direkt eine Session besteht. */
-export async function signUpWithEmail(input: UserSignUpInput): Promise<boolean> {
+/**
+ * Registriert einen Nutzer per E-Mail und Passwort. Gibt zurück, ob direkt eine Session besteht.
+ * Vor- und Nachname übernimmt der Trigger `handle_new_user` aus den Metadaten ins Profil.
+ */
+export async function signUpWithEmail(
+  input: UserSignUpInput,
+  name?: { firstName: string; lastName: string },
+): Promise<boolean> {
   const { data, error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
     options: {
       data: {
+        ...(name ? { first_name: name.firstName, last_name: name.lastName } : {}),
         ...(input.age !== undefined ? { age: input.age } : {}),
         interests: input.interests,
       },
