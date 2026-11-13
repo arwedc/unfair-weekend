@@ -6,7 +6,7 @@ import { Button, Skeleton, Text } from '@/components/ui';
 import type { LocationReview } from '@/features/reviews/api';
 import { useLocationRating, useLocationReviews } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel, reviewDateLabel } from '@/features/reviews/review-logic';
-import { colors, fonts, radii, space } from '@/theme';
+import { colors, fonts, radii, soft, space } from '@/theme';
 
 import { Stars } from './Stars';
 
@@ -143,9 +143,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.accent.subtle,
+    backgroundColor: soft.peach,
   },
-  avatarLetter: { color: colors.accent.onSubtle },
+  avatarLetter: { color: colors.text.primary },
   meta: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   empty: {
     flexDirection: 'row',
@@ -153,6 +153,6 @@ const styles = StyleSheet.create({
     gap: space[3],
     padding: space[4],
     borderRadius: radii.lg,
-    backgroundColor: colors.background.subtle,
+    backgroundColor: soft.butter,
   },
 });

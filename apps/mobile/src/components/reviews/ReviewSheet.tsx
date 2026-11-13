@@ -42,7 +42,7 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
     <Sheet ref={sheetRef} title={`Wie war's bei ${locationName}?`} onDismiss={() => create.reset()}>
       <View style={styles.stars}>
         <StarInput value={rating} onChange={setRating} />
-        <Text variant="callout" color={word ? 'accent' : 'tertiary'} align="center">
+        <Text variant="callout" color={word ? 'primary' : 'tertiary'} align="center">
           {word ?? 'Tipp auf die Sterne'}
         </Text>
       </View>
@@ -75,6 +75,7 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
       <Button
         label="Bewertung senden"
         size="lg"
+        variant="dark"
         fullWidth
         haptic
         disabled={rating === 0}

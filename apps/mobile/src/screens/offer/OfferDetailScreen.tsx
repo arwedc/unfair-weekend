@@ -1,4 +1,10 @@
-import { formatPrice, OFFER_CATEGORY_LABELS, seatsLabel, STORAGE_BUCKETS } from '@repo/shared';
+import {
+  formatDiscount,
+  formatPrice,
+  OFFER_CATEGORY_LABELS,
+  seatsLabel,
+  STORAGE_BUCKETS,
+} from '@repo/shared';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import {
@@ -6,8 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudOff,
-  Euro,
-  Flame,
   Globe,
   MapPin,
   Navigation,
@@ -29,7 +33,6 @@ import { ImageGallery } from '@/components/offers/ImageGallery';
 import { MiniMap } from '@/components/offers/MiniMap';
 import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
-import { PriceRow } from '@/components/offers/PriceRow';
 import { ReviewsSection } from '@/components/reviews/ReviewsSection';
 import { Stars } from '@/components/reviews/Stars';
 import {
@@ -62,7 +65,7 @@ import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic'
 import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
-import { colors, fonts, layout, radii, shadow, space } from '@/theme';
+import { colors, fonts, layout, radii, radius, soft, space } from '@/theme';
 
 /** Ab dieser Länge wird die Beschreibung erst gekürzt gezeigt („Mehr lesen“). */
 const DESCRIPTION_PREVIEW_CHARS = 280;
@@ -84,7 +87,7 @@ function InfoRow({
 }) {
   const content = (
     <>
-      <Icon size={22} color={colors.accent.solid} strokeWidth={2} />
+      <Icon size={22} color={colors.text.primary} strokeWidth={1.75} />
       <View style={styles.infoText}>{children}</View>
       {onPress ? <ChevronRight size={20} color={colors.text.tertiary} /> : null}
     </>
@@ -285,7 +288,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
           {/* Titel */}
           <View style={styles.titleBlock}>
             <View style={styles.categoryPill}>
-              <CategoryIcon size={14} strokeWidth={2.25} color={colors.accent.onSubtle} />
+              <CategoryIcon size={14} strokeWidth={2} color={colors.text.primary} />
               <Text variant="caption" style={styles.categoryLabel}>
                 {OFFER_CATEGORY_LABELS[offer.category]}
               </Text>
@@ -309,66 +312,58 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
             ) : null}
           </View>
 
-          {/* Deal-Karte */}
-          <View style={styles.dealCard}>
-            <View style={styles.dealHeader}>
-              <View style={styles.dealIcon}>
-                <Flame size={22} strokeWidth={2.25} color={colors.accent.onSolid} />
-              </View>
-              <View style={styles.infoText}>
-                <Text variant="title3" style={styles.dealTitle}>
-                  {offer.discount_percent} % günstiger
-                </Text>
-                <Text variant="footnote" color="secondary">
-                  Du sparst {formatPrice(savings)} mit deinem Code
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.dealRows}>
-              <InfoRow icon={CalendarClock}>
-                <Text variant="bodyStrong">{offerWhenText(offer)}</Text>
-                <Text variant="footnote" color="secondary">
-                  {offer.type === 'einzeltermin'
-                    ? 'Fester Termin'
-                    : 'Du löst den Code in diesem Zeitraum vor Ort ein.'}
-                </Text>
-              </InfoRow>
-              <InfoRow
-                icon={MapPin}
-                onPress={openLocation}
-                accessibilityLabel={`${offer.location_name}, Anbieter ansehen`}
-              >
-                <Text variant="bodyStrong" color="accent">
-                  {offer.location_name}
-                </Text>
-                <Text variant="footnote" color="secondary" numberOfLines={1}>
-                  {fullAddress}
-                </Text>
-              </InfoRow>
-              <InfoRow icon={Euro}>
-                <PriceRow
-                  originalPriceCents={offer.original_price_cents}
-                  dealPriceCents={offer.deal_price_cents}
-                />
-              </InfoRow>
-              <InfoRow icon={Users} last>
-                <Text variant="bodyStrong">{seatsLabel(offer.free_seats)}</Text>
-                <Text variant="footnote" color="secondary">
-                  {offer.max_per_user > 1
-                    ? `Bis zu ${offer.max_per_user} Plätze pro Person`
-                    : '1 Platz pro Person'}
-                </Text>
-              </InfoRow>
-            </View>
-
-            <View style={styles.dealFooter}>
-              <ShieldCheck size={16} strokeWidth={2} color={colors.status.success.text} />
-              <Text variant="footnote" color="secondary" style={styles.infoText}>
-                Keine Zahlung in der App, du zahlst vor Ort.{' '}
-                {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
+          {/* Deal: flache Pfirsich-Fläche mit Rabatt und Preis */}
+          <View style={styles.dealBlock}>
+            <View style={styles.infoText}>
+              <Text style={styles.dealPercent}>{formatDiscount(offer.discount_percent)}</Text>
+              <Text variant="footnote" color="secondary">
+                Du sparst {formatPrice(savings)} mit deinem Code
               </Text>
             </View>
+            <View style={styles.dealPrices}>
+              <Text variant="price">{formatPrice(offer.deal_price_cents)}</Text>
+              <Text variant="footnote" color="tertiary" style={styles.strike}>
+                {formatPrice(offer.original_price_cents)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Wann, wo, wie viele */}
+          <View style={styles.infoCard}>
+            <InfoRow icon={CalendarClock}>
+              <Text variant="bodyStrong">{offerWhenText(offer)}</Text>
+              <Text variant="footnote" color="secondary">
+                {offer.type === 'einzeltermin'
+                  ? 'Fester Termin'
+                  : 'Du löst den Code in diesem Zeitraum vor Ort ein.'}
+              </Text>
+            </InfoRow>
+            <InfoRow
+              icon={MapPin}
+              onPress={openLocation}
+              accessibilityLabel={`${offer.location_name}, Anbieter ansehen`}
+            >
+              <Text variant="bodyStrong">{offer.location_name}</Text>
+              <Text variant="footnote" color="secondary" numberOfLines={1}>
+                {fullAddress}
+              </Text>
+            </InfoRow>
+            <InfoRow icon={Users} last>
+              <Text variant="bodyStrong">{seatsLabel(offer.free_seats)}</Text>
+              <Text variant="footnote" color="secondary">
+                {offer.max_per_user > 1
+                  ? `Bis zu ${offer.max_per_user} Plätze pro Person`
+                  : '1 Platz pro Person'}
+              </Text>
+            </InfoRow>
+          </View>
+
+          <View style={styles.note}>
+            <ShieldCheck size={18} strokeWidth={1.75} color={colors.text.primary} />
+            <Text variant="footnote" color="secondary" style={styles.infoText}>
+              Keine Zahlung in der App, du zahlst vor Ort.{' '}
+              {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
+            </Text>
           </View>
 
           {/* Beschreibung */}
@@ -387,7 +382,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
                   hitSlop={space[3]}
                   style={styles.readMore}
                 >
-                  <Text variant="subhead" color="accent" style={styles.semibold}>
+                  <Text variant="subhead" style={styles.readMoreText}>
                     {expanded ? 'Weniger anzeigen' : 'Mehr lesen'}
                   </Text>
                 </PressableScale>
@@ -400,7 +395,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
             <Text variant="title3" accessibilityRole="header">
               Location
             </Text>
-            <Card style={styles.locationCard}>
+            <Card elevation="flat" style={styles.locationCard}>
               <View style={styles.locationHead}>
                 <OfferImage
                   path={offer.company_logo_path || null}
@@ -412,7 +407,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
                   <Text variant="overline" color="tertiary">
                     {getCity(cityId).name}
                   </Text>
-                  <Text variant="title3" color="accent" numberOfLines={2}>
+                  <Text variant="title3" numberOfLines={2}>
                     {offer.location_name}
                   </Text>
                   <Text variant="footnote" color="secondary" numberOfLines={2}>
@@ -457,7 +452,12 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
                   onPress={openMaps}
                   style={styles.routeButton}
                 />
-                <Button label="Anbieter ansehen" onPress={openLocation} style={styles.flex} />
+                <Button
+                  label="Anbieter ansehen"
+                  variant="dark"
+                  onPress={openLocation}
+                  style={styles.flex}
+                />
               </View>
             </Card>
           </View>
@@ -499,6 +499,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
             label="Deinen Code anzeigen"
             icon={Ticket}
             size="lg"
+            variant="dark"
             fullWidth
             accessibilityHint="Du hast für dieses Angebot schon einen Code"
             onPress={() => router.push({ pathname: '/code/[id]', params: { id: myVoucher.id } })}
@@ -510,9 +511,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
         ) : (
           <View style={styles.claimRow}>
             <View>
-              <Text variant="price" color="accent">
-                {formatPrice(offer.deal_price_cents)}
-              </Text>
+              <Text variant="price">{formatPrice(offer.deal_price_cents)}</Text>
               <Text variant="caption" color="tertiary" style={styles.strike}>
                 statt {formatPrice(offer.original_price_cents)}
               </Text>
@@ -521,6 +520,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
               label="Code holen"
               icon={Ticket}
               size="lg"
+              variant="dark"
               haptic
               accessibilityHint={
                 needsLogin
@@ -573,38 +573,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[1],
-    paddingHorizontal: space[2],
+    paddingHorizontal: space[3],
     paddingVertical: space[1],
     borderRadius: radii.full,
-    backgroundColor: colors.accent.subtle,
+    backgroundColor: soft.butter,
   },
-  categoryLabel: { color: colors.accent.onSubtle, fontFamily: fonts.semibold },
+  categoryLabel: { color: colors.text.primary, fontFamily: fonts.semibold },
 
-  dealCard: {
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface.raised,
-    boxShadow: shadow.floating,
-    overflow: 'hidden',
-  },
-  dealHeader: {
+  dealBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space[3],
-    padding: space[4],
-    backgroundColor: colors.accent.subtle,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.accent.solid,
+    gap: space[4],
+    padding: space[5],
+    borderRadius: radii.lg,
+    backgroundColor: soft.peach,
   },
-  dealIcon: {
-    width: layout.minTouchTarget,
-    height: layout.minTouchTarget,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accent.solid,
+  dealPercent: {
+    fontFamily: fonts.extrabold,
+    fontSize: space[10],
+    lineHeight: space[12],
+    letterSpacing: -1,
+    color: colors.text.primary,
   },
-  dealTitle: { color: colors.text.accent },
-  dealRows: { paddingHorizontal: space[4] },
+  dealPrices: { alignItems: 'flex-end', gap: space[0.5] },
+  infoCard: {
+    paddingHorizontal: space[4],
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.strong,
+    backgroundColor: colors.surface.default,
+  },
   infoRow: {
     minHeight: layout.minTouchTarget + space[4],
     flexDirection: 'row',
@@ -617,22 +615,29 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border.default,
   },
   infoText: { flex: 1, gap: space[0.5] },
-  dealFooter: {
+  note: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: space[2],
+    gap: space[3],
     padding: space[4],
-    backgroundColor: colors.background.subtle,
+    borderRadius: radii.lg,
+    backgroundColor: soft.butter,
   },
 
   section: { gap: space[3] },
   readMore: { alignSelf: 'flex-start' },
+  readMoreText: { fontFamily: fonts.semibold, textDecorationLine: 'underline' },
 
-  locationCard: { padding: space[4], gap: space[4] },
+  locationCard: {
+    padding: space[4],
+    gap: space[4],
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.strong,
+  },
   locationHead: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE, borderRadius: radii.full },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
-  routeButton: { backgroundColor: colors.accent.subtle, borderRadius: radii.lg },
+  routeButton: { backgroundColor: soft.peach, borderRadius: radius.button },
 
   rowSection: { gap: space[3], paddingTop: space[8] },
   carousel: { flexDirection: 'row', paddingHorizontal: layout.screenPaddingX, gap: space[3] },
@@ -643,7 +648,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.raised,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border.default,
-    boxShadow: shadow.floating,
   },
   claimRow: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
   strike: { textDecorationLine: 'line-through' },

@@ -30,7 +30,7 @@ import {
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { openInMaps } from '@/lib/open-external';
-import { colors, layout, radius, shadow, space, textStyle } from '@/theme';
+import { colors, layout, radius, shadow, soft, space, textStyle } from '@/theme';
 
 const QR_SIZE = 232;
 
@@ -259,6 +259,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
               <Button
                 label="Jetzt bewerten"
                 icon={Star}
+                variant="dark"
                 fullWidth
                 onPress={() => reviewSheet.current?.present()}
               />
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
     gap: space[3],
     padding: space[4],
     borderRadius: radius.card,
-    backgroundColor: colors.accent.subtle,
+    backgroundColor: soft.peach,
   },
   screen: { flex: 1, backgroundColor: colors.background.default },
   content: {

@@ -3,8 +3,10 @@
  * Komponenten importieren Farben, Abstände und Schriften nur von hier, nie als Hex-Wert.
  */
 import {
+  amber,
   badge,
   duration,
+  glut,
   layout,
   nativeFontFamily,
   radii,
@@ -20,6 +22,19 @@ import type { TextStyle } from 'react-native';
 
 /** Die App hat vorerst nur ein helles Theme (wie die Tokens). */
 export const colors = themes.light;
+
+/**
+ * Ruhige, flache Flächenfarben (wie Papier), z. B. für die Angebotsseite.
+ * Darauf nur dunkler Text (`colors.text.primary`/`secondary`), kein Akzent-Orange.
+ */
+export const soft = {
+  /** zarter Pfirsich für Deal-Flächen und Avatare */
+  peach: glut[100],
+  /** kräftigeres Pfirsich für kleine Flächen (Knopf-Hintergründe) */
+  peachStrong: glut[200],
+  /** helles Butter-Gelb für Kategorie-Pillen und Hinweise */
+  butter: amber[50],
+} as const;
 
 export { badge, duration, layout, radii, radius, shadow, space };
 export type { TextStyleName };
