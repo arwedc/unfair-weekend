@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { CloudOff, Ticket } from 'lucide-react-native';
+import { useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { OfferImage } from '@/components/offers/OfferImage';
@@ -80,13 +81,15 @@ function Header() {
   );
 }
 
-/** Tab „Meine Codes“: aktive Codes oben, darunter der Verlauf. */
+/** Tab „Meine Codes“: aktive Codes oben, darunter der Verlauf (eingeklappt). */
 export function CodesScreen() {
   const router = useRouter();
   const { t } = useT();
   const m = t.screens.codes;
   const { ready, userId } = useAuth();
   const { data, error, isPending, isRefetching, refetch } = useMyVouchers();
+  // Vergangene Codes sind zunächst eingeklappt, damit die aktiven im Blick bleiben.
+  const [showPast, setShowPast] = useState(false);
 
   if (!ready) {
     return (
@@ -171,12 +174,19 @@ export function CodesScreen() {
           )}
           {past.length > 0 ? (
             <View style={styles.list}>
-              <SectionHeader title={m.past} detail={String(past.length)} />
-              {past.map((voucher, index) => (
-                <Appear key={voucher.id} index={active.length + index}>
-                  <VoucherCard voucher={voucher} />
-                </Appear>
-              ))}
+              <SectionHeader
+                title={m.past}
+                detail={String(past.length)}
+                expanded={showPast}
+                onToggle={() => setShowPast((open) => !open)}
+              />
+              {showPast
+                ? past.map((voucher, index) => (
+                    <Appear key={voucher.id} index={index}>
+                      <VoucherCard voucher={voucher} />
+                    </Appear>
+                  ))
+                : null}
             </View>
           ) : null}
         </>
