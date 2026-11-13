@@ -5,6 +5,8 @@
  * So sieht sie auf iOS, Android, im Browser und in Node exakt gleich aus.
  */
 
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locale';
+
 const NBSP = ' ';
 const MINUS = '−';
 
@@ -22,28 +24,33 @@ function assertPercent(value: number, name: string): void {
   }
 }
 
-function groupThousands(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+function groupThousands(digits: string, separator: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, separator);
 }
 
 export interface FormatPriceOptions {
   /** „24 €“ statt „24,00 €“, wenn keine Cent anfallen. */
   omitZeroCents?: boolean;
+  /** Sprache der Ausgabe, Standard Deutsch. Englisch: „€24.50“. */
+  locale?: Locale;
 }
 
 /**
  * Formatiert Cent als Euro-Betrag.
  * @example formatPrice(2450) // "24,50 €"
  * @example formatPrice(2400, { omitZeroCents: true }) // "24 €"
+ * @example formatPrice(245000, { locale: 'en' }) // "€2,450.00"
  */
 export function formatPrice(cents: number, options: FormatPriceOptions = {}): string {
   assertCents(cents, 'cents');
-  const euros = groupThousands(String(Math.floor(cents / 100)));
+  const en = options.locale === 'en';
+  const euros = groupThousands(String(Math.floor(cents / 100)), en ? ',' : '.');
   const rest = cents % 100;
-  if (options.omitZeroCents && rest === 0) {
-    return `${euros}${NBSP}€`;
-  }
-  return `${euros},${String(rest).padStart(2, '0')}${NBSP}€`;
+  const amount =
+    options.omitZeroCents && rest === 0
+      ? euros
+      : `${euros}${en ? '.' : ','}${String(rest).padStart(2, '0')}`;
+  return en ? `€${amount}` : `${amount}${NBSP}€`;
 }
 
 /**
@@ -91,7 +98,8 @@ export function maxDealPriceCents(originalCents: number, minDiscountPercent: num
 /**
  * Rabatt für Badges.
  * @example formatDiscount(40) // "−40 %"
+ * @example formatDiscount(40, 'en') // "−40%"
  */
-export function formatDiscount(percent: number): string {
-  return `${MINUS}${percent}${NBSP}%`;
+export function formatDiscount(percent: number, locale: Locale = DEFAULT_LOCALE): string {
+  return locale === 'en' ? `${MINUS}${percent}%` : `${MINUS}${percent}${NBSP}%`;
 }
