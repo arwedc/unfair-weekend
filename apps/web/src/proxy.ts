@@ -36,7 +36,7 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(data?.claims);
   const path = request.nextUrl.pathname;
 
-  if (!signedIn && path.startsWith('/angebote')) {
+  if (!signedIn && (path.startsWith('/angebote') || path.startsWith('/bewertungen'))) {
     return redirectKeepingCookies(new URL('/login', request.url), response);
   }
   if (signedIn && path === '/login') {
@@ -56,5 +56,5 @@ function redirectKeepingCookies(url: URL, from: NextResponse) {
 }
 
 export const config = {
-  matcher: ['/angebote/:path*', '/login'],
+  matcher: ['/angebote/:path*', '/bewertungen/:path*', '/login'],
 };
