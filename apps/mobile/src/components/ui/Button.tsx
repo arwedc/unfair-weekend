@@ -7,7 +7,7 @@ import { colors, layout, radius, space } from '@/theme';
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type Size = 'md' | 'lg';
 
 export interface ButtonProps {
@@ -36,6 +36,8 @@ const variantColors: Record<Variant, { background: string; foreground: string; b
       border: colors.border.strong,
     },
     ghost: { background: 'transparent', foreground: colors.text.accent },
+    /** Endgültige Aktionen wie „Konto löschen“ oder „Stornieren“. */
+    danger: { background: colors.status.error.solid, foreground: colors.status.error.onSolid },
   };
 
 const sizes: Record<Size, { height: number; paddingX: number }> = {

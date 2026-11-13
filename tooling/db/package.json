@@ -12,7 +12,8 @@
     "db:types": "tsx src/gen-types.ts",
     "test": "vitest run",
     "db:test:race": "tsx src/concurrency.ts race",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "db:push-secrets": "tsx src/push-secrets.ts"
   },
   "dependencies": {
     "pg": "catalog:",

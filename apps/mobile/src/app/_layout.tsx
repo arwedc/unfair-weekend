@@ -15,13 +15,22 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
+import { usePushSetup } from '@/features/push/use-push';
 import { hideDevToolsButton } from '@/lib/dev-tools';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
 
 // Splash bleibt sichtbar, bis die Schrift geladen ist (sonst springt der Text).
 void SplashScreen.preventAutoHideAsync();
+
+/** Push-Einrichtung. Steht hinter dem Stack, damit ein Tap auf eine Benachrichtigung navigieren kann. */
+function PushBridge() {
+  const { userId } = useAuth();
+  usePushSetup(userId);
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -56,24 +65,35 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.default }}>
       <QueryClientProvider client={queryClient}>
-        <OfferFiltersProvider>
-          <BottomSheetModalProvider>
-            <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                contentStyle: { backgroundColor: colors.background.default },
-                headerTintColor: colors.text.primary,
-                headerBackButtonDisplayMode: 'minimal',
-                headerShadowVisible: false,
-                headerStyle: { backgroundColor: colors.background.default },
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="standort/[id]" options={{ title: '' }} />
-            </Stack>
-          </BottomSheetModalProvider>
-        </OfferFiltersProvider>
+        <AuthProvider>
+          <OfferFiltersProvider>
+            <BottomSheetModalProvider>
+              <StatusBar style="dark" />
+              <Stack
+                screenOptions={{
+                  contentStyle: { backgroundColor: colors.background.default },
+                  headerTintColor: colors.text.primary,
+                  headerBackButtonDisplayMode: 'minimal',
+                  headerShadowVisible: false,
+                  headerStyle: { backgroundColor: colors.background.default },
+                }}
+              >
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="standort/[id]" options={{ title: '' }} />
+                <Stack.Screen name="code/[id]" options={{ title: 'Dein Code' }} />
+                <Stack.Screen
+                  name="anmelden"
+                  options={{ headerShown: false, presentation: 'modal' }}
+                />
+                <Stack.Screen name="name" options={{ title: 'Dein Name', presentation: 'modal' }} />
+                <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
+                <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+              </Stack>
+              <PushBridge />
+            </BottomSheetModalProvider>
+          </OfferFiltersProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

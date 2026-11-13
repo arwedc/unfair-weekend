@@ -5,6 +5,7 @@ import type { OfferPlace } from '@/features/offers/feed-logic';
 import {
   buildMapHtml,
   MAP_ATTRIBUTION,
+  MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
   setCenterScript,
@@ -74,8 +75,19 @@ describe('buildMapHtml', () => {
     expect(html).toContain(MAP_ATTRIBUTION);
   });
 
-  it('klappt die Quellenangabe nicht ein', () => {
-    expect(html).toContain('compact: false');
+  it('zeigt die Quellenangabe als feste Zeile statt der automatischen (doppelten)', () => {
+    expect(html).toContain('id="attribution"');
+    expect(html).toContain('attributionControl: false');
+    expect(html).toContain('https://www.openstreetmap.org/copyright');
+  });
+
+  it('lädt MapLibre als klassisches Skript (5er-Reihe) von zwei CDNs', () => {
+    // Ab Version 6 gibt es keine dist/maplibre-gl.js mehr, die Karte bliebe leer.
+    expect(MAPLIBRE_CDNS).toHaveLength(2);
+    for (const cdn of MAPLIBRE_CDNS) {
+      expect(cdn).toMatch(/maplibre-gl@5\.\d+\.\d+\/dist$/);
+      expect(html).toContain(`${cdn}/maplibre-gl.js`);
+    }
   });
 });
 

@@ -8,7 +8,18 @@ import { formatDiscount } from '@repo/shared';
 
 import type { OfferPlace } from '@/features/offers/feed-logic';
 
-const MAPLIBRE_VERSION = '6.18.0';
+/**
+ * MapLibre GL JS aus der 5er-Reihe (wird weiter gepflegt, npm-Tag `latest-5`).
+ * Nicht auf 6 anheben: Ab Version 6 gibt es nur noch ES-Module (`.mjs`) und keine
+ * `dist/maplibre-gl.js` mehr, die sich per <script> in die WebView laden lässt.
+ */
+const MAPLIBRE_VERSION = '5.24.1';
+
+/** Zwei CDNs: Fällt das erste aus, lädt die Seite die Bibliothek vom zweiten. */
+export const MAPLIBRE_CDNS = [
+  `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist`,
+  `https://cdn.jsdelivr.net/npm/maplibre-gl@${MAPLIBRE_VERSION}/dist`,
+] as const;
 
 /** Rathaus Münster als Kartenmitte. */
 export const MUENSTER_CENTER = { lat: 51.9607, lng: 7.6261 } as const;
@@ -114,25 +125,35 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     center: [MUENSTER_CENTER.lng, MUENSTER_CENTER.lat],
     zoom: DEFAULT_ZOOM,
     colors: options.colors,
-    attribution: MAP_ATTRIBUTION,
   });
-  const cdn = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist`;
+  const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
   return `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<link rel="stylesheet" href="${cdn}/maplibre-gl.css">
+<link rel="stylesheet" href="${cdn}/maplibre-gl.css" onerror="this.onerror=null;this.href='${fallbackCdn}/maplibre-gl.css'">
 <style>
   html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
   body { background: ${options.colors.background}; -webkit-tap-highlight-color: transparent; }
-  .maplibregl-ctrl-attrib { font: 10px/1.4 -apple-system, Roboto, sans-serif; }
+  #attribution {
+    position: absolute; left: 0; bottom: 0; z-index: 2; padding: 2px 6px;
+    font: 10px/1.4 -apple-system, Roboto, sans-serif; color: #333;
+    background: rgba(255, 255, 255, 0.85); border-top-right-radius: 6px;
+  }
+  #attribution a { color: inherit; text-decoration: none; }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<!-- Pflicht-Quellenangabe, fest sichtbar (der Stil bringt sie doppelt mit, deshalb eigene Zeile). -->
+<div id="attribution" aria-label="${MAP_ATTRIBUTION}"><a href="https://openfreemap.org">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></div>
 <script src="${cdn}/maplibre-gl.js"></script>
+<script>
+  // Erstes CDN nicht erreichbar: synchron vom zweiten nachladen, bevor die Karte startet.
+  if (!window.maplibregl) document.write('<script src="${fallbackCdn}/maplibre-gl.js"><\\/script>');
+</script>
 <script>
 (function () {
   var config = ${config};
@@ -160,7 +181,6 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     pitchWithRotate: false
   });
   map.touchZoomRotate.disableRotation();
-  map.addControl(new maplibregl.AttributionControl({ compact: false, customAttribution: config.attribution }), 'bottom-left');
 
   var pending = null;
   var loaded = false;

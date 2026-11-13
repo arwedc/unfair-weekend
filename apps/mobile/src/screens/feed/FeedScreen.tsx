@@ -8,6 +8,7 @@ import { CitySheet } from '@/components/offers/CitySheet';
 import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import {
+  Appear,
   EmptyState,
   IconButton,
   Input,
@@ -55,8 +56,10 @@ function Carousel({
         snapToInterval={COMPACT_CARD_WIDTH + space[3]}
         snapToAlignment="start"
       >
-        {section.offers.map((offer) => (
-          <OfferCard key={offer.id} offer={offer} variant="compact" />
+        {section.offers.map((offer, index) => (
+          <Appear key={offer.id} index={index}>
+            <OfferCard offer={offer} variant="compact" />
+          </Appear>
         ))}
       </ScrollView>
     </View>
@@ -231,7 +234,9 @@ export function FeedScreen() {
         data={isPending ? [] : visible}
         keyExtractor={(offer) => offer.id}
         renderItem={({ item, index }) => (
-          <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} style={styles.inset} />
+          <Appear index={index} style={styles.inset}>
+            <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
+          </Appear>
         )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty ?? undefined}
