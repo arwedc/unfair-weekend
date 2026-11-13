@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildSections,
+  countByCategory,
   EMPTY_FILTERS,
   filterOffers,
   groupByPlace,
@@ -10,6 +11,7 @@ import {
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
+  similarOffers,
 } from './feed-logic';
 import type { FeedOffer } from './types';
 
@@ -273,5 +275,32 @@ describe('groupByPlace', () => {
 
   it('überspringt Angebote ohne Koordinaten', () => {
     expect(groupByPlace([offer({ lat: null as unknown as number })])).toEqual([]);
+  });
+});
+
+describe('countByCategory', () => {
+  it('zählt je Kategorie, auch leere', () => {
+    const counts = countByCategory([
+      offer({ category: 'kochen_essen' }),
+      offer({ category: 'kochen_essen' }),
+      offer({ category: 'sonstiges' }),
+    ]);
+    expect(counts.kochen_essen).toBe(2);
+    expect(counts.sonstiges).toBe(1);
+    expect(counts.wellness_beauty).toBe(0);
+  });
+});
+
+describe('similarOffers', () => {
+  it('zeigt erst dieselbe Kategorie, ohne das Angebot selbst und ohne ausgebuchte', () => {
+    const current = offer({ id: 'pasta', category: 'kochen_essen' });
+    const offers = [
+      current,
+      offer({ id: 'yoga', category: 'sport_bewegung' }),
+      offer({ id: 'wein', category: 'kochen_essen' }),
+      offer({ id: 'sushi-voll', category: 'kochen_essen', free_seats: 0 }),
+    ];
+    expect(similarOffers(offers, current).map((o) => o.id)).toEqual(['wein', 'yoga']);
+    expect(similarOffers(offers, current, 1).map((o) => o.id)).toEqual(['wein']);
   });
 });

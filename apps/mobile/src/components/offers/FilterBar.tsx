@@ -1,17 +1,18 @@
 import { OFFER_CATEGORY_LABELS } from '@repo/shared';
-import { MapPin, SlidersHorizontal } from 'lucide-react-native';
+import { ChevronDown, MapPin, SlidersHorizontal } from 'lucide-react-native';
 import { useRef } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { Chip, type SheetRef } from '@/components/ui';
+import { Chip, Text, type SheetRef } from '@/components/ui';
 import { getCity } from '@/features/offers/cities';
 import { TIME_FILTER_LABELS, TIME_FILTERS } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { layout, space } from '@/theme';
+import { colors, fonts, layout, radius, space } from '@/theme';
 
 import { CATEGORY_ICONS } from './category-icons';
-import { CitySheet } from './CitySheet';
+import { CityMenu } from './CityMenu';
 import { FilterSheet } from './FilterSheet';
+import { TIME_ICONS } from './time-icons';
 
 export { CATEGORY_ICONS } from './category-icons';
 
@@ -31,7 +32,6 @@ export interface FilterBarProps {
 export function FilterBar({ showCity = false }: FilterBarProps) {
   const { filters, setFilters, cityId } = useOfferFilters();
   const filterSheet = useRef<SheetRef>(null);
-  const citySheet = useRef<SheetRef>(null);
   const category = filters.category;
 
   return (
@@ -43,13 +43,21 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
         keyboardShouldPersistTaps="handled"
       >
         {showCity ? (
-          <Chip
-            size="sm"
-            label={getCity(cityId).name}
-            icon={MapPin}
-            accessibilityHint="Öffnet die Auswahl der Städte"
-            onPress={() => citySheet.current?.present()}
-          />
+          <CityMenu>
+            <View
+              style={styles.cityChip}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={`Stadt: ${getCity(cityId).name}`}
+              accessibilityHint="Öffnet die Auswahl der Städte"
+            >
+              <MapPin size={14} strokeWidth={2.25} color={colors.text.inverse} />
+              <Text variant="footnote" style={styles.cityLabel}>
+                {getCity(cityId).name}
+              </Text>
+              <ChevronDown size={14} strokeWidth={2.5} color={colors.text.inverse} />
+            </View>
+          </CityMenu>
         ) : null}
         <Chip
           size="sm"
@@ -59,11 +67,13 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
           accessibilityHint="Öffnet Zeit- und Kategoriefilter"
           onPress={() => filterSheet.current?.present()}
         />
+        <View style={styles.divider} />
         {QUICK_TIMES.map((time) => (
           <Chip
             key={time}
             size="sm"
             label={TIME_FILTER_LABELS[time]}
+            icon={TIME_ICONS[time]}
             selected={filters.time === time}
             onPress={() => setFilters({ time: filters.time === time ? 'alle' : time })}
           />
@@ -71,7 +81,6 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
       </ScrollView>
 
       <FilterSheet sheetRef={filterSheet} />
-      {showCity ? <CitySheet sheetRef={citySheet} /> : null}
     </>
   );
 }
@@ -84,4 +93,19 @@ const styles = StyleSheet.create({
     gap: space[2],
     alignItems: 'center',
   },
+  divider: {
+    width: StyleSheet.hairlineWidth,
+    height: space[5],
+    backgroundColor: colors.border.strong,
+  },
+  cityChip: {
+    minHeight: space[8],
+    paddingHorizontal: space[3],
+    borderRadius: radius.button,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
+    backgroundColor: colors.background.inverse,
+  },
+  cityLabel: { fontFamily: fonts.semibold, color: colors.text.inverse },
 });
