@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { LocationScreen } from '@/screens/location/LocationScreen';
+import { VenueScreen } from '@/screens/venue/VenueScreen';
 
 export default function StandortRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <LocationScreen locationId={id} />;
+  return <VenueScreen key={id} locationId={id} />;
 }

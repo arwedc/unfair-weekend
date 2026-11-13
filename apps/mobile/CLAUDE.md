@@ -25,7 +25,8 @@ Bibliotheken nie mit `pnpm add` in der neuesten Version holen, sondern mit `expo
 ```
 src/
   app/              nur Routen (Expo Router). (tabs)/ = die vier Tabs
-  screens/          Inhalte der Screens, nach Bereich (feed/, offer/, location/, map/ …)
+  screens/          Inhalte der Screens, nach Bereich (feed/, venue/, map/, codes/ …).
+                    venue/ = Standort-Seite; Angebote (/angebot/[id]) öffnen sie mit dem Angebot oben
   features/         Daten und Logik ohne Oberfläche, nach Bereich:
     offers/           api.ts (RPC-Aufrufe), queries.ts (TanStack-Query-Hooks),
                       feed-logic.ts (Filter, Abschnitte, Badges; mit Tests), filters-context.tsx

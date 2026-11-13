@@ -1,0 +1,838 @@
+import {
+  formatDiscount,
+  formatPrice,
+  OFFER_CATEGORY_LABELS,
+  seatsLabel,
+  STORAGE_BUCKETS,
+  type OfferCategory,
+} from '@repo/shared';
+import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import {
+  BadgePercent,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CloudOff,
+  Euro,
+  Globe,
+  MapPin,
+  Navigation,
+  Phone,
+  SearchX,
+  Share2,
+  Sparkles,
+  Ticket,
+  Users,
+  type LucideIcon,
+} from 'lucide-react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { FavoriteButton } from '@/components/favorites/FavoriteButton';
+import { OfferFavoriteButton } from '@/components/favorites/OfferFavoriteButton';
+import { CATEGORY_ICONS } from '@/components/offers/category-icons';
+import { MiniMap } from '@/components/offers/MiniMap';
+import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
+import { OfferImage } from '@/components/offers/OfferImage';
+import { ReviewsSection } from '@/components/reviews/ReviewsSection';
+import { Stars } from '@/components/reviews/Stars';
+import {
+  Appear,
+  Button,
+  EmptyState,
+  HighlightTitle,
+  IconButton,
+  PressableScale,
+  Skeleton,
+  Text,
+  type SheetRef,
+} from '@/components/ui';
+import { ClaimSheet } from '@/components/vouchers/ClaimSheet';
+import { useAuth } from '@/features/auth/auth-context';
+import { logOfferView } from '@/features/offers/api';
+import { cityOfOffer, getCity, offersInCity } from '@/features/offers/cities';
+import { cancelPolicyText, offerWhenText, similarOffers } from '@/features/offers/feed-logic';
+import {
+  useLocation,
+  useLocationOffers,
+  useOffer,
+  useOffers,
+  useSettings,
+} from '@/features/offers/queries';
+import type { Offer, OfferDetail } from '@/features/offers/types';
+import { useLocationRating } from '@/features/reviews/queries';
+import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic';
+import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
+import { errorMessage, isOffline } from '@/lib/api-error';
+import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
+import { colors, fonts, layout, radii, shadow, soft, space } from '@/theme';
+
+/** Ab dieser Länge wird die Beschreibung erst gekürzt gezeigt („Mehr lesen“). */
+const DESCRIPTION_PREVIEW_CHARS = 240;
+/** So hoch bleibt das Foto oben stehen, wenn man ganz nach unten scrollt (ohne Statusleiste). */
+const HERO_COLLAPSED = space[20] + space[10];
+
+/** Warum man gerade keinen Code holen kann (oder null, wenn es geht). */
+function unavailableReason(offer: OfferDetail): string | null {
+  if (offer.status === 'abgesagt') return 'Dieses Angebot wurde abgesagt.';
+  if (offer.status !== 'aktiv') return 'Dieses Angebot ist nicht mehr verfügbar.';
+  if (!offer.is_claimable) {
+    return offer.type === 'einzeltermin'
+      ? 'Der Termin hat schon begonnen.'
+      : 'Dieses Angebot ist abgelaufen.';
+  }
+  if (offer.free_seats === 0) return 'Leider ausgebucht. Schau später nochmal rein.';
+  return null;
+}
+
+async function shareOffer(offer: OfferDetail): Promise<void> {
+  const url = Linking.createURL(`/angebot/${offer.id}`);
+  const price = `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`;
+  try {
+    await Share.share({ message: `${offer.title} bei ${offer.location_name}: ${price}. ${url}` });
+  } catch {
+    // Abgebrochen oder nicht möglich: nichts zu tun.
+  }
+}
+
+/** Zeile in der Deal-Karte: farbiges Icon, Text, optional Pfeil. */
+function InfoRow({
+  icon: Icon,
+  children,
+  onPress,
+  accessibilityLabel,
+  last = false,
+}: {
+  icon: LucideIcon;
+  children: ReactNode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  last?: boolean;
+}) {
+  const content = (
+    <>
+      <Icon size={22} color={colors.accent.solid} strokeWidth={2} />
+      <View style={styles.flexText}>{children}</View>
+      {onPress ? <ChevronRight size={20} color={colors.text.tertiary} /> : null}
+    </>
+  );
+  const style = [styles.infoRow, !last && styles.infoRowDivider];
+  if (!onPress) return <View style={style}>{content}</View>;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      pressedScale={0.99}
+      style={style}
+    >
+      {content}
+    </PressableScale>
+  );
+}
+
+/** Ein Angebot in der Liste „Angebote hier“. Antippen wählt es oben in der Deal-Karte aus. */
+function OfferChoice({
+  offer,
+  selected,
+  onPress,
+}: {
+  offer: Offer;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${offer.title}, ${offerWhenText(offer)}, ${formatPrice(offer.deal_price_cents)}`}
+      accessibilityHint="Zeigt dieses Angebot oben an"
+      onPress={onPress}
+      pressedScale={0.98}
+      style={[styles.choice, selected && styles.choiceSelected]}
+    >
+      <OfferImage path={offer.cover_image_path} style={styles.choiceImage} />
+      <View style={styles.flexText}>
+        <Text variant="bodyStrong" numberOfLines={2}>
+          {offer.title}
+        </Text>
+        <Text variant="footnote" color="secondary" numberOfLines={1}>
+          {offerWhenText(offer)}
+        </Text>
+        <View style={styles.choicePrice}>
+          <Text variant="subhead" color="accent" style={styles.semibold}>
+            {formatPrice(offer.deal_price_cents)}
+          </Text>
+          <Text variant="caption" color="tertiary" style={styles.strike}>
+            {formatPrice(offer.original_price_cents)}
+          </Text>
+        </View>
+      </View>
+      {selected ? (
+        <View style={styles.choiceBadge}>
+          <Text variant="caption" style={styles.choiceBadgeText}>
+            Oben
+          </Text>
+        </View>
+      ) : (
+        <ChevronRight size={20} color={colors.text.tertiary} />
+      )}
+    </PressableScale>
+  );
+}
+
+function BackButton({ top }: { top: number }) {
+  const router = useRouter();
+  return (
+    <IconButton
+      icon={ChevronLeft}
+      accessibilityLabel="Zurück"
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+      style={[styles.back, { top }]}
+    />
+  );
+}
+
+export interface VenueScreenProps {
+  /** Standort direkt (Route /standort/[id]). */
+  locationId?: string;
+  /** Angebot, das oben ausgewählt sein soll (Route /angebot/[id]). Bestimmt sonst auch den Standort. */
+  offerId?: string;
+}
+
+/**
+ * Seite eines Unternehmensstandorts mit allen Angeboten dort.
+ * Oben ein großes Foto, das beim Scrollen zu einem schmalen Streifen schrumpft (bleibt sichtbar).
+ * Darunter die Deal-Karte des ausgewählten Angebots mit „Code holen“, die übrigen Angebote zum
+ * Umschalten, Infos und Karte zum Ort, Bewertungen und Ähnliches in der Nähe.
+ */
+export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const claimSheet = useRef<SheetRef>(null);
+  const cardY = useRef(0);
+  const [selectedId, setSelectedId] = useState<string | null>(offerId ?? null);
+  const [expanded, setExpanded] = useState(false);
+
+  // Über ein Angebot kommen wir zum Standort; direkt über den Standort zum ersten Angebot.
+  const entry = useOffer(offerId ?? '', { enabled: Boolean(offerId) && !locationId });
+  const resolvedLocationId = locationId ?? entry.data?.location_id ?? '';
+  const place = useLocation(resolvedLocationId);
+  const offers = useLocationOffers(resolvedLocationId);
+  const activeId = selectedId ?? offers.data?.[0]?.id ?? '';
+  const selected = useOffer(activeId);
+  const rating = useLocationRating(resolvedLocationId);
+  const { data: settings } = useSettings();
+  const { data: feed } = useOffers();
+  const { userId, account } = useAuth();
+  const myVoucher = useActiveVoucherForOffer(activeId);
+  const needsLogin = userId === null || account?.profileComplete !== true;
+
+  useEffect(() => {
+    if (activeId) void logOfferView(activeId);
+  }, [activeId]);
+
+  // Foto: groß, schrumpft beim Scrollen auf HERO_COLLAPSED, wächst beim Ziehen nach unten.
+  const heroHeight = Math.round(width * 0.85);
+  const heroMin = insets.top + HERO_COLLAPSED;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.set(event.contentOffset.y);
+  });
+  const heroStyle = useAnimatedStyle(() => ({
+    height: interpolate(
+      scrollY.get(),
+      [-heroHeight, 0, heroHeight - heroMin],
+      [heroHeight * 2, heroHeight, heroMin],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  const buttonTop = insets.top + space[2];
+  const loadingLocation = (Boolean(offerId) && !locationId && entry.isPending) || place.isPending;
+
+  if (loadingLocation || (activeId !== '' && selected.isPending && !place.data)) {
+    return (
+      <View style={styles.screen} accessible accessibilityLabel="Wird geladen">
+        <Skeleton height={heroHeight} radius={0} />
+        <View style={styles.body}>
+          <Skeleton width="70%" height={32} />
+          <Skeleton width="40%" height={18} />
+          <Skeleton height={260} />
+        </View>
+        <BackButton top={buttonTop} />
+      </View>
+    );
+  }
+
+  const error = entry.error ?? place.error ?? offers.error;
+  const offer = selected.data ?? null;
+  // Standort nicht (mehr) öffentlich, aber das Angebot schon (z. B. mit eigenem Code): Daten vom Angebot.
+  const name = place.data?.company_name ?? offer?.company_name ?? '';
+
+  if (error || !name) {
+    return (
+      <View style={[styles.screen, styles.frame, { paddingTop: insets.top + space[16] }]}>
+        {error ? (
+          <EmptyState
+            tone="error"
+            icon={CloudOff}
+            title={isOffline(error) ? 'Kein Netz' : 'Das hat nicht geklappt'}
+            message={errorMessage(error)}
+            actionLabel="Nochmal versuchen"
+            onAction={() => {
+              void entry.refetch();
+              void place.refetch();
+              void offers.refetch();
+            }}
+          />
+        ) : (
+          <EmptyState
+            icon={SearchX}
+            title="Nicht gefunden"
+            message="Diesen Anbieter oder dieses Angebot gibt es nicht mehr oder es ist gerade nicht sichtbar."
+            actionLabel="Zu den Angeboten"
+            onAction={() => router.replace('/')}
+          />
+        )}
+        <BackButton top={buttonTop} />
+      </View>
+    );
+  }
+
+  const list = offers.data ?? [];
+  const locationName = place.data?.name ?? offer?.location_name ?? name;
+  const showLocationName = locationName.trim() !== '' && locationName !== name;
+  const address = place.data
+    ? [place.data.street, `${place.data.postal_code} ${place.data.city}`]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(', ')
+    : (offer?.address ?? '');
+  const lat = place.data?.lat ?? offer?.lat ?? null;
+  const lng = place.data?.lng ?? offer?.lng ?? null;
+  const phone = place.data?.phone ?? offer?.location_phone ?? '';
+  const website = place.data?.website ?? offer?.location_website ?? '';
+  const about = (place.data?.company_description ?? offer?.company_description ?? '').trim();
+  const logo = place.data?.company_logo_path ?? offer?.company_logo_path ?? '';
+  const heroPath = offer?.cover_image_path || list[0]?.cover_image_path || null;
+  const categories = [
+    ...new Set<OfferCategory>(
+      list.map((item) => item.category).concat(offer ? [offer.category] : []),
+    ),
+  ];
+  // Ohne Koordinaten wählt cityOfOffer selbst die Startstadt.
+  const cityId = cityOfOffer({ lat, lng } as unknown as Pick<Offer, 'lat' | 'lng'>);
+  const similar = offer
+    ? similarOffers(offersInCity(feed ?? [], cityId), offer).filter(
+        (item) => item.location_id !== resolvedLocationId,
+      )
+    : [];
+  const reason = offer ? unavailableReason(offer) : null;
+  const description = offer?.description.trim() ?? '';
+  const longDescription = description.length > DESCRIPTION_PREVIEW_CHARS;
+
+  const openMaps = () => void openInMaps({ label: locationName, address, lat, lng });
+  const choose = (id: string) => {
+    setSelectedId(id);
+    setExpanded(false);
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, cardY.current - heroMin - space[4]),
+      animated: true,
+    });
+  };
+
+  return (
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={{ paddingTop: heroHeight, paddingBottom: insets.bottom + space[12] }}
+      >
+        {/* Kopf: Name, Kategorien, Bewertung */}
+        <View style={styles.head}>
+          <Text variant="title1" accessibilityRole="header">
+            {name}
+          </Text>
+          {showLocationName ? (
+            <Text variant="callout" color="secondary">
+              {locationName}
+            </Text>
+          ) : null}
+          <View style={styles.pills}>
+            {categories.map((category, index) => {
+              const Icon = CATEGORY_ICONS[category];
+              return (
+                <View key={category} style={[styles.pill, index === 0 && styles.pillAccent]}>
+                  <Icon
+                    size={14}
+                    strokeWidth={2.25}
+                    color={index === 0 ? colors.accent.onSubtle : colors.text.secondary}
+                  />
+                  <Text
+                    variant="footnote"
+                    style={[styles.semibold, index === 0 && { color: colors.accent.onSubtle }]}
+                  >
+                    {OFFER_CATEGORY_LABELS[category]}
+                  </Text>
+                </View>
+              );
+            })}
+            <View style={styles.pill}>
+              <MapPin size={14} strokeWidth={2.25} color={colors.text.secondary} />
+              <Text variant="footnote" style={styles.semibold}>
+                {getCity(cityId).name}
+              </Text>
+            </View>
+          </View>
+          {rating.data ? (
+            <View style={styles.ratingLine}>
+              <Stars value={rating.data.average_rating} size={18} />
+              <Text variant="subhead" style={styles.semibold}>
+                {formatRating(rating.data.average_rating)}
+              </Text>
+              <Text variant="subhead" color="secondary">
+                · {reviewCountLabel(rating.data.review_count)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Deal-Karte des ausgewählten Angebots */}
+        <View
+          style={styles.cardOuter}
+          onLayout={(event) => {
+            cardY.current = event.nativeEvent.layout.y;
+          }}
+        >
+          {offer ? (
+            <View style={styles.card}>
+              <View style={styles.cardStrip}>
+                <View style={styles.cardStripIcon}>
+                  <BadgePercent size={24} strokeWidth={2.25} color={colors.accent.onSolid} />
+                </View>
+                <View style={styles.flexText}>
+                  <Text variant="title3" style={styles.stripTitle}>
+                    {formatDiscount(offer.discount_percent)} mit deinem Code
+                  </Text>
+                  <Text variant="footnote" style={styles.stripText}>
+                    Du sparst {formatPrice(offer.original_price_cents - offer.deal_price_cents)}
+                  </Text>
+                </View>
+                <OfferFavoriteButton offerId={offer.id} title={offer.title} />
+              </View>
+
+              <View style={styles.cardBody}>
+                <Text variant="title2">{offer.title}</Text>
+
+                <View>
+                  <InfoRow icon={Clock}>
+                    <Text variant="body">{offerWhenText(offer)}</Text>
+                    <Text variant="footnote" color="secondary">
+                      {offer.type === 'einzeltermin'
+                        ? 'Fester Termin'
+                        : 'Du löst den Code in diesem Zeitraum vor Ort ein.'}
+                    </Text>
+                  </InfoRow>
+                  <InfoRow
+                    icon={MapPin}
+                    onPress={openMaps}
+                    accessibilityLabel={`${address}, in der Karten-App öffnen`}
+                  >
+                    <Text variant="body">{locationName}</Text>
+                    <Text variant="footnote" color="secondary" numberOfLines={1}>
+                      {address}
+                    </Text>
+                  </InfoRow>
+                  <InfoRow icon={Euro}>
+                    <View style={styles.choicePrice}>
+                      <Text variant="bodyStrong" color="accent">
+                        {formatPrice(offer.deal_price_cents)}
+                      </Text>
+                      <Text variant="footnote" color="tertiary" style={styles.strike}>
+                        {formatPrice(offer.original_price_cents)}
+                      </Text>
+                    </View>
+                    <Text variant="footnote" color="secondary">
+                      Du zahlst vor Ort, nicht in der App
+                    </Text>
+                  </InfoRow>
+                  <InfoRow icon={Users} last>
+                    <Text variant="body">{seatsLabel(offer.free_seats)}</Text>
+                    <Text variant="footnote" color="secondary">
+                      {offer.max_per_user > 1
+                        ? `Bis zu ${offer.max_per_user} Plätze pro Person`
+                        : '1 Platz pro Person'}
+                    </Text>
+                  </InfoRow>
+                </View>
+
+                {myVoucher ? (
+                  <Button
+                    label="Deinen Code anzeigen"
+                    icon={Ticket}
+                    size="lg"
+                    fullWidth
+                    onPress={() =>
+                      router.push({ pathname: '/code/[id]', params: { id: myVoucher.id } })
+                    }
+                  />
+                ) : reason ? (
+                  <View style={styles.reason}>
+                    <Text variant="callout" color="secondary" align="center">
+                      {reason}
+                    </Text>
+                  </View>
+                ) : (
+                  <Button
+                    label="Code holen"
+                    icon={Ticket}
+                    size="lg"
+                    fullWidth
+                    haptic
+                    accessibilityHint={
+                      needsLogin
+                        ? 'Dafür meldest du dich kurz an'
+                        : 'Sichert dir deinen Platz mit einem Gutscheincode'
+                    }
+                    onPress={() => {
+                      if (needsLogin) router.push('/anmelden');
+                      else claimSheet.current?.present();
+                    }}
+                  />
+                )}
+                <Text variant="caption" color="tertiary" align="center">
+                  {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
+                </Text>
+
+                {description ? (
+                  <View style={styles.section}>
+                    <Text variant="headline">Das erwartet dich</Text>
+                    <Text variant="body" color="secondary" numberOfLines={expanded ? undefined : 5}>
+                      {description}
+                    </Text>
+                    {longDescription ? (
+                      <PressableScale
+                        accessibilityRole="button"
+                        onPress={() => setExpanded((value) => !value)}
+                        hitSlop={space[3]}
+                        style={styles.readMore}
+                      >
+                        <Text variant="subhead" color="accent" style={styles.semibold}>
+                          {expanded ? 'Weniger anzeigen' : 'Mehr lesen'}
+                        </Text>
+                      </PressableScale>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          ) : selected.isPending && activeId !== '' ? (
+            <Skeleton height={320} radius={radii.xl} />
+          ) : (
+            <EmptyState
+              icon={Sparkles}
+              title="Gerade kein Angebot"
+              message="Hier gibt es im Moment nichts zu holen. Merk dir den Ort mit dem Herz oben, dann sagen wir Bescheid, wenn es etwas Neues gibt."
+            />
+          )}
+        </View>
+
+        <View style={styles.body}>
+          {/* Weitere Angebote am Standort */}
+          {list.length > 1 ? (
+            <View style={styles.section}>
+              <HighlightTitle>{`Angebote hier (${list.length})`}</HighlightTitle>
+              <View style={styles.choices}>
+                {list.map((item) => (
+                  <OfferChoice
+                    key={item.id}
+                    offer={item}
+                    selected={item.id === activeId}
+                    onPress={() => choose(item.id)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Über den Anbieter und Ort */}
+          <View style={styles.section}>
+            <HighlightTitle>{`Über ${name}`}</HighlightTitle>
+            <View style={styles.aboutHead}>
+              {logo ? (
+                <OfferImage
+                  path={logo}
+                  bucket={STORAGE_BUCKETS.companyLogos}
+                  style={styles.logo}
+                  contentFit="cover"
+                  accessibilityLabel={`Logo von ${name}`}
+                />
+              ) : (
+                <View style={[styles.logo, styles.logoFallback]}>
+                  <Text variant="title3" style={{ color: colors.accent.onSolid }}>
+                    {name.trim().charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.flexText}>
+                <Text variant="bodyStrong">{locationName}</Text>
+                <Text variant="footnote" color="secondary">
+                  {address}
+                </Text>
+              </View>
+            </View>
+            {about ? (
+              <Text variant="body" color="secondary">
+                {about}
+              </Text>
+            ) : null}
+            {lat !== null && lng !== null ? (
+              <MiniMap lat={lat} lng={lng} label={locationName} onPress={openMaps} />
+            ) : null}
+            <View style={styles.actions}>
+              <Button
+                label="Route"
+                icon={Navigation}
+                variant="secondary"
+                onPress={openMaps}
+                style={styles.flex}
+              />
+              {phone.trim() ? (
+                <Button
+                  label="Anrufen"
+                  icon={Phone}
+                  variant="outline"
+                  onPress={() => void callPhone(phone)}
+                  style={styles.flex}
+                />
+              ) : null}
+              {website.trim() ? (
+                <Button
+                  label="Web"
+                  icon={Globe}
+                  variant="outline"
+                  onPress={() => void openWebsite(website)}
+                  style={styles.flex}
+                />
+              ) : null}
+            </View>
+          </View>
+
+          {resolvedLocationId ? (
+            <ReviewsSection locationId={resolvedLocationId} locationName={name} />
+          ) : null}
+        </View>
+
+        {/* Ähnliches bei anderen Anbietern */}
+        {similar.length > 0 ? (
+          <View style={styles.similar}>
+            <View style={styles.inset}>
+              <HighlightTitle variant="title2">{`Ähnliches in ${getCity(cityId).name}`}</HighlightTitle>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carousel}
+              decelerationRate="fast"
+              snapToInterval={COMPACT_CARD_WIDTH + space[3]}
+              snapToAlignment="start"
+            >
+              {similar.map((item, index) => (
+                <Appear key={item.id} index={index}>
+                  <OfferCard offer={item} variant="compact" />
+                </Appear>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+      </Animated.ScrollView>
+
+      {/* Foto oben: schrumpft beim Scrollen, bleibt als Streifen sichtbar */}
+      <Animated.View style={[styles.hero, heroStyle]} pointerEvents="none">
+        <OfferImage
+          path={heroPath}
+          style={StyleSheet.absoluteFill}
+          priority="high"
+          accessibilityLabel={offer?.title ?? name}
+        />
+        <View style={[styles.heroScrim, { height: insets.top + space[16] }]} />
+      </Animated.View>
+
+      <BackButton top={buttonTop} />
+      <View style={[styles.topRight, { top: buttonTop }]}>
+        {resolvedLocationId ? (
+          <View style={styles.floatingCircle}>
+            <FavoriteButton locationId={resolvedLocationId} name={name} />
+          </View>
+        ) : null}
+        {offer ? (
+          <IconButton
+            icon={Share2}
+            accessibilityLabel="Angebot teilen"
+            onPress={() => void shareOffer(offer)}
+          />
+        ) : null}
+      </View>
+
+      {offer ? <ClaimSheet ref={claimSheet} offer={offer} /> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background.default },
+  frame: { paddingHorizontal: layout.screenPaddingX },
+  flex: { flex: 1 },
+  flexText: { flex: 1, gap: space[0.5] },
+  semibold: { fontFamily: fonts.semibold },
+  strike: { textDecorationLine: 'line-through' },
+  inset: { paddingHorizontal: layout.screenPaddingX },
+
+  hero: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
+    backgroundColor: colors.background.muted,
+  },
+  heroScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface.overlay,
+    opacity: 0.45,
+  },
+  back: { position: 'absolute', left: layout.screenPaddingX },
+  topRight: {
+    position: 'absolute',
+    right: layout.screenPaddingX,
+    flexDirection: 'row',
+    gap: space[2],
+  },
+  floatingCircle: {
+    borderRadius: radii.full,
+    backgroundColor: colors.surface.raised,
+    boxShadow: shadow.floating,
+  },
+
+  head: {
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: space[5],
+    paddingBottom: space[5],
+    gap: space[2],
+  },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingTop: space[1] },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
+    paddingHorizontal: space[3],
+    paddingVertical: space[1.5],
+    borderRadius: radii.full,
+    backgroundColor: colors.background.muted,
+  },
+  pillAccent: { backgroundColor: soft.tint },
+  ratingLine: { flexDirection: 'row', alignItems: 'center', gap: space[1.5], paddingTop: space[1] },
+
+  cardOuter: { paddingHorizontal: layout.screenPaddingX },
+  card: {
+    borderRadius: radii.xl,
+    backgroundColor: colors.surface.raised,
+    boxShadow: shadow.card,
+    overflow: 'hidden',
+  },
+  cardStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+    padding: space[4],
+    backgroundColor: soft.tint,
+    borderBottomWidth: space[0.5],
+    borderBottomColor: colors.accent.solid,
+  },
+  cardStripIcon: {
+    width: layout.minTouchTarget + space[1],
+    height: layout.minTouchTarget + space[1],
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.solid,
+  },
+  stripTitle: { color: colors.accent.onSubtle },
+  stripText: { color: colors.accent.onSubtle },
+  cardBody: { padding: space[4], gap: space[4] },
+  infoRow: {
+    minHeight: layout.minTouchTarget + space[3],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+    paddingVertical: space[3],
+  },
+  infoRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border.default,
+  },
+  reason: { padding: space[3], borderRadius: radii.lg, backgroundColor: colors.background.subtle },
+  readMore: { alignSelf: 'flex-start' },
+
+  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: space[10], gap: space[10] },
+  section: { gap: space[3] },
+  choices: { gap: space[2] },
+  choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+    padding: space[2],
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.surface.raised,
+  },
+  choiceSelected: { borderColor: colors.accent.solid, backgroundColor: soft.warm },
+  choiceImage: { width: space[20], height: space[16], borderRadius: radii.md },
+  choicePrice: { flexDirection: 'row', alignItems: 'baseline', gap: space[2] },
+  choiceBadge: {
+    paddingHorizontal: space[2],
+    paddingVertical: space[0.5],
+    borderRadius: radii.full,
+    backgroundColor: colors.accent.solid,
+  },
+  choiceBadgeText: { color: colors.accent.onSolid, fontFamily: fonts.semibold },
+
+  aboutHead: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
+  logo: {
+    width: layout.minTouchTarget + space[3],
+    height: layout.minTouchTarget + space[3],
+    borderRadius: radii.full,
+  },
+  logoFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.solid,
+  },
+  actions: { flexDirection: 'row', gap: space[2] },
+
+  similar: { gap: space[4], paddingTop: space[10] },
+  carousel: { flexDirection: 'row', paddingHorizontal: layout.screenPaddingX, gap: space[3] },
+});

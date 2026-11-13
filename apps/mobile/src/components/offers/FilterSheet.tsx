@@ -1,126 +1,181 @@
 import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, type OfferCategory } from '@repo/shared';
-import { LayoutGrid } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { Check, LayoutGrid, type LucideIcon } from 'lucide-react-native';
 import type { RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Sheet, Text, type SheetRef } from '@/components/ui';
+import { Button, PressableScale, Sheet, Text, type SheetRef } from '@/components/ui';
 import { offersInCity } from '@/features/offers/cities';
-import {
-  countByCategory,
-  EMPTY_FILTERS,
-  filterOffers,
-  TIME_FILTER_LABELS,
-  TIME_FILTERS,
-} from '@/features/offers/feed-logic';
+import { countByCategory, filterOffers } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
-import { space } from '@/theme';
+import { colors, layout, radii, soft, space } from '@/theme';
 
 import { CATEGORY_ICONS } from './category-icons';
-import { FilterTile } from './FilterTile';
-import { TIME_ICONS } from './time-icons';
 
 export interface FilterSheetProps {
   sheetRef: RefObject<SheetRef | null>;
 }
 
-type CategoryChoice = OfferCategory | null;
-
-/** „Alle“ plus alle Kategorien, in Zweierreihen. */
-const CATEGORY_ROWS: CategoryChoice[][] = (() => {
-  const choices: CategoryChoice[] = [null, ...OFFER_CATEGORIES];
-  const rows: CategoryChoice[][] = [];
-  for (let i = 0; i < choices.length; i += 2) rows.push(choices.slice(i, i + 2));
-  return rows;
-})();
-
 function countLabel(count: number): string {
+  if (count === 0) return 'gerade nichts';
   return count === 1 ? '1 Angebot' : `${count} Angebote`;
 }
 
 /**
- * Alle Filter auf einen Blick: Zeit als Kachelreihe, Kategorien als Kacheln mit Anzahl.
- * Änderungen wirken sofort, unten steht live, wie viele Angebote übrig bleiben.
+ * Kategorie-Kachel: Name und Anzahl oben links, ein großes Icon ragt unten rechts
+ * angeschnitten aus der Kachel (flache, überlappende Form). Aktiv: in Akzentfarbe gefüllt.
  */
+function CategoryTile({
+  label,
+  detail,
+  icon: Icon,
+  selected,
+  muted,
+  wide = false,
+  onPress,
+}: {
+  label: string;
+  detail: string;
+  icon: LucideIcon;
+  selected: boolean;
+  muted: boolean;
+  wide?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${detail}`}
+      accessibilityState={{ selected }}
+      pressedScale={0.96}
+      onPress={() => {
+        void Haptics.selectionAsync();
+        onPress();
+      }}
+      style={[
+        styles.tile,
+        wide ? styles.tileWide : styles.tileHalf,
+        selected ? styles.tileSelected : styles.tileIdle,
+        muted && !selected && styles.tileMuted,
+      ]}
+    >
+      <View style={styles.tileIcon} pointerEvents="none">
+        <Icon
+          size={TILE_ICON_SIZE}
+          strokeWidth={1.5}
+          color={selected ? colors.accent.vivid : colors.accent.solid}
+          fill={selected ? colors.accent.solid : soft.tint}
+        />
+      </View>
+      <View style={styles.tileText}>
+        <Text
+          variant="bodyStrong"
+          numberOfLines={2}
+          style={{ color: selected ? colors.accent.onSolid : colors.text.primary }}
+        >
+          {label}
+        </Text>
+        <Text
+          variant="caption"
+          style={{ color: selected ? colors.accent.onSolid : colors.text.secondary }}
+        >
+          {detail}
+        </Text>
+      </View>
+      {selected ? (
+        <View style={styles.check}>
+          <Check size={14} strokeWidth={3} color={colors.accent.solid} />
+        </View>
+      ) : null}
+    </PressableScale>
+  );
+}
+
+/** Kategorien als große Kacheln. Die Tage stehen schon oben in der Filterzeile. */
 export function FilterSheet({ sheetRef }: FilterSheetProps) {
-  const { filters, setFilters, resetFilters, cityId } = useOfferFilters();
+  const { filters, setFilters, cityId } = useOfferFilters();
   const { data } = useOffers();
 
   const cityOffers = offersInCity(data ?? [], cityId);
-  // Die Zahlen an den Kategorien folgen dem gewählten Tag (und der Suche), nicht der Kategorie.
+  // Die Zahlen folgen dem gewählten Tag (und der Suche), nicht der Kategorie.
   const forCounts = filterOffers(cityOffers, { ...filters, category: null });
-  const categoryCounts = countByCategory(forCounts);
+  const counts = countByCategory(forCounts);
   const resultCount = filterOffers(cityOffers, filters).length;
-  const changed = filters.time !== EMPTY_FILTERS.time || filters.category !== null;
+
+  const choose = (category: OfferCategory | null) =>
+    setFilters({
+      category: category !== null && filters.category === category ? null : category,
+    });
 
   return (
-    <Sheet ref={sheetRef} title="Was möchtest du erleben?">
-      <View style={styles.group}>
-        <Text variant="subhead" color="secondary" accessibilityRole="header">
-          Wann
-        </Text>
-        <View style={styles.timeRow}>
-          {TIME_FILTERS.map((time) => (
-            <FilterTile
-              key={time}
-              layout="column"
-              label={TIME_FILTER_LABELS[time]}
-              icon={TIME_ICONS[time]}
-              selected={filters.time === time}
-              onPress={() => setFilters({ time })}
-              style={styles.flex}
-            />
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.group}>
-        <Text variant="subhead" color="secondary" accessibilityRole="header">
-          Kategorie
-        </Text>
-        {CATEGORY_ROWS.map((row) => (
-          <View key={row.map(String).join('-')} style={styles.categoryRow}>
-            {row.map((category) => {
-              const count = category ? categoryCounts[category] : forCounts.length;
-              return (
-                <FilterTile
-                  key={category ?? 'alle'}
-                  label={category ? OFFER_CATEGORY_LABELS[category] : 'Alle Kategorien'}
-                  icon={category ? CATEGORY_ICONS[category] : LayoutGrid}
-                  detail={countLabel(count)}
-                  muted={count === 0}
-                  selected={filters.category === category}
-                  onPress={() =>
-                    setFilters({
-                      category:
-                        category !== null && filters.category === category ? null : category,
-                    })
-                  }
-                  style={styles.flex}
-                />
-              );
-            })}
-            {row.length === 1 ? <View style={styles.flex} /> : null}
-          </View>
+    <Sheet ref={sheetRef} title="Worauf hast du Lust?">
+      <View style={styles.grid}>
+        <CategoryTile
+          wide
+          label="Alles zeigen"
+          detail={countLabel(forCounts.length)}
+          icon={LayoutGrid}
+          selected={filters.category === null}
+          muted={false}
+          onPress={() => choose(null)}
+        />
+        {OFFER_CATEGORIES.map((category) => (
+          <CategoryTile
+            key={category}
+            label={OFFER_CATEGORY_LABELS[category]}
+            detail={countLabel(counts[category])}
+            icon={CATEGORY_ICONS[category]}
+            selected={filters.category === category}
+            muted={counts[category] === 0}
+            onPress={() => choose(category)}
+          />
         ))}
       </View>
 
-      <View style={styles.actions}>
-        {changed ? <Button label="Zurücksetzen" variant="ghost" onPress={resetFilters} /> : null}
-        <Button
-          label={resultCount === 0 ? 'Keine Angebote' : `${countLabel(resultCount)} anzeigen`}
-          onPress={() => sheetRef.current?.dismiss()}
-          style={styles.flex}
-        />
-      </View>
+      <Button
+        label={resultCount === 0 ? 'Keine Angebote' : `${countLabel(resultCount)} anzeigen`}
+        size="lg"
+        fullWidth
+        disabled={resultCount === 0}
+        onPress={() => sheetRef.current?.dismiss()}
+      />
     </Sheet>
   );
 }
 
+const TILE_ICON_SIZE = space[16] + space[4];
+
 const styles = StyleSheet.create({
-  group: { gap: space[2] },
-  timeRow: { flexDirection: 'row', gap: space[2] },
-  categoryRow: { flexDirection: 'row', gap: space[2] },
-  flex: { flex: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: space[3], paddingTop: space[2] },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+  tile: {
+    minHeight: layout.minTouchTarget * 2,
+    padding: space[3],
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+  },
+  tileHalf: { flexBasis: '47%', flexGrow: 1 },
+  tileWide: { flexBasis: '100%', minHeight: layout.minTouchTarget + space[6] },
+  tileIdle: { backgroundColor: soft.warm, borderWidth: 1, borderColor: soft.tint },
+  tileSelected: { backgroundColor: colors.accent.solid },
+  tileMuted: { opacity: 0.5 },
+  tileIcon: {
+    position: 'absolute',
+    right: -space[4],
+    bottom: -space[4],
+    transform: [{ rotate: '-12deg' }],
+  },
+  tileText: { gap: space[0.5], paddingRight: space[8] },
+  check: {
+    position: 'absolute',
+    top: space[2],
+    right: space[2],
+    width: space[6],
+    height: space[6],
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.onSolid,
+  },
 });
