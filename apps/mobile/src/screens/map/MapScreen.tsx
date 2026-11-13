@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
 import { CloudOff, LocateFixed } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,12 +29,18 @@ import {
   showUserScript,
 } from '@/features/map/map-html';
 import { firstIndexAtPlace, mapOffers } from '@/features/map/map-logic';
-import { getCity, offersInCity } from '@/features/offers/cities';
+import { getCity, nearestCityId, offersInCity } from '@/features/offers/cities';
 import { filterOffers, groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import {
+  peekPosition,
+  quickPosition,
+  watchPositionWhileOpen,
+  type Coordinates,
+} from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -64,7 +70,7 @@ export function MapScreen() {
   const webview = useRef<MapWebView>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
-  const { filters, resetFilters, cityId } = useOfferFilters();
+  const { filters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, refetch } = useOffers();
 
   const [mapReady, setMapReady] = useState(false);
@@ -100,10 +106,20 @@ export function MapScreen() {
     if (mapReady) webview.current?.injectJavaScript(placesScript);
   }, [mapReady, placesScript]);
 
-  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel).
+  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel, auch aus „Entdecken“).
+  // Kam der Wechsel vom Standort-Knopf, danach gleich zum eigenen Standort weiter.
+  const pendingUser = useRef<Coordinates | null>(null);
   const centerScript = setCenterScript(city.center.lat, city.center.lng);
   useEffect(() => {
-    if (mapReady) webview.current?.injectJavaScript(centerScript);
+    if (!mapReady) return;
+    const user = pendingUser.current;
+    if (user) {
+      // Wechsel kam vom Standort-Knopf: gleich zum Standort, die Stadtmitte überspringen.
+      pendingUser.current = null;
+      webview.current?.injectJavaScript(showUserScript(user.lat, user.lng));
+      return;
+    }
+    webview.current?.injectJavaScript(centerScript);
   }, [mapReady, centerScript]);
 
   // Ausgewählte Nadel hervorheben und in den sichtbaren Bereich holen.
@@ -148,28 +164,49 @@ export function MapScreen() {
     void refetch();
   };
 
+  // Eigener Standort: blauen Punkt zeigen und die Stadt dorthin wechseln. Die Stadt gilt
+  // für Karte und „Entdecken“ gemeinsam, der Feed springt also mit.
+  // Sofort springen (gemerkte oder letzte bekannte Position), die genaue Ortung setzt den
+  // Punkt danach nur noch nach, ohne die Karte erneut zu bewegen.
+  // Solange die Karte sichtbar ist, die Position im Hintergrund frisch halten. Dann springt
+  // der Knopf sofort, statt erst auf die Ortung zu warten.
+  useFocusEffect(useCallback(() => watchPositionWhileOpen(), []));
+
+  const jumpToUser = (coords: Coordinates, move = true) => {
+    const nextCity = nearestCityId(coords);
+    if (move && nextCity !== cityId) {
+      // Die Karte springt im Effekt oben direkt zum Standort (nicht erst zur Stadtmitte).
+      pendingUser.current = coords;
+      setSelectedId(null);
+      setCityId(nextCity);
+    } else {
+      webview.current?.injectJavaScript(showUserScript(coords.lat, coords.lng, move));
+    }
+  };
+
   const showMyLocation = async () => {
     if (locating) return;
-    setLocating(true);
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
-        setNotice('denied');
+    void Haptics.selectionAsync();
+
+    // Schnellster Weg: Position ist schon bekannt, sofort springen.
+    const known = peekPosition();
+    if (known) jumpToUser(known);
+
+    // Sonst (oder zum Nachschärfen) orten; bis dahin dreht sich das Symbol im Knopf.
+    setLocating(!known);
+    const result = await quickPosition();
+    setLocating(false);
+    if (result.status !== 'ok') {
+      if (!known) {
+        setNotice(result.status);
         noticeSheet.current?.present();
-        return;
       }
-      const position =
-        (await Location.getLastKnownPositionAsync()) ??
-        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-      webview.current?.injectJavaScript(
-        showUserScript(position.coords.latitude, position.coords.longitude),
-      );
-    } catch {
-      setNotice('failed');
-      noticeSheet.current?.present();
-    } finally {
-      setLocating(false);
+      return;
     }
+    if (!known) jumpToUser(result.coords);
+    void result.refined?.then((coords) => {
+      if (coords) jumpToUser(coords, false);
+    });
   };
 
   const allSoldOut = visible.length > 0 && visible.every((offer) => offer.free_seats === 0);
@@ -231,7 +268,8 @@ export function MapScreen() {
         onLayout={(event) => setTopInset(event.nativeEvent.layout.height)}
       >
         <MapSearchBar>
-          <FilterBar showCity />
+          {/* Ohne Städtewahl: Die Stadt kommt aus „Entdecken“ oder vom Standort-Knopf. */}
+          <FilterBar />
         </MapSearchBar>
         {error ? (
           <View style={styles.banner}>
@@ -271,7 +309,7 @@ export function MapScreen() {
             <IconButton
               icon={LocateFixed}
               accessibilityLabel="Meinen Standort anzeigen"
-              active={locating}
+              loading={locating}
               onPress={() => void showMyLocation()}
               style={styles.locate}
             />

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors, layout, radii, shadow } from '@/theme';
 
@@ -14,6 +14,8 @@ export interface IconButtonProps {
   variant?: 'floating' | 'plain';
   /** Aktiv, z. B. Herz gefüllt. */
   active?: boolean;
+  /** Zeigt statt des Icons ein Ladesymbol, z. B. während der Ortung. */
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -24,6 +26,7 @@ export function IconButton({
   onPress,
   variant = 'floating',
   active = false,
+  loading = false,
   style,
 }: IconButtonProps) {
   const color = active ? colors.accent.solid : colors.text.primary;
@@ -31,13 +34,17 @@ export function IconButton({
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, busy: loading }}
       onPress={onPress}
       hitSlop={6}
       pressedScale={0.92}
       style={[styles.base, variant === 'floating' && styles.floating, style]}
     >
-      <Icon size={22} color={color} fill={active ? color : 'none'} strokeWidth={2.25} />
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.accent.solid} />
+      ) : (
+        <Icon size={22} color={color} fill={active ? color : 'none'} strokeWidth={2.25} />
+      )}
     </PressableScale>
   );
 }

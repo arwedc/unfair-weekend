@@ -13,6 +13,7 @@ import {
   selectPlaceScript,
   setCenterScript,
   setPlacesScript,
+  showUserScript,
   toScriptJson,
 } from './map-html';
 
@@ -93,6 +94,13 @@ describe('selectPlaceScript', () => {
     const script = selectPlaceScript('a', { top: 120, bottom: 200 });
     expect(script).toContain('window.selectPlace("a", {"top":120,"bottom":200})');
     expect(selectPlaceScript(null, { top: 0, bottom: 0 })).toContain('window.selectPlace(null');
+  });
+});
+
+describe('showUserScript', () => {
+  it('fährt zum Standort oder setzt nur den Punkt nach', () => {
+    expect(showUserScript(51.96, 7.62)).toContain('window.showUser([7.62,51.96], true)');
+    expect(showUserScript(51.96, 7.62, false)).toContain('window.showUser([7.62,51.96], false)');
   });
 });
 

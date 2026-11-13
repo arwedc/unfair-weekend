@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   cityOfOffer,
+  nearestCityId,
   countOffersByCity,
   distanceKm,
   getCity,
@@ -52,6 +53,15 @@ describe('offersInCity und countOffersByCity', () => {
   it('zählt je Stadt, auch leere', () => {
     expect(countOffersByCity(offers)).toEqual({ muenster: 2, vilnius: 1 });
     expect(countOffersByCity([])).toEqual({ muenster: 0, vilnius: 0 });
+  });
+});
+
+describe('nearestCityId', () => {
+  it('findet die Stadt zum eigenen Standort', () => {
+    expect(nearestCityId(PRINZIPALMARKT)).toBe('muenster');
+    expect(nearestCityId(VILNIUS_ALTSTADT)).toBe('vilnius');
+    // Außerhalb aller Städte: die nächstgelegene
+    expect(nearestCityId(BERLIN)).toBe('muenster');
   });
 });
 

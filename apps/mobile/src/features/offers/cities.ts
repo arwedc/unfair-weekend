@@ -55,6 +55,16 @@ export function distanceKm(
 
 type Located = Pick<Offer, 'lat' | 'lng'>;
 
+/** Nächstgelegene Stadt zu einem Punkt, z. B. zum eigenen Standort. */
+export function nearestCityId(point: { lat: number; lng: number }): CityId {
+  let nearest: { id: CityId; distance: number } | null = null;
+  for (const city of CITIES) {
+    const distance = distanceKm(city.center, point);
+    if (nearest === null || distance < nearest.distance) nearest = { id: city.id, distance };
+  }
+  return nearest?.id ?? DEFAULT_CITY_ID;
+}
+
 /**
  * Stadt eines Angebots: die nächstgelegene. So geht kein Angebot verloren, auch wenn
  * es etwas außerhalb liegt. Ohne Koordinaten zählt es zur Startstadt.
@@ -64,13 +74,7 @@ export function cityOfOffer(offer: Located): CityId {
   const lat = offer.lat as number | null;
   const lng = offer.lng as number | null;
   if (lat === null || lng === null) return DEFAULT_CITY_ID;
-
-  let nearest: { id: CityId; distance: number } | null = null;
-  for (const city of CITIES) {
-    const distance = distanceKm(city.center, { lat, lng });
-    if (nearest === null || distance < nearest.distance) nearest = { id: city.id, distance };
-  }
-  return nearest?.id ?? DEFAULT_CITY_ID;
+  return nearestCityId({ lat, lng });
 }
 
 export function offersInCity<T extends Located>(offers: readonly T[], cityId: CityId): T[] {
