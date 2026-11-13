@@ -4,13 +4,15 @@ import { useActionState } from 'react';
 import { login, type LoginState } from '@/app/actions';
 import { Button, Field, inputClass } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
+import { NEXT_PARAM } from '@/lib/safe-redirect';
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string | null }) {
   const { t } = useT();
   const [state, action, pending] = useActionState<LoginState, FormData>(login, {});
 
   return (
     <form action={action} className="space-y-4">
+      {next ? <input type="hidden" name={NEXT_PARAM} value={next} /> : null}
       <Field id="email" label={t.common.login.email}>
         <input
           id="email"

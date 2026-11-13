@@ -4,6 +4,7 @@ import { LocaleSwitcher } from '@/components/i18n/locale-switcher';
 import { Logo } from '@/components/logo';
 import { Card } from '@/components/ui';
 import { getT } from '@/lib/i18n/locale';
+import { safeNext } from '@/lib/safe-redirect';
 import { LoginForm } from './login-form';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,10 +27,16 @@ async function ReasonNotice({ searchParams }: { searchParams: Promise<{ grund?: 
   );
 }
 
+/** Rücksprungziel aus `?weiter=` an das Formular geben (geprüft wird beim Login). */
+async function LoginFormWithNext({ searchParams }: { searchParams: Promise<{ weiter?: string }> }) {
+  const { weiter } = await searchParams;
+  return <LoginForm next={safeNext(weiter)} />;
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grund?: string }>;
+  searchParams: Promise<{ grund?: string; weiter?: string }>;
 }) {
   const { t } = await getT();
   return (
@@ -46,7 +53,9 @@ export default async function LoginPage({
         <ReasonNotice searchParams={searchParams} />
       </Suspense>
       <Card className="p-6">
-        <LoginForm />
+        <Suspense fallback={<LoginForm />}>
+          <LoginFormWithNext searchParams={searchParams} />
+        </Suspense>
       </Card>
       {process.env.NODE_ENV !== 'production' && (
         <p className="mt-6 text-center text-footnote text-text-tertiary">

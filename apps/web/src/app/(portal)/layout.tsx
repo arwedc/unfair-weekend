@@ -36,6 +36,9 @@ export default async function PortalLayout({ children }: { children: React.React
               <Link href="/angebote" className={buttonClass('ghost', 'px-3')}>
                 {nav.offers}
               </Link>
+              <Link href="/einloesen" className={buttonClass('ghost', 'px-3')}>
+                {nav.checkin}
+              </Link>
               <Link href="/vorlagen" className={buttonClass('ghost', 'px-3')}>
                 {nav.templates}
               </Link>
