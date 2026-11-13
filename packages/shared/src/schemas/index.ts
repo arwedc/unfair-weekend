@@ -291,3 +291,27 @@ export const pushTokenSchema = z.object({
   token: z.string().min(1).max(500),
   platform: z.enum(Constants.public.Enums.push_platform),
 });
+
+// ---------------------------------------------------------------------------
+// Zahlungen (Variante B)
+// ---------------------------------------------------------------------------
+
+/** start_paid_booking (über die Edge Function stripe-create-booking) */
+export const startPaidBookingSchema = claimVoucherSchema;
+export type StartPaidBookingInput = z.infer<typeof startPaidBookingSchema>;
+
+/** cancel_paid_booking (über die Edge Function stripe-cancel-booking) */
+export const cancelPaidBookingSchema = z.object({
+  booking_id: z.uuid(),
+});
+
+/** update_payment_settings: Provision in Basispunkten (1500 = 15 %), höchstens 50 % */
+export const paymentSettingsSchema = z.object({
+  payments_enabled: z.boolean(),
+  commission_bps: z
+    .number()
+    .int()
+    .min(0, { error: 'Die Provision kann nicht negativ sein.' })
+    .max(5000, { error: 'Die Provision darf höchstens 50 % betragen.' }),
+});
+export type PaymentSettingsInput = z.infer<typeof paymentSettingsSchema>;
