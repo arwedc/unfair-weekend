@@ -4,19 +4,10 @@ import { useRef, useState } from 'react';
 import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CitySheet } from '@/components/offers/CitySheet';
+import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
 import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
-import {
-  Appear,
-  EmptyState,
-  IconButton,
-  Input,
-  PressableScale,
-  SectionHeader,
-  Text,
-  type SheetRef,
-} from '@/components/ui';
+import { Appear, EmptyState, IconButton, Input, SectionHeader, Text } from '@/components/ui';
 import { getCity, offersInCity } from '@/features/offers/cities';
 import {
   buildSections,
@@ -29,7 +20,7 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
 import { errorMessage, isOffline } from '@/lib/api-error';
-import { colors, layout, space } from '@/theme';
+import { colors, layout, radii, space } from '@/theme';
 
 function Carousel({
   section,
@@ -91,8 +82,7 @@ function LoadingState() {
 export function FeedScreen() {
   const insets = useSafeAreaInsets();
   const list = useRef<FlatList<FeedOffer>>(null);
-  const citySheet = useRef<SheetRef>(null);
-  const { filters, setFilters, resetFilters, cityId } = useOfferFilters();
+  const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -129,19 +119,22 @@ export function FeedScreen() {
   const top = (
     <View style={[styles.top, { paddingTop: insets.top + space[1] }]}>
       <View style={styles.titleRow}>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={`Stadt: ${city.name}`}
-          accessibilityHint="Öffnet die Auswahl der Städte"
-          onPress={() => citySheet.current?.present()}
-          hitSlop={space[2]}
-          style={styles.cityButton}
-        >
-          <Text variant="title2" numberOfLines={1} style={styles.cityName}>
-            {city.name}
-          </Text>
-          <ChevronDown size={22} strokeWidth={2.5} color={colors.accent.solid} />
-        </PressableScale>
+        <CityMenu style={styles.cityMenu}>
+          <View
+            style={styles.cityButton}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={`Stadt: ${city.name}`}
+            accessibilityHint="Öffnet die Auswahl der Städte"
+          >
+            <Text variant="title2" numberOfLines={1} style={styles.cityName}>
+              {city.name}
+            </Text>
+            <View style={styles.chevron}>
+              <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.solid} />
+            </View>
+          </View>
+        </CityMenu>
         <IconButton
           variant="plain"
           icon={showSearch ? X : Search}
@@ -203,8 +196,8 @@ export function FeedScreen() {
       icon={MapPin}
       title={`Bald auch in ${city.name} ✨`}
       message="Hier suchen wir gerade die ersten Partner. Bis dahin findest du Angebote in den anderen Städten."
-      actionLabel="Stadt wechseln"
-      onAction={() => citySheet.current?.present()}
+      actionLabel={`Zu ${fallbackCity(cityId).name} wechseln`}
+      onAction={() => setCityId(fallbackCity(cityId).id)}
     />
   ) : filtering && cityOffers.length > 0 ? (
     <EmptyState
@@ -256,8 +249,6 @@ export function FeedScreen() {
           />
         }
       />
-
-      <CitySheet sheetRef={citySheet} />
     </View>
   );
 }
@@ -283,14 +274,22 @@ const styles = StyleSheet.create({
     paddingLeft: layout.screenPaddingX,
     paddingRight: layout.screenPaddingX - space[2],
   },
+  cityMenu: { flexShrink: 1 },
   cityButton: {
-    flexShrink: 1,
     minHeight: layout.minTouchTarget,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[1],
   },
   cityName: { flexShrink: 1 },
+  chevron: {
+    width: space[6],
+    height: space[6],
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.subtle,
+  },
   list: { flex: 1, backgroundColor: colors.background.default },
   content: { paddingTop: space[5], paddingBottom: space[12] },
   header: { gap: space[6], paddingBottom: space[4] },

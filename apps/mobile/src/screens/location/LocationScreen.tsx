@@ -6,6 +6,7 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
+import { ReviewsSection } from '@/components/reviews/ReviewsSection';
 import { Appear, Button, EmptyState, SectionHeader, Skeleton, Text } from '@/components/ui';
 import { useLocation, useLocationOffers } from '@/features/offers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
@@ -194,6 +195,8 @@ export function LocationScreen({ locationId }: { locationId: string }) {
           ))
         )}
       </View>
+
+      <ReviewsSection locationId={place.id} locationName={place.company_name} />
     </ScrollView>
   );
 }

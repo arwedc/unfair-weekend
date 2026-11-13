@@ -12,6 +12,7 @@ import {
   formatPrice,
   formatTimeRange,
   isFewSeatsLeft,
+  OFFER_CATEGORIES,
   OFFER_CATEGORY_LABELS,
   offerTimeLabel,
   seatsLabel,
@@ -107,6 +108,32 @@ export function filterOffers<T extends Offer>(
       matchesTimeFilter(offer, filters.time, now) &&
       matchesSearch(offer, filters.query),
   );
+}
+
+/** Anzahl Angebote je Kategorie, z. B. für die Kacheln im Filter-Sheet. */
+export function countByCategory(
+  offers: readonly Pick<Offer, 'category'>[],
+): Record<OfferCategory, number> {
+  const counts: Partial<Record<OfferCategory, number>> = {};
+  for (const offer of offers) counts[offer.category] = (counts[offer.category] ?? 0) + 1;
+  return Object.fromEntries(
+    OFFER_CATEGORIES.map((category) => [category, counts[category] ?? 0]),
+  ) as Record<OfferCategory, number>;
+}
+
+/**
+ * Ähnliche Angebote für die Detailseite: gleiche Kategorie zuerst, dann der Rest.
+ * Ohne das Angebot selbst und ohne ausgebuchte. Die Liste ist schon auf die Stadt eingegrenzt.
+ */
+export function similarOffers<T extends Pick<Offer, 'id' | 'category' | 'free_seats'>>(
+  offers: readonly T[],
+  current: Pick<Offer, 'id' | 'category'>,
+  limit = 8,
+): T[] {
+  const candidates = offers.filter((offer) => offer.id !== current.id && offer.free_seats > 0);
+  const same = candidates.filter((offer) => offer.category === current.category);
+  const other = candidates.filter((offer) => offer.category !== current.category);
+  return [...same, ...other].slice(0, limit);
 }
 
 /**
