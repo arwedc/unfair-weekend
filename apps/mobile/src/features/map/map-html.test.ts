@@ -8,6 +8,7 @@ import {
   MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
+  setCenterScript,
   setPlacesScript,
   toScriptJson,
 } from './map-html';
@@ -54,6 +55,14 @@ describe('setPlacesScript', () => {
   it('ruft setPlaces auf und endet mit true', () => {
     const script = setPlacesScript([place()]);
     expect(script).toContain('window.setPlaces(');
+    expect(script.trim().endsWith('true;')).toBe(true);
+  });
+});
+
+describe('setCenterScript', () => {
+  it('springt mit [lng, lat] auf die Stadt', () => {
+    const script = setCenterScript(54.6872, 25.2797);
+    expect(script).toContain('window.setCenter([25.2797,54.6872])');
     expect(script.trim().endsWith('true;')).toBe(true);
   });
 });

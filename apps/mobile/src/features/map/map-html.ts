@@ -109,6 +109,11 @@ export function setPlacesScript(places: readonly OfferPlace[]): string {
   return `window.setPlaces && window.setPlaces(${toScriptJson(placesToGeoJson(places))}); true;`;
 }
 
+/** Befehl für die WebView: ohne Animation auf eine Stadt springen (Zoom wie beim Start). */
+export function setCenterScript(lat: number, lng: number): string {
+  return `window.setCenter && window.setCenter(${toScriptJson([lng, lat])}); true;`;
+}
+
 /** Befehl für die WebView: eigenen Standort zeigen und hinfliegen. */
 export function showUserScript(lat: number, lng: number): string {
   return `window.showUser && window.showUser(${toScriptJson([lng, lat])}); true;`;
@@ -196,6 +201,10 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
       userMarker.setLngLat(lngLat);
     }
     map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 14) });
+  };
+
+  window.setCenter = function (lngLat) {
+    map.jumpTo({ center: lngLat, zoom: config.zoom });
   };
 
   map.on('error', function (event) {

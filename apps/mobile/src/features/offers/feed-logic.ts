@@ -9,6 +9,7 @@ import {
   formatDateRange,
   formatDay,
   formatDiscount,
+  formatPrice,
   formatTimeRange,
   isFewSeatsLeft,
   OFFER_CATEGORY_LABELS,
@@ -108,41 +109,134 @@ export function filterOffers<T extends Offer>(
   );
 }
 
-export interface FeedSections {
-  /** Heute machbar und noch Plätze frei. */
-  today: FeedOffer[];
-  /** Einzeltermine in den nächsten drei Tagen (ohne heute). */
-  startingSoon: FeedOffer[];
-  /** Zuletzt veröffentlicht. */
-  newest: FeedOffer[];
+/**
+ * Kategorie oder Suche aktiv: Der Feed zeigt eine schlichte Trefferliste statt Abschnitten.
+ * Der Zeitfilter allein behält die Abschnitte (sie zeigen dann nur diesen Tag).
+ */
+export function isListMode(filters: OfferFilters): boolean {
+  return filters.category !== null || filters.query.trim() !== '';
+}
+
+/** Ein Karussell im Feed, z. B. „Heute in Münster“ oder „Kochen & Essen“. */
+export interface FeedSection {
+  key: string;
+  title: string;
+  offers: FeedOffer[];
+  /** Nur bei Kategorie-Abschnitten: „Alle“ filtert den Feed auf diese Kategorie. */
+  category?: OfferCategory;
 }
 
 const SECTION_LIMIT = 8;
 const STARTING_SOON_DAYS = 3;
+/** Ab dieser Stunde (Berliner Zeit) gilt ein Termin als „nach Feierabend“. */
+const EVENING_FROM_HOUR = 17;
+const BIG_DISCOUNT_PERCENT = 50;
+export const BUDGET_PRICE_CENTS = 1500;
+/** Themen-Abschnitte erscheinen erst ab so vielen Angeboten, damit der Feed nicht zerfasert. */
+const THEME_MIN_OFFERS = 2;
 
-/** Abschnitte für den Feed. Die Angebote kommen schon nach „als Nächstes relevant“ sortiert. */
+/** Kategorien mit eigenem Abschnitt. „Sonstiges“ steht nur in der Liste „Alle Angebote“. */
+type SectionCategory = Exclude<OfferCategory, 'sonstiges'>;
+
+interface SectionDraft {
+  section: FeedSection;
+  minOffers: number;
+}
+
+/**
+ * Abschnitte für den Feed, im Wechsel aus Zeit, Themen und Kategorien.
+ * Die Angebote kommen schon nach „als Nächstes relevant“ sortiert und sind bereits
+ * auf Stadt und Zeitfilter eingegrenzt. Leere Abschnitte fallen weg.
+ */
 export function buildSections(
   offers: readonly FeedOffer[],
-  now: DateInput = new Date(),
-): FeedSections {
-  const today = offers
-    .filter((offer) => offer.free_seats > 0 && matchesTimeFilter(offer, 'heute', now))
-    .slice(0, SECTION_LIMIT);
+  options: { cityName: string; now?: DateInput },
+): FeedSection[] {
+  const now = options.now ?? new Date();
+  const available = offers.filter((offer) => offer.free_seats > 0);
 
-  const startingSoon = offers
-    .filter((offer) => {
-      if (offer.type !== 'einzeltermin' || offer.free_seats === 0) return false;
-      const days = calendarDaysBetween(now, offer.starts_at);
-      return days >= 1 && days <= STARTING_SOON_DAYS;
-    })
-    .slice(0, SECTION_LIMIT);
+  const time = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
+    section: { key, title, offers: items },
+    minOffers: 1,
+  });
+  const theme = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
+    section: { key, title, offers: items },
+    minOffers: THEME_MIN_OFFERS,
+  });
+  const category = (value: SectionCategory): SectionDraft => ({
+    section: {
+      key: `kategorie-${value}`,
+      title: OFFER_CATEGORY_LABELS[value],
+      offers: available.filter((offer) => offer.category === value),
+      category: value,
+    },
+    minOffers: 1,
+  });
 
-  const newest = offers
-    .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, SECTION_LIMIT);
+  const drafts: SectionDraft[] = [
+    time(
+      'heute',
+      `Heute in ${options.cityName}`,
+      available.filter((offer) => matchesTimeFilter(offer, 'heute', now)),
+    ),
+    time(
+      'bald',
+      'Startet bald',
+      available.filter((offer) => {
+        if (offer.type !== 'einzeltermin') return false;
+        const days = calendarDaysBetween(now, offer.starts_at);
+        return days >= 1 && days <= STARTING_SOON_DAYS;
+      }),
+    ),
+    time(
+      'knapp',
+      'Fast ausgebucht',
+      available.filter((offer) => isFewSeatsLeft(offer.free_seats)),
+    ),
+    theme(
+      'halber-preis',
+      'Zum halben Preis',
+      available
+        .filter((offer) => offer.discount_percent >= BIG_DISCOUNT_PERCENT)
+        .sort((a, b) => b.discount_percent - a.discount_percent),
+    ),
+    time(
+      'neu',
+      'Neu dabei',
+      offers
+        .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    ),
+    category('kochen_essen'),
+    category('sport_bewegung'),
+    theme(
+      'feierabend',
+      'Nach Feierabend',
+      available.filter(
+        (offer) =>
+          offer.type === 'einzeltermin' && berlinParts(offer.starts_at).hour >= EVENING_FROM_HOUR,
+      ),
+    ),
+    category('kreativ_workshops'),
+    theme(
+      'budget',
+      `Bis ${formatPrice(BUDGET_PRICE_CENTS, { omitZeroCents: true })}`,
+      available
+        .filter((offer) => offer.deal_price_cents <= BUDGET_PRICE_CENTS)
+        .sort((a, b) => a.deal_price_cents - b.deal_price_cents),
+    ),
+    category('wellness_beauty'),
+    category('kultur_events'),
+    theme(
+      'flexibel',
+      'Einlösen, wann du willst',
+      available.filter((offer) => offer.type === 'zeitraum'),
+    ),
+  ];
 
-  return { today, startingSoon, newest };
+  return drafts
+    .filter(({ section, minOffers }) => section.offers.length >= minOffers)
+    .map(({ section }) => ({ ...section, offers: section.offers.slice(0, SECTION_LIMIT) }));
 }
 
 export interface OfferBadge {
