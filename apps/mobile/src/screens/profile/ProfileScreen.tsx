@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   Bell,
-  Heart,
+  CircleHelp,
   FileText,
   LogOut,
   Pencil,
@@ -31,10 +31,10 @@ import {
 import { blockedNotice, fullName } from '@/features/auth/account';
 import { deleteAccount, signOut } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
+import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import {
   useFavoriteCategories,
   useFavoriteLocations,
-  useFavoriteOffers,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
@@ -75,6 +75,18 @@ function LegalRows() {
         }
       />
     </View>
+  );
+}
+
+function OnboardingHelpRow() {
+  const { replay } = useOnboarding();
+  return (
+    <ListRow
+      icon={CircleHelp}
+      title="App kurz erklärt"
+      detail="Den Rundgang jederzeit wiederholen"
+      onPress={replay}
+    />
   );
 }
 
@@ -157,35 +169,24 @@ function FavoriteCategories() {
   );
 }
 
-/** Einstieg zu den Favoriten: gemerkte Angebote und Lieblingsorte, jeweils mit Anzahl. */
+/** Einstieg zu den gemerkten Standorten. */
 function Favorites() {
   const router = useRouter();
-  const { offers } = useFavoriteOffers();
   const { locations } = useFavoriteLocations();
 
   return (
     <View style={styles.section}>
       <SectionHeader title="Favoriten" />
-      <View>
-        <ListRow
-          icon={Heart}
-          title="Gemerkte Angebote"
-          detail={
-            offers.length > 0 ? `${offers.length} gemerkt` : 'Tipp bei Angeboten auf das Herz'
-          }
-          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'angebote' } })}
-        />
-        <ListRow
-          icon={Store}
-          title="Lieblingsorte"
-          detail={
-            locations.length > 0
-              ? `${locations.length} ${locations.length === 1 ? 'Ort' : 'Orte'}`
-              : 'Tipp bei Anbietern auf das Herz'
-          }
-          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'orte' } })}
-        />
-      </View>
+      <ListRow
+        icon={Store}
+        title="Lieblingsorte"
+        detail={
+          locations.length > 0
+            ? `${locations.length} ${locations.length === 1 ? 'Ort' : 'Orte'}`
+            : 'Tipp bei Anbietern auf das Herz'
+        }
+        onPress={() => router.push('/favoriten')}
+      />
     </View>
   );
 }
@@ -212,6 +213,7 @@ export function ProfileScreen() {
     return (
       <Screen>
         <Header title="Profil" />
+        <OnboardingHelpRow />
         <EmptyState
           icon={UserRound}
           title="Noch nicht angemeldet"
@@ -227,6 +229,7 @@ export function ProfileScreen() {
     return (
       <Screen>
         <Header title="Profil" />
+        <OnboardingHelpRow />
         <EmptyState
           tone="error"
           icon={TriangleAlert}
@@ -260,6 +263,7 @@ export function ProfileScreen() {
   return (
     <Screen>
       <Header title={name || 'Dein Profil'} subtitle={email ?? undefined} />
+      <OnboardingHelpRow />
 
       {blocked ? (
         <View style={styles.notice} accessibilityRole="alert">

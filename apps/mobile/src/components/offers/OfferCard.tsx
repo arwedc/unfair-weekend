@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { OfferFavoriteButton } from '@/components/favorites/OfferFavoriteButton';
 import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
@@ -69,7 +68,6 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
             />
           ))}
         </View>
-        <OfferFavoriteButton offerId={offer.id} title={offer.title} style={styles.heart} />
       </View>
 
       <View style={styles.body}>
@@ -130,13 +128,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: badge.inset,
     left: badge.inset,
-    // Platz für das Herz rechts oben
-    right: badge.inset + space[10],
+    right: badge.inset,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space[1.5],
   },
-  heart: { position: 'absolute', top: badge.inset, right: badge.inset },
   body: { paddingTop: space[3], gap: space[1] },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   metaText: { flexShrink: 1 },

@@ -1,7 +1,4 @@
-/**
- * Favoriten: Lieblingsangebote, Lieblingsorte und Lieblingskategorien.
- * Die einzigen Tabellen, in die die App direkt schreiben darf (eigene Zeilen, per RLS abgesichert).
- */
+/** Favoriten: Lieblingsorte und Lieblingskategorien, eigene Zeilen per RLS abgesichert. */
 import type { OfferCategory } from '@repo/shared';
 
 import { toApiError } from '@/lib/api-error';
@@ -56,31 +53,5 @@ export async function setFavoriteCategory(
         .delete()
         .eq('user_id', userId)
         .eq('category', category);
-  if (error) throw toApiError(error);
-}
-
-/** Gemerkte Angebote, zuletzt gemerkte zuerst. */
-export async function fetchFavoriteOfferIds(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('favorite_offers')
-    .select('offer_id')
-    .order('created_at', { ascending: false });
-  if (error) throw toApiError(error);
-  return (data ?? []).map((row) => row.offer_id);
-}
-
-export async function setFavoriteOffer(
-  userId: string,
-  offerId: string,
-  favorite: boolean,
-): Promise<void> {
-  const { error } = favorite
-    ? await supabase
-        .from('favorite_offers')
-        .upsert(
-          { user_id: userId, offer_id: offerId },
-          { onConflict: 'user_id,offer_id', ignoreDuplicates: true },
-        )
-    : await supabase.from('favorite_offers').delete().eq('user_id', userId).eq('offer_id', offerId);
   if (error) throw toApiError(error);
 }

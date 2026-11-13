@@ -17,7 +17,6 @@ import {
   sectionsByCategory,
   type FeedSection,
 } from '@/features/offers/feed-logic';
-import { useFavoriteOfferIds } from '@/features/favorites/queries';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { useCityFromLocation } from '@/features/offers/use-location-city';
@@ -76,7 +75,7 @@ function LoadingState() {
 
 /**
  * Tab „Entdecken“: oben fest Stadt, Suche und Filter, darunter nur Abschnitte als Karussells
- * (Favoriten, Zeit, Themen, Kategorien). Eine Liste gibt es nur bei Kategorie oder Suche.
+ * (Zeit, Themen, Kategorien). Eine Liste gibt es nur bei Kategorie oder Suche.
  *
  * Die Kopfzeile steht bewusst vor der Liste: So findet die native Tab-Leiste auf iOS keine
  * ScrollView in der „ersten Kette“ und setzt oben keinen zweiten Abstand. Die Liste regelt
@@ -87,7 +86,6 @@ export function FeedScreen() {
   const list = useRef<FlatList<FeedOffer>>(null);
   const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
-  const { data: favoriteIds } = useFavoriteOfferIds();
   const [searchOpen, setSearchOpen] = useState(false);
   // Beim App-Start die Stadt des eigenen Standorts wählen (danach von Hand änderbar).
   useCityFromLocation();
@@ -110,7 +108,7 @@ export function FeedScreen() {
         }))
       : listMode
         ? []
-        : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
+        : buildSections(visible, { cityName: city.name });
   // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
   // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
   const listItems = isPending || byCategory || !listMode ? [] : visible;

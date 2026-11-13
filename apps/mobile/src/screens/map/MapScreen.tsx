@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { CloudOff, LocateFixed } from 'lucide-react-native';
+import { CloudOff, LocateFixed, MapPin, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -39,6 +39,7 @@ import { getCity, nearestCityId, offersInCity } from '@/features/offers/cities';
 import { filterOffers, groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
 import {
@@ -81,6 +82,7 @@ export function MapScreen() {
 
   const { filters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, refetch } = useOffers();
+  const { mapHintVisible, dismissMapHint } = useOnboarding();
 
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
@@ -166,6 +168,7 @@ export function MapScreen() {
         setLocating(false);
         break;
       case 'place': {
+        if (mapHintVisible) dismissMapHint();
         const index = firstIndexAtPlace(offers, message.key);
         const offer = offers[index];
         if (!offer) break;
@@ -330,6 +333,28 @@ export function MapScreen() {
         ) : null}
       </View>
 
+      {mapReady && !mapFailed && mapHintVisible ? (
+        <Animated.View
+          entering={FadeInDown.duration(duration.base).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOutDown.duration(duration.fast).reduceMotion(ReduceMotion.System)}
+          style={[styles.mapHint, { top: topInset + space[2] }]}
+        >
+          <MapPin size={20} color={colors.accent.solid} strokeWidth={2.2} />
+          <View style={styles.mapHintCopy}>
+            <Text variant="subhead">Tippe auf einen Pin</Text>
+            <Text variant="footnote" color="secondary">
+              Wisch unten durch die Angebote. Dein Standort bleibt optional.
+            </Text>
+          </View>
+          <IconButton
+            icon={X}
+            accessibilityLabel="Hinweis schließen"
+            onPress={dismissMapHint}
+            variant="plain"
+          />
+        </Animated.View>
+      ) : null}
+
       {/* Unterer Bereich: SafeAreaView kennt hier auch die Tab-Leiste, die Kachel liegt darüber. */}
       <SafeAreaView
         edges={['bottom']}
@@ -402,6 +427,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.raised,
     boxShadow: shadow.floating,
   },
+  mapHint: {
+    position: 'absolute',
+    left: layout.screenPaddingX,
+    right: layout.screenPaddingX,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    paddingLeft: space[3],
+    paddingVertical: space[2],
+    paddingRight: space[1],
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface.raised,
+    boxShadow: shadow.floating,
+  },
+  mapHintCopy: { flex: 1, gap: space[0.5] },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   locate: { alignSelf: 'flex-end', marginRight: layout.screenPaddingX },
   // Ohne Kachel bleibt der Standort-Knopf mit etwas Abstand über dem unteren Rand.

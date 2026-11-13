@@ -2,11 +2,14 @@
  * Das eigene Konto, so wie `get_my_account` es liefert (jsonb).
  * Reine Logik ohne React und ohne Netzwerk, damit sie sich testen lässt.
  */
-import { formatDate } from '@repo/shared';
+import { formatDate, OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
 
 export interface Account {
   userId: string;
   role: 'nutzer' | 'standort' | 'admin';
+  username: string | null;
+  age: number | null;
+  interests: OfferCategory[];
   firstName: string;
   lastName: string;
   /** Vor- und Nachname sind gesetzt. Ohne das gibt es keinen Code (`PROFIL_UNVOLLSTAENDIG`). */
@@ -31,6 +34,13 @@ export function parseAccount(json: unknown): Account | null {
   return {
     userId,
     role,
+    username: typeof raw.username === 'string' ? raw.username : null,
+    age: typeof raw.age === 'number' ? raw.age : null,
+    interests: Array.isArray(raw.interests)
+      ? raw.interests.filter((value): value is OfferCategory =>
+          OFFER_CATEGORIES.includes(value as OfferCategory),
+        )
+      : [],
     firstName: text(raw.first_name),
     lastName: text(raw.last_name),
     profileComplete: raw.profile_complete === true,
@@ -81,4 +91,17 @@ export function sessionTokensFromUrl(
   const refreshToken = params.get('refresh_token');
   if (!accessToken || !refreshToken) return null;
   return { accessToken, refreshToken };
+}
+
+/** Bestätigungscode aus der Query der Supabase-E-Mail-Redirect-URL. */
+export function authCodeFromUrl(url: string): string | null {
+  const [beforeHash, hash = ''] = url.split('#');
+  const query = (beforeHash ?? '').split('?')[1] ?? '';
+  for (const part of `${query}&${hash}`.split('&')) {
+    const [key, value] = part.split('=');
+    if (key === 'code' && value !== undefined) {
+      return decodeURIComponent(value.replace(/\+/g, ' '));
+    }
+  }
+  return null;
 }

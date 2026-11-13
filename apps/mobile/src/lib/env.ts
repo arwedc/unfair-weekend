@@ -28,8 +28,8 @@ export const env = {
   ),
   mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE_URL,
   /**
-   * Welche Login-Methoden die App anbietet. Erst einschalten, wenn sie in Supabase
-   * eingerichtet sind (SMTP, Apple, Google), sonst sehen Nutzer nur Fehlermeldungen.
+   * E-Mail/Passwort ist immer verfügbar. Diese Schalter aktivieren optionale E-Mail-OTP-
+   * oder OAuth-Methoden, sobald sie im Supabase-Projekt eingerichtet sind.
    */
   auth: {
     emailOtp: flag(process.env.EXPO_PUBLIC_AUTH_EMAIL_OTP),
