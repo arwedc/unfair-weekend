@@ -76,7 +76,10 @@ export function parseMapMessage(raw: string): MapMessage | null {
       case 'link':
         return typeof value.url === 'string' ? { type: 'link', url: value.url } : null;
       case 'error':
-        return { type: 'error', message: typeof value.message === 'string' ? value.message : '' };
+        return {
+          type: 'error',
+          message: typeof value.message === 'string' ? value.message : '',
+        };
       default:
         return null;
     }
@@ -132,7 +135,7 @@ export function setCitiesScript(cities: readonly CitySummary[]): string {
     features: cities.map((city) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [city.lng, city.lat] },
-      properties: { id: city.id, name: city.name, count: city.count },
+      properties: { id: city.id, name: city.name },
     })),
   };
   return `window.setCities && window.setCities(${toScriptJson(geojson)}); true;`;
@@ -362,7 +365,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
-  // Nadel für eine ganze Stadt (weite Ansicht): größer, ohne Symbol, die Anzahl steht darin.
+  // Nadel für eine ganze Stadt (weite Ansicht): etwas größer, mit weißem Punkt statt Symbol.
   function makeCityPin(fill) {
     var ratio = 3, w = 44, h = 56, cx = 22, cy = 20, r = 17.5, tip = 52;
     var canvas = document.createElement('canvas');
@@ -378,6 +381,8 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     ctx.fillStyle = fill; ctx.fill();
     ctx.shadowColor = 'transparent';
     ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = config.colors.pinDot; ctx.fill();
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
@@ -440,17 +445,13 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
       'icon-image': pinImage, 'icon-anchor': 'bottom',
       'icon-allow-overlap': true, 'icon-ignore-placement': true } });
 
-    // Weite Ansicht: eine Nadel pro Stadt mit der Anzahl der Angebote darin.
+    // Weite Ansicht: eine schlichte Nadel pro Stadt (ohne Zahl).
     var cityPin = makeCityPin(config.colors.pin);
     map.addImage('pin-city', cityPin.image, { pixelRatio: cityPin.ratio });
     map.addSource('cities', { type: 'geojson', data: pendingCities || empty });
     map.addLayer({ id: 'city-pins', type: 'symbol', source: 'cities', maxzoom: config.cityPinMaxZoom, layout: {
       'icon-image': 'pin-city', 'icon-anchor': 'bottom',
-      'icon-allow-overlap': true, 'icon-ignore-placement': true,
-      'text-field': ['to-string', ['get', 'count']], 'text-font': ['Noto Sans Bold'], 'text-size': 15,
-      'text-anchor': 'center', 'text-offset': [0, -2.15],
-      'text-allow-overlap': true, 'text-ignore-placement': true },
-      paint: { 'text-color': config.colors.pinDot } });
+      'icon-allow-overlap': true, 'icon-ignore-placement': true } });
 
     // Tipp auf eine Stadt: hineinzoomen, dann erscheinen die einzelnen Angebote.
     map.on('click', 'city-pins', function (event) {

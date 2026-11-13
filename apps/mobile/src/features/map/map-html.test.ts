@@ -174,13 +174,16 @@ describe('parseMapMessage', () => {
 });
 
 describe('setCitiesScript', () => {
-  it('übergibt eine Nadel pro Stadt mit Anzahl', () => {
+  it('übergibt eine Nadel pro Stadt, ohne Zahl', () => {
     const script = setCitiesScript([
       { id: 'muenster', name: 'Münster', lat: 51.96, lng: 7.62, count: 6 },
     ]);
     expect(script).toContain('window.setCities(');
     expect(script).toContain('"coordinates":[7.62,51.96]');
-    expect(script).toContain('"count":6');
+    expect(script).not.toContain('count');
+    expect(buildMapHtml({ styleUrl: 'https://example.org/style', colors })).not.toContain(
+      "['get', 'count']",
+    );
   });
 
   it('zeigt Städte nur in der weiten Ansicht, einzelne Angebote erst darunter', () => {
