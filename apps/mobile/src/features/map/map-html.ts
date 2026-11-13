@@ -163,9 +163,12 @@ export function setCenterScript(lat: number, lng: number): string {
   return `window.setCenter && window.setCenter(${toScriptJson([lng, lat])}); true;`;
 }
 
-/** Befehl für die WebView: eigenen Standort zeigen und hinfliegen. */
-export function showUserScript(lat: number, lng: number): string {
-  return `window.showUser && window.showUser(${toScriptJson([lng, lat])}); true;`;
+/**
+ * Befehl für die WebView: eigenen Standort zeigen. `move: false` setzt nur den Punkt neu
+ * (genauere Ortung kam nach), ohne die Karte zu bewegen.
+ */
+export function showUserScript(lat: number, lng: number, move = true): string {
+  return `window.showUser && window.showUser(${toScriptJson([lng, lat])}, ${move}); true;`;
 }
 
 export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): string {
@@ -273,7 +276,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   };
 
   var userMarker = null;
-  window.showUser = function (lngLat) {
+  window.showUser = function (lngLat, move) {
     if (!userMarker) {
       var dot = document.createElement('div');
       dot.style.cssText = 'width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.35);background:' + config.colors.user;
@@ -281,7 +284,11 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     } else {
       userMarker.setLngLat(lngLat);
     }
-    map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 14) });
+    if (move === false) return;
+    // Weit weg (andere Stadt): springen statt lange fliegen. In der Nähe: kurze Fahrt.
+    var far = map.getCenter().distanceTo(maplibregl.LngLat.convert(lngLat)) > 20000;
+    var target = { center: lngLat, zoom: Math.max(map.getZoom(), 14) };
+    if (far) map.jumpTo(target); else map.easeTo(Object.assign(target, { duration: 300 }));
   };
 
   window.setCenter = function (lngLat) {

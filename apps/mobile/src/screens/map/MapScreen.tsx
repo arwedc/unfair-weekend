@@ -34,7 +34,7 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
-import { currentPosition, type Coordinates } from '@/lib/location';
+import { quickPosition, type Coordinates } from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -106,12 +106,14 @@ export function MapScreen() {
   const centerScript = setCenterScript(city.center.lat, city.center.lng);
   useEffect(() => {
     if (!mapReady) return;
-    webview.current?.injectJavaScript(centerScript);
     const user = pendingUser.current;
     if (user) {
+      // Wechsel kam vom Standort-Knopf: gleich zum Standort, die Stadtmitte überspringen.
       pendingUser.current = null;
       webview.current?.injectJavaScript(showUserScript(user.lat, user.lng));
+      return;
     }
+    webview.current?.injectJavaScript(centerScript);
   }, [mapReady, centerScript]);
 
   // Ausgewählte Nadel hervorheben und in den sichtbaren Bereich holen.
@@ -158,10 +160,13 @@ export function MapScreen() {
 
   // Eigener Standort: blauen Punkt zeigen und die Stadt dorthin wechseln. Die Stadt gilt
   // für Karte und „Entdecken“ gemeinsam, der Feed springt also mit.
+  // Sofort springen (gemerkte oder letzte bekannte Position), die genaue Ortung setzt den
+  // Punkt danach nur noch nach, ohne die Karte erneut zu bewegen.
   const showMyLocation = async () => {
     if (locating) return;
+    void Haptics.selectionAsync();
     setLocating(true);
-    const result = await currentPosition();
+    const result = await quickPosition();
     setLocating(false);
     if (result.status !== 'ok') {
       setNotice(result.status);
@@ -171,13 +176,16 @@ export function MapScreen() {
     const { lat, lng } = result.coords;
     const nextCity = nearestCityId(result.coords);
     if (nextCity !== cityId) {
-      // Erst springt die Karte auf die neue Stadt (Effekt oben), dann auf den Standort.
+      // Die Karte springt im Effekt oben direkt zum Standort (nicht erst zur Stadtmitte).
       pendingUser.current = result.coords;
       setSelectedId(null);
       setCityId(nextCity);
     } else {
       webview.current?.injectJavaScript(showUserScript(lat, lng));
     }
+    void result.refined?.then((coords) => {
+      if (coords) webview.current?.injectJavaScript(showUserScript(coords.lat, coords.lng, false));
+    });
   };
 
   const allSoldOut = visible.length > 0 && visible.every((offer) => offer.free_seats === 0);
