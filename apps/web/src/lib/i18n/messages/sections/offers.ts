@@ -104,24 +104,9 @@ export const offersDe = {
     fromTemplate: (name: string) =>
       `Vorlage „${name}“: Alles ist vorausgefüllt. Wähle nur noch den Beginn, dann ist das Angebot sofort in der App sichtbar.`,
     lockedNotice:
-      'Es haben sich schon Leute Codes geholt. Zeit, Adresse und Preise sind deshalb gesperrt. Titel, Beschreibung, Bilder, Kategorie und Plätze kannst du weiter ändern.',
+      'Es haben sich schon Leute Codes geholt. Zeit, Adresse und Preise sind deshalb gesperrt. Titel, Beschreibung, Kategorie und Plätze kannst du weiter ändern.',
     publish: 'Angebot veröffentlichen',
     publishing: 'Wird veröffentlicht …',
-  },
-  images: {
-    label: 'Bilder',
-    onlyTypes: 'Nur JPEG, PNG oder WebP.',
-    tooLarge: 'Ein Bild darf höchstens 5 MB groß sein.',
-    uploadFailed: 'Hochladen hat nicht geklappt. Bitte erneut versuchen.',
-    cover: 'Titelbild',
-    imageN: (n: number) => `Bild ${n}`,
-    makeCover: 'Als Titelbild',
-    remove: 'Entfernen',
-    removeN: (n: number) => `Bild ${n} entfernen`,
-    uploading: 'Lädt hoch …',
-    add: 'Bild hinzufügen',
-    hint: (max: number) =>
-      `Bis zu ${max} Bilder, JPEG/PNG/WebP, je höchstens 5 MB. Das erste ist das Titelbild. Ohne Bild zeigt die App einen Platzhalter.`,
   },
   validation: {
     titleMin: (n: number) => `Titel: mindestens ${n} Zeichen.`,
@@ -262,24 +247,9 @@ export const offersEn: Widen<typeof offersDe> = {
     fromTemplate: (name) =>
       `Template “${name}”: Everything is pre-filled. Just pick the start and the offer is live in the app right away.`,
     lockedNotice:
-      'People have already claimed codes. Time, address and prices are therefore locked. You can still change title, description, images, category and spots.',
+      'People have already claimed codes. Time, address and prices are therefore locked. You can still change title, description, category and spots.',
     publish: 'Publish offer',
     publishing: 'Publishing …',
-  },
-  images: {
-    label: 'Images',
-    onlyTypes: 'JPEG, PNG or WebP only.',
-    tooLarge: 'An image can be at most 5 MB.',
-    uploadFailed: "Upload didn't work. Please try again.",
-    cover: 'Cover image',
-    imageN: (n) => `Image ${n}`,
-    makeCover: 'Make cover',
-    remove: 'Remove',
-    removeN: (n) => `Remove image ${n}`,
-    uploading: 'Uploading …',
-    add: 'Add image',
-    hint: (max) =>
-      `Up to ${max} images, JPEG/PNG/WebP, 5 MB each at most. The first one is the cover. Without an image, the app shows a placeholder.`,
   },
   validation: {
     titleMin: (n) => `Title: at least ${n} characters.`,

@@ -45,10 +45,7 @@ function readValues(formData: FormData): TemplateFormValues {
   for (const field of TEMPLATE_FORM_FIELDS) {
     values[field] = String(formData.get(field) ?? '').trim();
   }
-  values.image_paths = formData
-    .getAll('image_paths')
-    .map(String)
-    .filter((p) => p.length > 0);
+  values.image_paths = [];
   return values;
 }
 
