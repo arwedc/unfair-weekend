@@ -5,6 +5,7 @@ import { templatesDe, templatesEn } from './sections/templates';
 import { reviewsDe, reviewsEn } from './sections/reviews';
 import { profileDe, profileEn } from './sections/profile';
 import { paymentsDe, paymentsEn } from './sections/payments';
+import { checkinDe, checkinEn } from './sections/checkin';
 import { adminDe, adminEn } from './sections/admin';
 
 /**
@@ -18,6 +19,7 @@ const de = {
   reviews: reviewsDe,
   profile: profileDe,
   payments: paymentsDe,
+  checkin: checkinDe,
   admin: adminDe,
 };
 
@@ -30,6 +32,7 @@ const en: Messages = {
   reviews: reviewsEn,
   profile: profileEn,
   payments: paymentsEn,
+  checkin: checkinEn,
   admin: adminEn,
 };
 

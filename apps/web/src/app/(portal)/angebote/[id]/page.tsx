@@ -2,11 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import type { Locale } from '@repo/shared/i18n';
+import { formatDateTime } from '@repo/shared/utils';
+import { GuestList, type Guest } from '@/components/checkin/guest-list';
 import { OfferForm } from '@/components/offers/offer-form';
 import { CancelOffer } from '@/components/offers/cancel-offer';
 import { OfferStatusBadge, OfferTime } from '@/components/offers/offer-meta';
 import { Card } from '@/components/ui';
 import { requireAccount } from '@/lib/auth';
+import { getParticipants, guestName, type Participant } from '@/lib/checkin/queries';
 import { getT } from '@/lib/i18n/locale';
 import { offerToFormValues } from '@/lib/offers/form';
 import { getMinDiscountPercent, getMyOffer, offerHasCodes } from '@/lib/offers/queries';
@@ -15,6 +19,25 @@ import { cancelOfferAction, updateOfferAction } from '../actions';
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
   return { title: t.offers.editTitle };
+}
+
+/** Zeilen der Gästeliste, Zeiten schon in Europe/Berlin formatiert. */
+function toGuests(participants: Participant[], locale: Locale): Guest[] {
+  const now = new Date();
+  return participants.map((p) => ({
+    voucherId: p.voucher_id,
+    shortCode: p.short_code,
+    seats: p.seats,
+    status: p.status,
+    isPaid: p.is_paid,
+    name: guestName(p),
+    redeemedLabel: p.redeemed_at ? formatDateTime(p.redeemed_at, now, locale) : null,
+  }));
+}
+
+/** Einzeltermin hat begonnen (Serverzeit). Die genaue Frist prüft `mark_no_show`. */
+function noShowAvailable(offer: { type: string; starts_at: string }): boolean {
+  return offer.type === 'einzeltermin' && Date.now() >= Date.parse(offer.starts_at);
 }
 
 interface PageProps {
@@ -31,6 +54,17 @@ async function OfferDetail({ params, searchParams }: PageProps) {
   ]);
   const offer = await getMyOffer(id);
   if (!offer) notFound();
+  const participants = await getParticipants(offer.id);
+  const guests = toGuests(participants, locale);
+  const guestList = (readOnly: boolean) =>
+    guests.length > 0 ? (
+      <GuestList
+        offerId={offer.id}
+        guests={guests}
+        readOnly={readOnly}
+        canMarkNoShow={noShowAvailable(offer)}
+      />
+    ) : null;
 
   const header = (
     <div className="mb-6 mt-2">
@@ -76,6 +110,7 @@ async function OfferDetail({ params, searchParams }: PageProps) {
             </p>
           )}
         </Card>
+        <div className="mt-8">{guestList(true)}</div>
       </>
     );
   }
@@ -88,6 +123,7 @@ async function OfferDetail({ params, searchParams }: PageProps) {
   return (
     <>
       {header}
+      {guestList(false)}
       <OfferForm
         mode="edit"
         action={updateOfferAction.bind(null, offer.id)}
