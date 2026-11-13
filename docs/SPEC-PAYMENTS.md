@@ -259,3 +259,9 @@ Getroffen, weil sie nicht blockieren. Widerspruch jederzeit möglich.
     - Den vollständigen Weg über `stripe-create-booking` testen wir in Phase 4 mit der App. Dafür muss das Flag im Dev-Projekt kurz eingeschaltet werden, nach Absprache mit @arwedc.
 26. **Vault-Secrets im Dev-Projekt** (`project_url`, `push_worker_key`) am 13.11.2026 mit `pnpm db:push-secrets` angelegt. Seitdem laufen der Stripe-Worker und der Push-Versand per Cron.
 27. **Auszahlung und No-Show mit echtem Transfer** (Szenarien 10, 11) brauchen ein fertig eingerichtetes Stripe-Konto eines Test-Standorts. Das Onboarding mit Stripe-Testdaten wird in Phase 3 über die neue Seite „Auszahlungen“ durchgeklickt, die Szenarien folgen in Phase 5.
+
+**Ergänzt in Phase 3**
+
+28. **Rücksprung vom Stripe-Onboarding:** Die Website verwendet `NEXT_PUBLIC_SITE_URL` als Rücksprung-Origin und fällt lokal auf `http://localhost:3000` zurück. Andere Origins müssen zusätzlich in `PAYMENTS_RETURN_ORIGINS` der Edge Function erlaubt sein; dieses Secret wird nicht von der Website geändert.
+29. **Buchungsübersichten:** Die Standortseite filtert die Rückgabe von `get_location_bookings()` nach Angebot, solange es noch keine Teilnehmerliste in der Website gibt. Die Ansicht lädt bis zu 500 Buchungen; die Admin-Tabellen laden jeweils die letzten 50 Einträge.
+30. **Aktivierung des Flags:** Die Admin-Oberfläche zeigt die Anzahl aktiver Angebote ohne bereites Stripe-Konto vor dem Einschalten. Das Einschalten verlangt zusätzlich eine Bestätigung, dass es mit Ben und @arwedc abgestimmt ist. Codex schaltet das Flag während Phase 3 nicht ein.
