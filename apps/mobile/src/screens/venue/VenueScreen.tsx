@@ -1,11 +1,11 @@
 import {
   formatDiscount,
   formatPrice,
-  OFFER_CATEGORY_LABELS,
   seatsLabel,
   STORAGE_BUCKETS,
   type OfferCategory,
 } from '@repo/shared';
+import type { Locale } from '@repo/shared/i18n';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -73,6 +73,8 @@ import { useLocationRating } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic';
 import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
+import { getMessages, type Messages } from '@/lib/i18n/messages';
 import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
 import { colors, fonts, layout, radii, shadow, soft, space } from '@/theme';
 
@@ -80,23 +82,25 @@ import { colors, fonts, layout, radii, shadow, soft, space } from '@/theme';
 const HERO_COLLAPSED = space[20] + space[10];
 
 /** Warum man gerade keinen Code holen kann (oder null, wenn es geht). */
-function unavailableReason(offer: OfferDetail): string | null {
-  if (offer.status === 'abgesagt') return 'Dieses Angebot wurde abgesagt.';
-  if (offer.status !== 'aktiv') return 'Dieses Angebot ist nicht mehr verfügbar.';
+function unavailableReason(offer: OfferDetail, m: Messages['screens']['venue']): string | null {
+  if (offer.status === 'abgesagt') return m.cancelled;
+  if (offer.status !== 'aktiv') return m.unavailable;
   if (!offer.is_claimable) {
-    return offer.type === 'einzeltermin'
-      ? 'Der Termin hat schon begonnen.'
-      : 'Dieses Angebot ist abgelaufen.';
+    return offer.type === 'einzeltermin' ? m.started : m.expired;
   }
-  if (offer.free_seats === 0) return 'Leider ausgebucht. Schau später nochmal rein.';
+  if (offer.free_seats === 0) return m.soldOut;
   return null;
 }
 
-async function shareOffer(offer: OfferDetail): Promise<void> {
+async function shareOffer(offer: OfferDetail, locale: Locale): Promise<void> {
+  const m = getMessages(locale).screens.venue;
   const url = Linking.createURL(`/angebot/${offer.id}`);
-  const price = `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`;
+  const price = m.sharePrice(
+    formatPrice(offer.deal_price_cents, { locale }),
+    formatPrice(offer.original_price_cents, { locale }),
+  );
   try {
-    await Share.share({ message: `${offer.title} bei ${offer.location_name}: ${price}. ${url}` });
+    await Share.share({ message: m.shareMessage(offer.title, offer.location_name, price, url) });
   } catch {
     // Abgebrochen oder nicht möglich: nichts zu tun.
   }
@@ -148,12 +152,13 @@ function OfferChoice({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { t, locale } = useT();
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${offer.title}, ${offerWhenText(offer)}, ${formatPrice(offer.deal_price_cents)}`}
-      accessibilityHint="Zeigt dieses Angebot oben an"
+      accessibilityLabel={`${offer.title}, ${offerWhenText(offer, undefined, locale)}, ${formatPrice(offer.deal_price_cents, { locale })}`}
+      accessibilityHint={t.screens.venue.showOnTop}
       onPress={onPress}
       pressedScale={0.98}
       style={[styles.choice, selected && styles.choiceSelected]}
@@ -164,14 +169,14 @@ function OfferChoice({
           {offer.title}
         </Text>
         <Text variant="footnote" color="secondary" numberOfLines={1}>
-          {offerWhenText(offer)}
+          {offerWhenText(offer, undefined, locale)}
         </Text>
         <View style={styles.choicePrice}>
           <Text variant="subhead" color="accent" style={styles.semibold}>
-            {formatPrice(offer.deal_price_cents)}
+            {formatPrice(offer.deal_price_cents, { locale })}
           </Text>
           <Text variant="caption" color="tertiary" style={styles.strike}>
-            {formatPrice(offer.original_price_cents)}
+            {formatPrice(offer.original_price_cents, { locale })}
           </Text>
         </View>
       </View>
@@ -190,10 +195,11 @@ function OfferChoice({
 
 function BackButton({ top }: { top: number }) {
   const router = useRouter();
+  const { t } = useT();
   return (
     <IconButton
       icon={ChevronLeft}
-      accessibilityLabel="Zurück"
+      accessibilityLabel={t.screens.venue.back}
       onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       style={[styles.back, { top }]}
     />
@@ -215,6 +221,8 @@ export interface VenueScreenProps {
  */
 export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const router = useRouter();
+  const { t, locale, labels } = useT();
+  const v = t.screens.venue;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -272,7 +280,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
 
   if (loadingLocation || (activeId !== '' && selected.isPending && !place.data)) {
     return (
-      <View style={styles.screen} accessible accessibilityLabel="Wird geladen">
+      <View style={styles.screen} accessible accessibilityLabel={v.loading}>
         <Skeleton height={heroHeight} radius={0} />
         <View style={styles.body}>
           <Skeleton width="70%" height={32} />
@@ -296,9 +304,9 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           <EmptyState
             tone="error"
             icon={CloudOff}
-            title={isOffline(error) ? 'Kein Netz' : 'Das hat nicht geklappt'}
+            title={isOffline(error) ? t.common.noNetwork : t.common.failed}
             message={errorMessage(error)}
-            actionLabel="Nochmal versuchen"
+            actionLabel={t.common.retry}
             onAction={() => {
               void entry.refetch();
               void place.refetch();
@@ -308,9 +316,9 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         ) : (
           <EmptyState
             icon={SearchX}
-            title="Nicht gefunden"
-            message="Diesen Anbieter oder dieses Angebot gibt es nicht mehr oder es ist gerade nicht sichtbar."
-            actionLabel="Zu den Angeboten"
+            title={v.notFoundTitle}
+            message={v.notFoundText}
+            actionLabel={v.toOffers}
             onAction={() => router.replace('/')}
           />
         )}
@@ -347,7 +355,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         (item) => item.location_id !== resolvedLocationId,
       )
     : [];
-  const reason = offer ? unavailableReason(offer) : null;
+  const reason = offer ? unavailableReason(offer, v) : null;
   const description = offer?.description.trim() ?? '';
 
   const openMaps = () => void openInMaps({ label: locationName, address, lat, lng });
@@ -395,7 +403,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                     variant="footnote"
                     style={[styles.semibold, index === 0 && { color: colors.accent.onSubtle }]}
                   >
-                    {OFFER_CATEGORY_LABELS[category]}
+                    {labels.offerCategory[category]}
                   </Text>
                 </View>
               );
@@ -411,10 +419,10 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
             <View style={styles.ratingLine}>
               <Stars value={rating.data.average_rating} size={18} />
               <Text variant="subhead" style={styles.semibold}>
-                {formatRating(rating.data.average_rating)}
+                {formatRating(rating.data.average_rating, locale)}
               </Text>
               <Text variant="subhead" color="secondary">
-                · {reviewCountLabel(rating.data.review_count)}
+                · {reviewCountLabel(rating.data.review_count, locale)}
               </Text>
             </View>
           ) : null}
@@ -436,13 +444,13 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
               <View style={styles.cardBody}>
                 <View style={styles.offerTitleText}>
                   <Text variant="caption" color="accent" style={styles.semibold}>
-                    {formatDiscount(offer.discount_percent)} Rabatt
+                    {v.discount(formatDiscount(offer.discount_percent, locale))}
                   </Text>
                   <Text variant="title2">{offer.title}</Text>
                   {description ? (
                     <View style={styles.descriptionPreview}>
                       <Text variant="subhead" color="secondary">
-                        Was erwartet dich
+                        {v.whatToExpect}
                       </Text>
                       <Text variant="footnote" color="secondary" numberOfLines={2}>
                         {description}
@@ -453,12 +461,12 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
 
                 <View>
                   <InfoRow icon={Clock}>
-                    <Text variant="body">{offerWhenText(offer)}</Text>
+                    <Text variant="body">{offerWhenText(offer, undefined, locale)}</Text>
                   </InfoRow>
                   <InfoRow
                     icon={MapPin}
                     onPress={openMaps}
-                    accessibilityLabel={`${address}, in der Karten-App öffnen`}
+                    accessibilityLabel={v.openInMaps(address)}
                   >
                     <Text variant="body">{locationName}</Text>
                     <Text variant="footnote" color="secondary" numberOfLines={1}>
@@ -468,35 +476,33 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                   <InfoRow icon={Euro}>
                     <View style={styles.choicePrice}>
                       <Text variant="bodyStrong" color="accent">
-                        {formatPrice(offer.deal_price_cents)}
+                        {formatPrice(offer.deal_price_cents, { locale })}
                       </Text>
                       <Text variant="footnote" color="tertiary" style={styles.strike}>
-                        {formatPrice(offer.original_price_cents)}
+                        {formatPrice(offer.original_price_cents, { locale })}
                       </Text>
                     </View>
                     <Text variant="footnote" color="secondary">
-                      Zahlung vor Ort
+                      {v.payOnSiteShort}
                     </Text>
                   </InfoRow>
                   <InfoRow icon={Users} last>
-                    <Text variant="body">{seatsLabel(offer.free_seats)}</Text>
+                    <Text variant="body">{seatsLabel(offer.free_seats, locale)}</Text>
                     <Text variant="footnote" color="secondary">
-                      {offer.max_per_user > 1
-                        ? `Bis zu ${offer.max_per_user} Plätze pro Person`
-                        : '1 Platz pro Person'}
+                      {v.perPerson(offer.max_per_user)}
                     </Text>
                   </InfoRow>
                 </View>
 
                 {!myVoucher && !reason ? (
                   <Text variant="caption" color="tertiary" align="center">
-                    {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
+                    {cancelPolicyText(offer.type, settings?.cancel_deadline_hours, locale)}
                   </Text>
                 ) : null}
 
                 {myVoucher ? (
                   <Button
-                    label="Deinen Code anzeigen"
+                    label={v.showCode}
                     icon={Ticket}
                     size="lg"
                     fullWidth
@@ -512,16 +518,12 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                   </View>
                 ) : (
                   <Button
-                    label="Code holen"
+                    label={v.getCode}
                     icon={Ticket}
                     size="lg"
                     fullWidth
                     haptic
-                    accessibilityHint={
-                      needsLogin
-                        ? 'Dafür meldest du dich kurz an'
-                        : 'Sichert dir deinen Platz mit einem Gutscheincode'
-                    }
+                    accessibilityHint={needsLogin ? v.loginHint : v.claimHint}
                     onPress={() => {
                       if (needsLogin) router.push('/anmelden');
                       else claimSheet.current?.present();
@@ -533,11 +535,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           ) : selected.isPending && activeId !== '' ? (
             <Skeleton height={320} radius={radii.xl} />
           ) : (
-            <EmptyState
-              icon={Sparkles}
-              title="Gerade kein Angebot"
-              message="Hier gibt es im Moment nichts zu holen. Merk dir den Ort mit dem Herz oben, dann sagen wir Bescheid, wenn es etwas Neues gibt."
-            />
+            <EmptyState icon={Sparkles} title={v.noOfferTitle} message={v.noOfferText} />
           )}
         </View>
 
@@ -545,7 +543,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           {/* Weitere Angebote am Standort */}
           {list.length > 1 ? (
             <View style={styles.section}>
-              <HighlightTitle>{`Angebote hier (${list.length})`}</HighlightTitle>
+              <HighlightTitle>{v.offersHere(list.length)}</HighlightTitle>
               <View style={styles.choices}>
                 {list.map((item) => (
                   <OfferChoice
@@ -561,7 +559,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
 
           {/* Über den Anbieter und Ort */}
           <View style={styles.section}>
-            <HighlightTitle>{`Über ${name}`}</HighlightTitle>
+            <HighlightTitle>{v.about(name)}</HighlightTitle>
             <View style={styles.aboutHead}>
               {logo ? (
                 <OfferImage
@@ -569,7 +567,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                   bucket={STORAGE_BUCKETS.companyLogos}
                   style={styles.logo}
                   contentFit="cover"
-                  accessibilityLabel={`Logo von ${name}`}
+                  accessibilityLabel={v.logoOf(name)}
                 />
               ) : (
                 <View style={[styles.logo, styles.logoFallback]}>
@@ -595,16 +593,16 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
             ) : null}
             <View style={styles.actions}>
               <Button
-                label="Route"
+                label={v.route}
                 icon={Navigation}
                 variant="secondary"
                 onPress={openMaps}
-                accessibilityHint="Öffnet den Standort in Apple Karten oder Google Maps"
+                accessibilityHint={v.routeHint}
                 style={styles.flex}
               />
               {phone.trim() ? (
                 <Button
-                  label="Anrufen"
+                  label={v.call}
                   icon={Phone}
                   variant="outline"
                   onPress={() => void callPhone(phone)}
@@ -613,7 +611,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
               ) : null}
               {website.trim() ? (
                 <Button
-                  label="Web"
+                  label={v.web}
                   icon={Globe}
                   variant="outline"
                   onPress={() => void openWebsite(website)}
@@ -632,7 +630,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         {similar.length > 0 ? (
           <View style={styles.similar}>
             <View style={styles.inset}>
-              <HighlightTitle variant="title2">{`Ähnliches in ${getCity(cityId).name}`}</HighlightTitle>
+              <HighlightTitle variant="title2">{v.similarIn(getCity(cityId).name)}</HighlightTitle>
             </View>
             <ScrollView
               horizontal
@@ -672,8 +670,8 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         {offer ? (
           <IconButton
             icon={Share2}
-            accessibilityLabel="Angebot teilen"
-            onPress={() => void shareOffer(offer)}
+            accessibilityLabel={v.share}
+            onPress={() => void shareOffer(offer, locale)}
           />
         ) : null}
       </View>

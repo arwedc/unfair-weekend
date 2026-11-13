@@ -6,6 +6,7 @@ import { Button, HighlightTitle, Skeleton, Text } from '@/components/ui';
 import type { LocationReview } from '@/features/reviews/api';
 import { useLocationRating, useLocationReviews } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel, reviewDateLabel } from '@/features/reviews/review-logic';
+import { useT } from '@/lib/i18n/context';
 import { colors, fonts, radii, soft, space } from '@/theme';
 
 import { Stars } from './Stars';
@@ -18,6 +19,7 @@ function initial(name: string): string {
 }
 
 function ReviewItem({ review, last }: { review: LocationReview; last: boolean }) {
+  const { locale } = useT();
   return (
     <View style={[styles.item, !last && styles.itemDivider]}>
       <View style={styles.author}>
@@ -36,7 +38,7 @@ function ReviewItem({ review, last }: { review: LocationReview; last: boolean })
       <View style={styles.meta}>
         <Stars value={review.rating} size={14} />
         <Text variant="footnote" color="tertiary">
-          · {reviewDateLabel(review.created_at)}
+          · {reviewDateLabel(review.created_at, undefined, locale)}
         </Text>
       </View>
       {review.comment ? (
@@ -62,13 +64,14 @@ export function ReviewsSection({ locationId, locationName }: ReviewsSectionProps
   const rating = useLocationRating(locationId);
   const reviews = useLocationReviews(locationId);
   const [showAll, setShowAll] = useState(false);
+  const { t, locale } = useT();
 
   const items = reviews.data ?? [];
   const visible = showAll ? items : items.slice(0, PREVIEW_COUNT);
 
   return (
     <View style={styles.section}>
-      <HighlightTitle>Bewertungen & Rezensionen</HighlightTitle>
+      <HighlightTitle>{t.parts.review.sectionTitle}</HighlightTitle>
 
       {rating.isPending || reviews.isPending ? (
         <View style={styles.loading}>
@@ -78,11 +81,11 @@ export function ReviewsSection({ locationId, locationName }: ReviewsSectionProps
       ) : rating.data ? (
         <>
           <View style={styles.summary}>
-            <Text style={styles.average}>{formatRating(rating.data.average_rating)}</Text>
+            <Text style={styles.average}>{formatRating(rating.data.average_rating, locale)}</Text>
             <View style={styles.summaryText}>
               <Stars value={rating.data.average_rating} size={22} />
               <Text variant="footnote" color="secondary">
-                {reviewCountLabel(rating.data.review_count)}
+                {reviewCountLabel(rating.data.review_count, locale)}
               </Text>
             </View>
           </View>
@@ -95,7 +98,7 @@ export function ReviewsSection({ locationId, locationName }: ReviewsSectionProps
 
           {items.length > PREVIEW_COUNT ? (
             <Button
-              label={showAll ? 'Weniger anzeigen' : 'Alle Bewertungen'}
+              label={showAll ? t.parts.review.showLess : t.parts.review.showAll}
               variant="secondary"
               fullWidth
               onPress={() => setShowAll((value) => !value)}

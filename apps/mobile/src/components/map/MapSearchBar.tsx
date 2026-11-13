@@ -1,4 +1,4 @@
-import { OFFER_CATEGORY_LABELS, type OfferCategory } from '@repo/shared';
+import type { OfferCategory } from '@repo/shared';
 import * as Haptics from 'expo-haptics';
 import { Search, X } from 'lucide-react-native';
 import { useRef, useState, type ReactNode } from 'react';
@@ -9,6 +9,7 @@ import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { Input, PressableScale, Text } from '@/components/ui';
 import { categorySuggestions, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
+import { useT } from '@/lib/i18n/context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
 export interface MapSearchBarProps {
@@ -28,9 +29,11 @@ const fade = {
  */
 export function MapSearchBar({ children }: MapSearchBarProps) {
   const { filters, setFilters } = useOfferFilters();
+  const { t, locale, labels } = useT();
+  const m = t.parts.map;
   const input = useRef<TextInputInstance>(null);
   const [searching, setSearching] = useState(false);
-  const suggestions = searching ? categorySuggestions(filters.query) : [];
+  const suggestions = searching ? categorySuggestions(filters.query, locale) : [];
 
   const closeSearch = () => {
     setFilters({ query: '' });
@@ -54,15 +57,15 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
           shape="pill"
           elevated
           icon={Search}
-          placeholder="Deals & Kurse suchen"
-          accessibilityLabel="Angebote durchsuchen"
+          placeholder={m.searchPlaceholder}
+          accessibilityLabel={m.search}
           value={filters.query}
           onChangeText={(query) => setFilters({ query })}
           trailing={
             searching || filters.query !== '' ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Suche schließen"
+                accessibilityLabel={m.closeSearch}
                 onPress={closeSearch}
                 hitSlop={12}
                 style={styles.close}
@@ -80,7 +83,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
         {suggestions.length > 0 ? (
           <Animated.View {...fade} style={styles.suggestions}>
             <Text variant="overline" color="tertiary" style={styles.suggestionsTitle}>
-              Kategorien
+              {m.categories}
             </Text>
             {suggestions.map((category) => {
               const Icon = CATEGORY_ICONS[category];
@@ -89,7 +92,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
                 <PressableScale
                   key={category}
                   accessibilityRole="button"
-                  accessibilityLabel={`Kategorie ${OFFER_CATEGORY_LABELS[category]}`}
+                  accessibilityLabel={m.categoryAria(labels.offerCategory[category])}
                   accessibilityState={{ selected: active }}
                   pressedScale={0.99}
                   onPress={() => pickCategory(category)}
@@ -102,7 +105,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
                       strokeWidth={2.25}
                     />
                   </View>
-                  <Text variant="bodyStrong">{OFFER_CATEGORY_LABELS[category]}</Text>
+                  <Text variant="bodyStrong">{labels.offerCategory[category]}</Text>
                 </PressableScale>
               );
             })}

@@ -49,6 +49,7 @@ import {
   type Coordinates,
 } from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
+import { useT } from '@/lib/i18n/context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
 const MAP_HTML = buildMapHtml({
@@ -77,6 +78,8 @@ const LOCATING_MAX_MS = 12_000;
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
+  const m = t.parts.map;
   const webview = useRef<MapWebView>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
@@ -248,13 +251,13 @@ export function MapScreen() {
   const allSoldOut = visible.length > 0 && visible.every((offer) => offer.free_seats === 0);
   const emptyMessage =
     cityOffers.length === 0
-      ? `In ${city.name} gibt es gerade noch keine Angebote.`
+      ? m.noOffersInCity(city.name)
       : visible.length === 0
-        ? 'Für diese Auswahl gibt es gerade kein Angebot.'
+        ? m.noneForSelection
         : cityPinned.length === 0
           ? allSoldOut
-            ? 'Für diese Auswahl ist gerade alles ausgebucht.'
-            : 'Für diese Angebote fehlt noch die genaue Adresse. Du findest sie unter „Entdecken“.'
+            ? m.allSoldOut
+            : m.noAddress
           : null;
 
   return (
@@ -267,9 +270,9 @@ export function MapScreen() {
           <EmptyState
             tone="error"
             icon={CloudOff}
-            title="Karte nicht geladen"
-            message="Die Karte braucht eine Internetverbindung. Prüf dein Netz und versuch es nochmal."
-            actionLabel="Nochmal versuchen"
+            title={m.notLoadedTitle}
+            message={m.notLoadedText}
+            actionLabel={t.common.retry}
             onAction={reloadMap}
           />
         </View>
@@ -288,7 +291,7 @@ export function MapScreen() {
           bounces={false}
           overScrollMode="never"
           setSupportMultipleWindows={false}
-          accessibilityLabel={`Karte von ${city.name} mit Angeboten`}
+          accessibilityLabel={m.mapOf(city.name)}
         />
       )}
 
@@ -326,7 +329,7 @@ export function MapScreen() {
                 onPress={resetFilters}
                 suppressHighlighting
               >
-                Filter zurücksetzen
+                {m.resetFilters}
               </Text>
             ) : null}
           </View>
@@ -341,14 +344,14 @@ export function MapScreen() {
         >
           <MapPin size={20} color={colors.accent.solid} strokeWidth={2.2} />
           <View style={styles.mapHintCopy}>
-            <Text variant="subhead">Tippe auf einen Pin</Text>
+            <Text variant="subhead">{t.parts.map.hintTitle}</Text>
             <Text variant="footnote" color="secondary">
-              Wisch unten durch die Angebote. Dein Standort bleibt optional.
+              {t.parts.map.hintText}
             </Text>
           </View>
           <IconButton
             icon={X}
-            accessibilityLabel="Hinweis schließen"
+            accessibilityLabel={t.parts.map.hintClose}
             onPress={dismissMapHint}
             variant="plain"
           />
@@ -366,7 +369,7 @@ export function MapScreen() {
           {!mapFailed ? (
             <IconButton
               icon={LocateFixed}
-              accessibilityLabel="Meinen Standort anzeigen"
+              accessibilityLabel={m.showMyLocation}
               loading={locating}
               onPress={() => void showMyLocation()}
               style={styles.locate}
@@ -398,15 +401,13 @@ export function MapScreen() {
 
       <Sheet
         ref={noticeSheet}
-        title={notice === 'denied' ? 'Standort nicht freigegeben' : 'Standort nicht gefunden'}
+        title={notice === 'denied' ? m.deniedTitle : m.notFoundTitle}
         onDismiss={() => setNotice(null)}
       >
         <Text variant="body" color="secondary">
-          {notice === 'denied'
-            ? 'Wenn du magst, zeigen wir dir, was in deiner Nähe ist. Erlaube dafür den Standort in den Einstellungen deines Handys. Die Karte funktioniert auch ohne.'
-            : 'Wir konnten deinen Standort gerade nicht bestimmen. Versuch es gleich nochmal.'}
+          {notice === 'denied' ? m.deniedText : m.notFoundText}
         </Text>
-        <Button label="Okay" fullWidth onPress={() => noticeSheet.current?.dismiss()} />
+        <Button label={m.okay} fullWidth onPress={() => noticeSheet.current?.dismiss()} />
       </Sheet>
     </View>
   );

@@ -1,10 +1,12 @@
-import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS } from '@repo/shared';
+import { OFFER_CATEGORIES } from '@repo/shared';
+import { LOCALE_NAMES, LOCALES } from '@repo/shared/i18n';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   Bell,
   CircleHelp,
   FileText,
+  Languages,
   LogOut,
   Pencil,
   ShieldCheck,
@@ -23,6 +25,7 @@ import {
   ListRow,
   Screen,
   SectionHeader,
+  SegmentedTabs,
   Sheet,
   Skeleton,
   Text,
@@ -39,6 +42,7 @@ import {
 } from '@/features/favorites/queries';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
 import { errorMessage } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, radius, space } from '@/theme';
 
 function Header({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -58,18 +62,19 @@ function Header({ title, subtitle }: { title: string; subtitle?: string }) {
 
 function LegalRows() {
   const router = useRouter();
+  const { t } = useT();
   return (
     <View>
       <ListRow
         icon={ShieldCheck}
-        title="Datenschutz"
+        title={t.common.profile.privacy}
         onPress={() =>
           router.push({ pathname: '/rechtliches/[seite]', params: { seite: 'datenschutz' } })
         }
       />
       <ListRow
         icon={FileText}
-        title="Impressum"
+        title={t.common.profile.imprint}
         onPress={() =>
           router.push({ pathname: '/rechtliches/[seite]', params: { seite: 'impressum' } })
         }
@@ -80,11 +85,12 @@ function LegalRows() {
 
 function OnboardingHelpRow() {
   const { replay } = useOnboarding();
+  const { t } = useT();
   return (
     <ListRow
       icon={CircleHelp}
-      title="App kurz erklärt"
-      detail="Den Rundgang jederzeit wiederholen"
+      title={t.common.profile.tour}
+      detail={t.common.profile.tourHint}
       onPress={replay}
     />
   );
@@ -94,6 +100,7 @@ function OnboardingHelpRow() {
 function PushSettings() {
   const { data: state, refetch } = usePushStatus();
   const toggle = useSetPushEnabled();
+  const { t } = useT();
 
   useEffect(() => {
     // Nach der Rückkehr aus den Handy-Einstellungen den Stand neu lesen.
@@ -105,13 +112,13 @@ function PushSettings() {
 
   return (
     <View style={styles.section}>
-      <SectionHeader title="Benachrichtigungen" />
+      <SectionHeader title={t.common.profile.notifications} />
       {!state ? (
         <Skeleton height={56} />
       ) : (
         <ListRow
           icon={Bell}
-          title="Push-Nachrichten"
+          title={t.common.profile.push}
           detail={state.detail}
           onPress={
             state.action === 'settings'
@@ -127,7 +134,7 @@ function PushSettings() {
                 disabled={toggle.isPending}
                 onValueChange={(value) => toggle.mutate(value)}
                 trackColor={{ true: colors.accent.solid, false: colors.border.strong }}
-                accessibilityLabel="Push-Nachrichten"
+                accessibilityLabel={t.common.profile.push}
               />
             ) : undefined
           }
@@ -140,12 +147,13 @@ function PushSettings() {
 function FavoriteCategories() {
   const { data: selected } = useFavoriteCategories();
   const toggle = useToggleFavoriteCategory();
+  const { t, labels } = useT();
 
   return (
     <View style={styles.section}>
-      <SectionHeader title="Das interessiert mich" />
+      <SectionHeader title={t.common.profile.interests} />
       <Text variant="footnote" color="secondary">
-        Wähl aus, was dir Spaß macht.
+        {t.common.profile.interestsHint}
       </Text>
       <View style={styles.chips}>
         {OFFER_CATEGORIES.map((category) => {
@@ -153,7 +161,7 @@ function FavoriteCategories() {
           return (
             <Chip
               key={category}
-              label={OFFER_CATEGORY_LABELS[category]}
+              label={labels.offerCategory[category]}
               selected={active}
               onPress={() => toggle.mutate({ item: category, favorite: !active })}
             />
@@ -173,36 +181,59 @@ function FavoriteCategories() {
 function Favorites() {
   const router = useRouter();
   const { locations } = useFavoriteLocations();
+  const { t } = useT();
+  const p = t.common.profile;
 
   return (
     <View style={styles.section}>
-      <SectionHeader title="Favoriten" />
+      <SectionHeader title={p.favorites} />
       <ListRow
         icon={Store}
-        title="Lieblingsorte"
-        detail={
-          locations.length > 0
-            ? `${locations.length} ${locations.length === 1 ? 'Ort' : 'Orte'}`
-            : 'Tipp bei Anbietern auf das Herz'
-        }
+        title={p.favoritePlaces}
+        detail={locations.length > 0 ? p.placesCount(locations.length) : p.placesHint}
         onPress={() => router.push('/favoriten')}
       />
     </View>
   );
 }
 
-/** Tab „Profil“: Name, Interessen, Favoriten, Push, Abmelden und Konto löschen. */
+/** Sprache der Oberfläche. Inhalte (Angebote, Bewertungen) bleiben, wie sie sind. */
+function LanguageSettings() {
+  const { t, locale, setLocale } = useT();
+  return (
+    <View style={styles.section}>
+      <SectionHeader title={t.common.profile.language} />
+      <View style={styles.language}>
+        <Languages size={20} color={colors.text.secondary} />
+        <View style={styles.languageTabs}>
+          <SegmentedTabs
+            tabs={LOCALES.map((key) => ({ key, label: LOCALE_NAMES[key] }))}
+            value={locale}
+            onChange={setLocale}
+          />
+        </View>
+      </View>
+      <Text variant="footnote" color="secondary">
+        {t.common.profile.languageHint}
+      </Text>
+    </View>
+  );
+}
+
+/** Tab „Profil“: Name, Interessen, Favoriten, Push, Sprache, Abmelden und Konto löschen. */
 export function ProfileScreen() {
   const router = useRouter();
   const deleteSheet = useRef<SheetRef>(null);
   const { ready, userId, email, account, accountLoading, accountError, refetchAccount } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { t, locale } = useT();
+  const p = t.common.profile;
 
   if (!ready || (userId !== null && accountLoading)) {
     return (
       <Screen>
-        <Header title="Profil" />
+        <Header title={p.title} />
         <Skeleton height={64} />
         <Skeleton height={120} radius={radius.card} />
       </Screen>
@@ -212,14 +243,16 @@ export function ProfileScreen() {
   if (userId === null) {
     return (
       <Screen>
-        <Header title="Profil" />
+        <Header title={p.title} />
         <OnboardingHelpRow />
-        <EmptyState
-          icon={UserRound}
-          title="Noch nicht angemeldet"
-          message="Mit einem Konto holst du dir Codes, merkst dir Lieblingsorte und findest alles wieder."
+        <EmptyState icon={UserRound} title={p.notSignedIn} message={p.notSignedInText} />
+        <Button
+          label={t.common.signIn}
+          size="lg"
+          fullWidth
+          onPress={() => router.push('/anmelden')}
         />
-        <Button label="Anmelden" size="lg" fullWidth onPress={() => router.push('/anmelden')} />
+        <LanguageSettings />
         <LegalRows />
       </Screen>
     );
@@ -228,22 +261,22 @@ export function ProfileScreen() {
   if (!account) {
     return (
       <Screen>
-        <Header title="Profil" />
+        <Header title={p.title} />
         <OnboardingHelpRow />
         <EmptyState
           tone="error"
           icon={TriangleAlert}
-          title="Konto nicht geladen"
+          title={t.common.accountNotLoaded}
           message={errorMessage(accountError)}
-          actionLabel="Nochmal versuchen"
+          actionLabel={t.common.retry}
           onAction={() => void refetchAccount()}
         />
-        <ListRow icon={LogOut} title="Abmelden" onPress={() => void signOut()} />
+        <ListRow icon={LogOut} title={t.common.signOut} onPress={() => void signOut()} />
       </Screen>
     );
   }
 
-  const blocked = blockedNotice(account);
+  const blocked = blockedNotice(account, locale);
   const name = fullName(account);
 
   const confirmDelete = async () => {
@@ -262,7 +295,7 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <Header title={name || 'Dein Profil'} subtitle={email ?? undefined} />
+      <Header title={name || p.yourProfile} subtitle={email ?? undefined} />
       <OnboardingHelpRow />
 
       {blocked ? (
@@ -276,7 +309,7 @@ export function ProfileScreen() {
 
       {!account.profileComplete ? (
         <Button
-          label="Namen ergänzen"
+          label={p.addName}
           variant="secondary"
           fullWidth
           onPress={() => router.push('/name')}
@@ -286,20 +319,21 @@ export function ProfileScreen() {
       <FavoriteCategories />
       <Favorites />
       <PushSettings />
+      <LanguageSettings />
 
       <View style={styles.section}>
-        <SectionHeader title="Konto" />
+        <SectionHeader title={p.account} />
         <View>
           <ListRow
             icon={Pencil}
-            title="Name ändern"
+            title={p.changeName}
             detail={name || undefined}
             onPress={() => router.push('/name')}
           />
-          <ListRow icon={LogOut} title="Abmelden" onPress={() => void signOut()} />
+          <ListRow icon={LogOut} title={t.common.signOut} onPress={() => void signOut()} />
           <ListRow
             icon={Trash2}
-            title="Konto löschen"
+            title={p.deleteAccount}
             destructive
             onPress={() => {
               setDeleteError(null);
@@ -310,14 +344,13 @@ export function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Rechtliches" />
+        <SectionHeader title={p.legal} />
         <LegalRows />
       </View>
 
-      <Sheet ref={deleteSheet} title="Konto wirklich löschen?">
+      <Sheet ref={deleteSheet} title={p.deleteTitle}>
         <Text variant="body" color="secondary">
-          Dein Konto, dein Name und deine Favoriten werden endgültig gelöscht. Aktive Codes werden
-          storniert. Das lässt sich nicht rückgängig machen.
+          {p.deleteText}
         </Text>
         {deleteError ? (
           <Text
@@ -329,7 +362,7 @@ export function ProfileScreen() {
           </Text>
         ) : null}
         <Button
-          label="Konto endgültig löschen"
+          label={p.deleteConfirm}
           variant="danger"
           size="lg"
           fullWidth
@@ -337,7 +370,7 @@ export function ProfileScreen() {
           onPress={() => void confirmDelete()}
         />
         <Button
-          label="Abbrechen"
+          label={t.common.cancel}
           variant="secondary"
           fullWidth
           disabled={deleting}
@@ -360,4 +393,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.warning.subtle,
   },
   noticeText: { flex: 1, color: colors.status.warning.onSubtle },
+  language: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
+  languageTabs: { flex: 1 },
 });

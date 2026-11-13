@@ -3,6 +3,9 @@
  * Reine Logik ohne React und ohne Netzwerk, damit sie sich testen lässt.
  */
 import { formatDate, OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
+import { DEFAULT_LOCALE, type Locale } from '@repo/shared/i18n';
+
+import { getMessages } from '../../lib/i18n/messages';
 
 export interface Account {
   userId: string;
@@ -53,12 +56,15 @@ export function fullName(account: Pick<Account, 'firstName' | 'lastName'>): stri
 }
 
 /** Hinweis für gesperrte Nutzer, mit dem Enddatum der Sperre. Sonst null. */
-export function blockedNotice(account: Pick<Account, 'isBlocked' | 'blockedUntil'>): string | null {
+export function blockedNotice(
+  account: Pick<Account, 'isBlocked' | 'blockedUntil'>,
+  locale: Locale = DEFAULT_LOCALE,
+): string | null {
   if (!account.isBlocked) return null;
   const until = account.blockedUntil
-    ? ` bis zum ${formatDate(account.blockedUntil, { withYear: true })}`
-    : '';
-  return `Du kannst${until} keine Codes holen, weil du mehrfach nicht erschienen bist. Danach geht es wieder.`;
+    ? formatDate(account.blockedUntil, { withYear: true, locale })
+    : null;
+  return getMessages(locale).logic.blocked(until);
 }
 
 /** Zerlegt einen vollen Namen (z. B. von Apple) grob in Vor- und Nachname. */

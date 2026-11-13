@@ -29,6 +29,7 @@ import {
   voucherWhenText,
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { openInMaps } from '@/lib/open-external';
 import { colors, layout, radius, shadow, soft, space, textStyle } from '@/theme';
 
@@ -64,6 +65,8 @@ function useMaxBrightness(enabled: boolean) {
 /** Ein Code im Detail: großer QR-Code, Kurzcode, Status und Stornieren. */
 export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const router = useRouter();
+  const { t, locale } = useT();
+  const m = t.screens.code;
   const cancelSheet = useRef<SheetRef>(null);
   const { ready, userId } = useAuth();
   const { data, error, isPending, isRefetching, refetch } = useMyVouchers();
@@ -75,7 +78,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const active = voucher?.status === 'aktiv';
   useMaxBrightness(active);
 
-  const header = <Stack.Screen options={{ title: 'Dein Code' }} />;
+  const header = <Stack.Screen options={{ title: t.common.screens.code }} />;
 
   if (ready && userId === null) {
     return (
@@ -83,9 +86,9 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         {header}
         <EmptyState
           icon={Ticket}
-          title="Bitte anmelden"
-          message="Deine Codes siehst du, sobald du angemeldet bist."
-          actionLabel="Anmelden"
+          title={m.signInTitle}
+          message={m.signInText}
+          actionLabel={t.common.signIn}
           onAction={() => router.push('/anmelden')}
         />
       </View>
@@ -94,11 +97,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
 
   if (!ready || isPending) {
     return (
-      <View
-        style={[styles.screen, styles.content]}
-        accessible
-        accessibilityLabel="Code wird geladen"
-      >
+      <View style={[styles.screen, styles.content]} accessible accessibilityLabel={m.loading}>
         {header}
         <Skeleton height={QR_SIZE + space[12]} radius={radius.card} />
         <Skeleton width="70%" height={28} />
@@ -114,9 +113,9 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         <EmptyState
           tone="error"
           icon={CloudOff}
-          title={isOffline(error) ? 'Kein Netz' : 'Das hat nicht geklappt'}
+          title={isOffline(error) ? t.common.noNetwork : t.common.failed}
           message={errorMessage(error)}
-          actionLabel="Nochmal versuchen"
+          actionLabel={t.common.retry}
           onAction={() => void refetch()}
         />
       </View>
@@ -129,17 +128,17 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         {header}
         <EmptyState
           icon={SearchX}
-          title="Code nicht gefunden"
-          message="Diesen Code gibt es nicht (mehr) in deinem Konto."
-          actionLabel="Zu meinen Codes"
+          title={m.notFoundTitle}
+          message={m.notFoundText}
+          actionLabel={m.toCodes}
           onAction={() => router.navigate('/codes')}
         />
       </View>
     );
   }
 
-  const status = voucherStatusInfo(voucher);
-  const hint = cancelHint(voucher);
+  const status = voucherStatusInfo(voucher, locale);
+  const hint = cancelHint(voucher, undefined, locale);
 
   const confirmCancel = () => {
     cancel.mutate(voucher.id, {
@@ -177,7 +176,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
             <View
               accessible
               accessibilityRole="image"
-              accessibilityLabel="QR-Code zum Vorzeigen beim Anbieter"
+              accessibilityLabel={m.qrAria}
               style={styles.qr}
             >
               <QRCode
@@ -190,23 +189,23 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
             </View>
             <View style={styles.codeBlock}>
               <Text variant="caption" color="secondary">
-                Oder diesen Code nennen
+                {m.orSay}
               </Text>
               <Text
                 selectable
                 style={styles.shortCode}
-                accessibilityLabel={`Kurzcode ${voucher.short_code.split('').join(' ')}`}
+                accessibilityLabel={m.shortCodeAria(voucher.short_code.split('').join(' '))}
               >
                 {voucher.short_code}
               </Text>
             </View>
             <Text variant="footnote" color="secondary" align="center">
-              Zeig den Code vor Ort. Der Anbieter scannt ihn und du bist dabei.
+              {m.showOnSite}
             </Text>
           </>
         ) : (
           <Text variant="body" color="secondary" align="center">
-            {pastSummary(voucher)}
+            {pastSummary(voucher, undefined, locale)}
           </Text>
         )}
       </View>
@@ -216,8 +215,8 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
       </Text>
 
       <View>
-        <ListRow icon={CalendarClock} title={voucherWhenText(voucher)} />
-        <ListRow icon={Users} title={seatsText(voucher.seats)} />
+        <ListRow icon={CalendarClock} title={voucherWhenText(voucher, undefined, locale)} />
+        <ListRow icon={Users} title={seatsText(voucher.seats, locale)} />
         <ListRow
           icon={MapPin}
           title={voucher.location_name || voucher.company_name}
@@ -233,7 +232,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         />
         <ListRow
           icon={Ticket}
-          title="Zum Angebot"
+          title={m.toOffer}
           onPress={() =>
             router.push({ pathname: '/angebot/[id]', params: { id: voucher.offer_id } })
           }
@@ -246,18 +245,17 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
             <>
               <Stars value={myReview.rating} size={20} />
               <Text variant="callout" color="secondary">
-                Danke für deine Bewertung von {voucher.location_name || voucher.company_name}!
+                {m.thanks(voucher.location_name || voucher.company_name)}
               </Text>
             </>
           ) : (
             <>
-              <Text variant="headline">Wie war's?</Text>
+              <Text variant="headline">{m.howWasIt}</Text>
               <Text variant="callout" color="secondary">
-                Hilf anderen mit ein paar Sternen für{' '}
-                {voucher.location_name || voucher.company_name}.
+                {m.helpOthers(voucher.location_name || voucher.company_name)}
               </Text>
               <Button
-                label="Jetzt bewerten"
+                label={m.rateNow}
                 icon={Star}
                 fullWidth
                 onPress={() => reviewSheet.current?.present()}
@@ -276,7 +274,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
           ) : null}
           {voucher.can_cancel ? (
             <Button
-              label="Code stornieren"
+              label={m.cancelCode}
               variant="outline"
               fullWidth
               onPress={() => {
@@ -296,11 +294,9 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         />
       ) : null}
 
-      <Sheet ref={cancelSheet} title="Wirklich stornieren?">
+      <Sheet ref={cancelSheet} title={m.cancelTitle}>
         <Text variant="body" color="secondary">
-          {seatsText(voucher.seats)} für „{voucher.offer_title}“{' '}
-          {voucher.seats === 1 ? 'wird' : 'werden'} wieder frei. Das lässt sich nicht rückgängig
-          machen.
+          {m.cancelText(seatsText(voucher.seats, locale), voucher.offer_title, voucher.seats === 1)}
         </Text>
         {cancel.error ? (
           <Text
@@ -312,7 +308,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
           </Text>
         ) : null}
         <Button
-          label="Ja, stornieren"
+          label={m.confirmCancel}
           variant="danger"
           size="lg"
           fullWidth
@@ -320,7 +316,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
           onPress={confirmCancel}
         />
         <Button
-          label="Behalten"
+          label={m.keep}
           variant="secondary"
           fullWidth
           disabled={cancel.isPending}

@@ -3,6 +3,9 @@
  * Ohne React und ohne native Module, damit sie sich testen lässt.
  */
 import type { PushPlatform } from '@repo/shared';
+import { DEFAULT_LOCALE, type Locale } from '@repo/shared/i18n';
+
+import { getMessages } from '../../lib/i18n/messages';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -61,24 +64,18 @@ export function pushRowState(
   availability: PushAvailability,
   permission: PushPermission,
   optedOut: boolean,
+  locale: Locale = DEFAULT_LOCALE,
 ): PushRowState {
+  const m = getMessages(locale).logic.push;
   switch (availability) {
     case 'expo-go':
-      return {
-        enabled: false,
-        action: 'none',
-        detail: 'Kommt mit der fertigen App. In Expo Go gibt es keine Push-Nachrichten.',
-      };
+      return { enabled: false, action: 'none', detail: m.expoGo };
     case 'simulator':
-      return { enabled: false, action: 'none', detail: 'Geht nur auf einem echten Handy.' };
+      return { enabled: false, action: 'none', detail: m.simulator };
     case 'no-project':
-      return {
-        enabled: false,
-        action: 'none',
-        detail: 'In dieser Testversion noch nicht eingerichtet.',
-      };
+      return { enabled: false, action: 'none', detail: m.noProject };
     case 'web':
-      return { enabled: false, action: 'none', detail: 'Im Browser nicht verfügbar.' };
+      return { enabled: false, action: 'none', detail: m.web };
     case 'ok':
       break;
   }
@@ -87,19 +84,19 @@ export function pushRowState(
     return {
       enabled: false,
       action: 'settings',
-      detail: 'In den Handy-Einstellungen ausgeschaltet. Tipp hier, um sie zu öffnen.',
+      detail: m.denied,
     };
   }
   if (permission === 'granted' && !optedOut) {
     return {
       enabled: true,
       action: 'toggle',
-      detail: 'Neue Angebote deiner Favoriten, Erinnerungen vor dem Start und Absagen.',
+      detail: m.on,
     };
   }
   return {
     enabled: false,
     action: 'toggle',
-    detail: 'Wir melden uns nur, wenn es um deine Codes und Favoriten geht.',
+    detail: m.off,
   };
 }

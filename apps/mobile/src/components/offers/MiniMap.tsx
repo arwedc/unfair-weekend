@@ -3,6 +3,7 @@ import { WebView } from 'react-native-webview';
 
 import { buildMiniMapHtml } from '@/features/map/mini-map-html';
 import { env } from '@/lib/env';
+import { useT } from '@/lib/i18n/context';
 import { colors, radii } from '@/theme';
 
 export interface MiniMapProps {
@@ -15,6 +16,7 @@ export interface MiniMapProps {
 
 /** Kleine, nicht antippbare Kartenvorschau mit einem Pin. */
 export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
+  const { t } = useT();
   const html = buildMiniMapHtml({
     styleUrl: env.mapStyleUrl,
     lat,
@@ -27,7 +29,7 @@ export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Kartenvorschau: ${label}`}
+      accessibilityLabel={t.parts.card.mapPreview(label)}
       style={[styles.frame, { height }]}
     >
       <WebView

@@ -1,11 +1,11 @@
 import {
   emailSchema,
   OFFER_CATEGORIES,
-  OFFER_CATEGORY_LABELS,
   passwordSchema,
   userSignUpSchema,
   type OfferCategory,
 } from '@repo/shared';
+import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { Mail, X } from 'lucide-react-native';
@@ -29,6 +29,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
 type Busy = 'apple' | 'google' | 'password' | 'register' | 'dev' | null;
@@ -37,14 +38,21 @@ type Mode = 'login' | 'register';
 /** Erstes Test-Konto aus den Seed-Daten. Das Passwort tippt man selbst ein (steht in der .env). */
 const DEV_EMAIL = 'seed-mia@example.com';
 
-function firstIssue(error: { issues: { message: string }[] }): string {
-  return error.issues[0]?.message ?? 'Bitte prüf deine Eingabe.';
+function firstIssue(
+  error: { issues: { message: string }[] },
+  locale: Locale,
+  fallback: string,
+): string {
+  const message = error.issues[0]?.message;
+  return message ? translateValidationMessage(message, locale) : fallback;
 }
 
 /** Anmeldung per E-Mail/Passwort; bei der Registrierung sind Alter und Interessen freiwillig. */
 export function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, locale, labels } = useT();
+  const a = t.common.auth;
   const { ready, userId, account, accountLoading, accountError, refetchAccount, suggestedName } =
     useAuth();
 
@@ -113,11 +121,11 @@ export function LoginScreen() {
   const login = () => {
     const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
     if (!parsedEmail.success) {
-      setError(firstIssue(parsedEmail.error));
+      setError(firstIssue(parsedEmail.error, locale, t.common.checkInput));
       return;
     }
     if (!password) {
-      setError('Bitte gib dein Passwort ein.');
+      setError(a.passwordMissing);
       return;
     }
     void run('password', () => signInWithPassword(parsedEmail.data, password));
@@ -126,16 +134,16 @@ export function LoginScreen() {
   const continueRegistration = () => {
     const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
     if (!parsedEmail.success) {
-      setError(firstIssue(parsedEmail.error));
+      setError(firstIssue(parsedEmail.error, locale, t.common.checkInput));
       return;
     }
     const parsedPassword = passwordSchema.safeParse(password);
     if (!parsedPassword.success) {
-      setError(firstIssue(parsedPassword.error));
+      setError(firstIssue(parsedPassword.error, locale, t.common.checkInput));
       return;
     }
     if (password !== passwordConfirmation) {
-      setError('Die Passwörter stimmen nicht überein.');
+      setError(a.passwordMismatch);
       return;
     }
     setError(null);
@@ -150,7 +158,7 @@ export function LoginScreen() {
       interests,
     });
     if (!parsed.success) {
-      setError(firstIssue(parsed.error));
+      setError(firstIssue(parsed.error, locale, t.common.checkInput));
       return;
     }
     void run('register', async () => {
@@ -161,7 +169,7 @@ export function LoginScreen() {
 
   const devLogin = () => {
     if (!devEmail.trim() || !devPassword) {
-      setError('Bitte E-Mail und Passwort des Test-Kontos eingeben.');
+      setError(a.devMissing);
       return;
     }
     void run('dev', () => signInWithPassword(devEmail.trim(), devPassword));
@@ -187,9 +195,9 @@ export function LoginScreen() {
       <EmptyState
         tone="error"
         icon={Mail}
-        title="Konto nicht geladen"
+        title={t.common.accountNotLoaded}
         message={errorMessage(accountError)}
-        actionLabel="Nochmal versuchen"
+        actionLabel={t.common.retry}
         onAction={() => void refetchAccount()}
       />
     );
@@ -199,21 +207,20 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Wie heißt du?
+            {a.nameTitle}
           </Text>
           <Text variant="body" color="secondary">
-            Dein Name ist für die Registrierung nicht nötig. Wenn du einen Code holst, steht er auf
-            der Teilnehmerliste. Du kannst ihn jetzt oder später im Profil ergänzen.
+            {a.nameOptionalIntro}
           </Text>
         </View>
         <NameForm
           initialFirstName={account.firstName || appleName.firstName || suggestion.firstName}
           initialLastName={account.lastName || appleName.lastName || suggestion.lastName}
-          submitLabel="Speichern"
+          submitLabel={t.common.save}
           onSaved={() => undefined}
         />
-        <Button label="Später im Profil ergänzen" variant="ghost" onPress={close} />
-        <Button label="Abmelden" variant="ghost" onPress={() => void signOut()} />
+        <Button label={a.addLater} variant="ghost" onPress={close} />
+        <Button label={t.common.signOut} variant="ghost" onPress={() => void signOut()} />
       </View>
     );
   } else if (confirmationSent) {
@@ -221,15 +228,14 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Bestätige deine E-Mail
+            {a.confirmTitle}
           </Text>
           <Text variant="body" color="secondary">
-            Wir haben dir einen Bestätigungslink an {email} geschickt. Öffne ihn auf diesem Gerät,
-            um deine Registrierung abzuschließen. Schau auch im Spam-Ordner nach.
+            {a.confirmText(email)}
           </Text>
         </View>
         <Button
-          label="Zur Anmeldung"
+          label={a.toLogin}
           variant="ghost"
           onPress={() => {
             setConfirmationSent(false);
@@ -245,14 +251,14 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            {mode === 'register' ? 'Konto erstellen' : 'Anmelden'}
+            {mode === 'register' ? a.registerTitle : t.common.signIn}
           </Text>
           <Text variant="body" color="secondary">
             {mode === 'register'
               ? registerStep === 1
-                ? 'Erstelle dein Konto mit E-Mail und Passwort.'
-                : 'Erzähl uns mehr über dich. Alle Angaben sind freiwillig.'
-              : 'Melde dich an, um deine Codes und Favoriten wiederzufinden.'}
+                ? a.registerIntro
+                : a.aboutYouIntro
+              : a.loginIntro}
           </Text>
         </View>
 
@@ -260,10 +266,10 @@ export function LoginScreen() {
           <View style={styles.progress}>
             <View style={styles.progressLabels}>
               <Text variant="footnote" color="secondary">
-                Schritt {registerStep} von 2
+                {a.stepOf(registerStep, 2)}
               </Text>
               <Text variant="footnote" color="tertiary">
-                {registerStep === 1 ? 'Konto' : 'Über dich'}
+                {registerStep === 1 ? a.stepAccount : a.stepAboutYou}
               </Text>
             </View>
             <View style={styles.progressTrack}>
@@ -291,7 +297,7 @@ export function LoginScreen() {
             ) : null}
             {env.auth.google ? (
               <Button
-                label="Mit Google anmelden"
+                label={a.google}
                 variant="outline"
                 size="lg"
                 fullWidth
@@ -309,18 +315,18 @@ export function LoginScreen() {
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <Text variant="footnote" color="tertiary">
-                  oder mit E-Mail
+                  {a.orEmail}
                 </Text>
                 <View style={styles.line} />
               </View>
             ) : null}
 
             <Input
-              label="E-Mail-Adresse"
+              label={a.emailLabel}
               icon={Mail}
               value={email}
               onChangeText={setEmail}
-              placeholder="du@beispiel.de"
+              placeholder={a.emailPlaceholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -329,7 +335,7 @@ export function LoginScreen() {
               returnKeyType="next"
             />
             <Input
-              label="Passwort"
+              label={a.password}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -341,7 +347,7 @@ export function LoginScreen() {
               onSubmitEditing={login}
             />
             <Button
-              label="Anmelden"
+              label={t.common.signIn}
               size="lg"
               fullWidth
               loading={busy === 'password'}
@@ -349,7 +355,7 @@ export function LoginScreen() {
               onPress={login}
             />
             <Button
-              label="Noch kein Konto? Registrieren"
+              label={a.toRegister}
               variant="ghost"
               onPress={() => {
                 setError(null);
@@ -363,11 +369,11 @@ export function LoginScreen() {
             {registerStep === 1 ? (
               <>
                 <Input
-                  label="E-Mail-Adresse"
+                  label={a.emailLabel}
                   icon={Mail}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="du@beispiel.de"
+                  placeholder={a.emailPlaceholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -375,7 +381,7 @@ export function LoginScreen() {
                   textContentType="emailAddress"
                 />
                 <Input
-                  label="Passwort"
+                  label={a.password}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -383,10 +389,10 @@ export function LoginScreen() {
                   autoCorrect={false}
                   autoComplete="new-password"
                   textContentType="newPassword"
-                  hint="Mindestens 8 Zeichen."
+                  hint={a.passwordHint}
                 />
                 <Input
-                  label="Passwort wiederholen"
+                  label={a.passwordRepeat}
                   value={passwordConfirmation}
                   onChangeText={setPasswordConfirmation}
                   secureTextEntry
@@ -397,9 +403,9 @@ export function LoginScreen() {
                   returnKeyType="done"
                   onSubmitEditing={continueRegistration}
                 />
-                <Button label="Weiter" size="lg" fullWidth onPress={continueRegistration} />
+                <Button label={t.common.next} size="lg" fullWidth onPress={continueRegistration} />
                 <Button
-                  label="Schon ein Konto? Anmelden"
+                  label={a.toSignIn}
                   variant="ghost"
                   onPress={() => {
                     setError(null);
@@ -412,7 +418,7 @@ export function LoginScreen() {
               <>
                 <View style={styles.interests}>
                   <Input
-                    label="Alter (optional)"
+                    label={a.age}
                     value={age}
                     onChangeText={setAge}
                     keyboardType="number-pad"
@@ -422,16 +428,16 @@ export function LoginScreen() {
                 </View>
                 <View style={styles.interests}>
                   <Text variant="subhead" color="secondary">
-                    Was interessiert dich?{' '}
+                    {a.interestsQuestion}{' '}
                     <Text variant="footnote" color="tertiary">
-                      (optional)
+                      {a.optional}
                     </Text>
                   </Text>
                   <View style={styles.chips}>
                     {OFFER_CATEGORIES.map((category) => (
                       <Chip
                         key={category}
-                        label={OFFER_CATEGORY_LABELS[category]}
+                        label={labels.offerCategory[category]}
                         selected={interests.includes(category)}
                         onPress={() => toggleInterest(category)}
                       />
@@ -439,7 +445,7 @@ export function LoginScreen() {
                   </View>
                 </View>
                 <Button
-                  label="Konto erstellen"
+                  label={a.createAccount}
                   size="lg"
                   fullWidth
                   loading={busy === 'register'}
@@ -447,7 +453,7 @@ export function LoginScreen() {
                   onPress={register}
                 />
                 <Button
-                  label="Zurück"
+                  label={t.common.back}
                   variant="ghost"
                   onPress={() => {
                     setError(null);
@@ -462,13 +468,13 @@ export function LoginScreen() {
         {__DEV__ ? (
           <View style={styles.dev}>
             <Text variant="overline" color="tertiary">
-              Nur in der Entwicklung
+              {a.devOnly}
             </Text>
             <Text variant="footnote" color="secondary">
-              Test-Konto aus den Seed-Daten. Das Passwort ist SEED_TEST_PASSWORD aus der .env.
+              {a.devHint}
             </Text>
             <Input
-              label="Test-E-Mail"
+              label={a.devEmail}
               value={devEmail}
               onChangeText={setDevEmail}
               keyboardType="email-address"
@@ -476,7 +482,7 @@ export function LoginScreen() {
               autoCorrect={false}
             />
             <Input
-              label="Test-Passwort"
+              label={a.devPassword}
               value={devPassword}
               onChangeText={setDevPassword}
               secureTextEntry
@@ -485,7 +491,7 @@ export function LoginScreen() {
               onSubmitEditing={devLogin}
             />
             <Button
-              label="Mit Test-Konto anmelden"
+              label={a.devSubmit}
               variant="secondary"
               fullWidth
               loading={busy === 'dev'}
@@ -528,7 +534,7 @@ export function LoginScreen() {
       <IconButton
         icon={X}
         variant="plain"
-        accessibilityLabel="Schließen"
+        accessibilityLabel={t.common.close}
         onPress={close}
         style={[styles.close, { top: Platform.OS === 'ios' ? space[3] : insets.top + space[2] }]}
       />

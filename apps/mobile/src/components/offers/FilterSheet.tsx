@@ -1,4 +1,4 @@
-import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, type OfferCategory } from '@repo/shared';
+import { OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
 import * as Haptics from 'expo-haptics';
 import { Check, LayoutGrid, type LucideIcon } from 'lucide-react-native';
 import type { RefObject } from 'react';
@@ -9,17 +9,13 @@ import { offersInCity } from '@/features/offers/cities';
 import { countByCategory, filterOffers, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, soft, space } from '@/theme';
 
 import { CATEGORY_ICONS } from './category-icons';
 
 export interface FilterSheetProps {
   sheetRef: RefObject<SheetRef | null>;
-}
-
-function countLabel(count: number): string {
-  if (count === 0) return 'gerade nichts';
-  return count === 1 ? '1 Angebot' : `${count} Angebote`;
 }
 
 /**
@@ -94,6 +90,9 @@ function CategoryTile({
 
 /** Kategorien als große Kacheln. Die Tage stehen schon oben in der Filterzeile. */
 export function FilterSheet({ sheetRef }: FilterSheetProps) {
+  const { t, labels } = useT();
+  const m = t.parts.filter;
+  const countLabel = m.count;
   const { filters, setFilters, cityId } = useOfferFilters();
   const { data } = useOffers();
 
@@ -111,14 +110,14 @@ export function FilterSheet({ sheetRef }: FilterSheetProps) {
     });
 
   return (
-    <Sheet ref={sheetRef} title="Worauf hast du Lust?">
+    <Sheet ref={sheetRef} title={m.title}>
       <Text variant="footnote" color="secondary">
-        Du kannst mehrere Kategorien wählen.
+        {m.multi}
       </Text>
       <View style={styles.grid}>
         <CategoryTile
           wide
-          label="Alles zeigen"
+          label={m.showAll}
           detail={countLabel(forCounts.length)}
           icon={LayoutGrid}
           selected={filters.categories.length === 0}
@@ -128,7 +127,7 @@ export function FilterSheet({ sheetRef }: FilterSheetProps) {
         {OFFER_CATEGORIES.map((category) => (
           <CategoryTile
             key={category}
-            label={OFFER_CATEGORY_LABELS[category]}
+            label={labels.offerCategory[category]}
             detail={countLabel(counts[category])}
             icon={CATEGORY_ICONS[category]}
             selected={filters.categories.includes(category)}
@@ -139,7 +138,7 @@ export function FilterSheet({ sheetRef }: FilterSheetProps) {
       </View>
 
       <Button
-        label={resultCount === 0 ? 'Keine Angebote' : `${countLabel(resultCount)} anzeigen`}
+        label={resultCount === 0 ? m.none : m.show(countLabel(resultCount))}
         size="lg"
         fullWidth
         disabled={resultCount === 0}

@@ -9,6 +9,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, MAX_FONT_SCALE, radius, shadow, space, textStyle } from '@/theme';
 
 import { Text } from './Text';
@@ -44,6 +45,7 @@ export function Input({
   onBlur,
   ...rest
 }: InputProps) {
+  const { t } = useT();
   const [focused, setFocused] = useState(false);
   const borderColor = error
     ? colors.status.error.solid
@@ -91,7 +93,7 @@ export function Input({
         {showClear ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Eingabe löschen"
+            accessibilityLabel={t.common.clearInput}
             onPress={onClear}
             hitSlop={12}
             style={styles.clear}

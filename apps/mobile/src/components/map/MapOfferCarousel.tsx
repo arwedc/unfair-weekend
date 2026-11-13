@@ -9,6 +9,7 @@ import {
   snappedIndex,
 } from '@/features/map/map-logic';
 import type { Offer } from '@/features/offers/types';
+import { useT } from '@/lib/i18n/context';
 import { space } from '@/theme';
 
 import { MAP_TILE_HEIGHT, MapOfferTile } from './MapOfferTile';
@@ -41,6 +42,7 @@ interface Slot {
  * ist, nicht erst nach dem Ausrollen. So springt die Nadel ohne spürbare Verzögerung mit.
  */
 export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarouselProps) {
+  const { t } = useT();
   const { width } = useWindowDimensions();
   const list = useRef<FlatList<Slot>>(null);
   const count = offers.length;
@@ -121,7 +123,7 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
             <MapOfferTile
               offer={item.offer}
               width={tileWidth}
-              position={`Angebot ${realIndex(position, count) + 1} von ${count}`}
+              position={t.parts.card.position(realIndex(position, count) + 1, count)}
             />
           </View>
         )}

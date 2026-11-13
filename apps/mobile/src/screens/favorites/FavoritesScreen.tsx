@@ -7,10 +7,12 @@ import { Button, EmptyState, ListRow, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { useFavoriteLocations } from '@/features/favorites/queries';
 import { errorMessage } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, space } from '@/theme';
 
 function LocationFavorites() {
   const router = useRouter();
+  const { t } = useT();
   const { locations, isPending, error } = useFavoriteLocations();
 
   if (isPending) return <Skeleton height={64} />;
@@ -25,8 +27,8 @@ function LocationFavorites() {
     return (
       <EmptyState
         icon={Store}
-        title="Noch keine Lieblingsorte"
-        message="Tipp bei einem Anbieter auf das Herz. Dann sagen wir dir Bescheid, wenn es dort etwas Neues gibt."
+        title={t.parts.favorites.noPlacesTitle}
+        message={t.parts.favorites.noPlacesText}
       />
     );
   }
@@ -49,6 +51,7 @@ function LocationFavorites() {
 /** „Favoriten“ aus dem Profil: gemerkte Standorte. */
 export function FavoritesScreen() {
   const router = useRouter();
+  const { t } = useT();
   const { userId } = useAuth();
 
   return (
@@ -58,16 +61,21 @@ export function FavoritesScreen() {
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
     >
-      <Stack.Screen options={{ title: 'Favoriten' }} />
+      <Stack.Screen options={{ title: t.common.screens.favorites }} />
 
       {userId === null ? (
         <>
           <EmptyState
             icon={Store}
-            title="Melde dich an"
-            message="Mit einem Konto merkst du dir Lieblingsorte und findest sie hier wieder."
+            title={t.parts.favorites.signInTitle}
+            message={t.parts.favorites.signInText}
           />
-          <Button label="Anmelden" size="lg" fullWidth onPress={() => router.push('/anmelden')} />
+          <Button
+            label={t.common.signIn}
+            size="lg"
+            fullWidth
+            onPress={() => router.push('/anmelden')}
+          />
         </>
       ) : (
         <LocationFavorites />

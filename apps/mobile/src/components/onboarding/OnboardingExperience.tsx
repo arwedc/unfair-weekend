@@ -34,13 +34,8 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { offerWhenText } from '@/features/offers/feed-logic';
 import { useOffer, useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
+import { useT } from '@/lib/i18n/context';
 import { colors, duration, fonts, layout, radii, shadow, soft, space } from '@/theme';
-
-const STEPS = [
-  { title: 'Dein Stadtplan.', body: 'Tippe auf einen Pin.' },
-  { title: 'Ein Ort. Ein Angebot.', body: 'Sieh dir einen echten Deal genauer an.' },
-  { title: 'Fünf Angebote.', body: 'Wische zum Drehen.' },
-] as const;
 
 const MAP_MARKER_POSITIONS = [
   { left: '50%', top: '15%', marginLeft: -24 },
@@ -83,6 +78,7 @@ function CompanyMarker({
   focused: boolean;
   onSelect: (offer: FeedOffer) => void;
 }) {
+  const { t } = useT();
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 65)
@@ -93,7 +89,7 @@ function CompanyMarker({
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={offer.company_name}
-        accessibilityHint="Unternehmen auswählen"
+        accessibilityHint={t.parts.onboarding.selectCompany}
         accessibilityState={{ selected: focused }}
         onPress={() => {
           void Haptics.selectionAsync();
@@ -153,10 +149,11 @@ function ZoomOfferCard({
   description: string;
   compact: boolean;
 }) {
+  const { t, locale } = useT();
   if (!offer) {
     return (
       <View style={styles.zoomOfferCard}>
-        <Text variant="headline">Ein Angebot direkt vor Ort</Text>
+        <Text variant="headline">{t.parts.onboarding.offerOnSite}</Text>
       </View>
     );
   }
@@ -177,7 +174,7 @@ function ZoomOfferCard({
       )}
       <View style={styles.zoomOfferDetails}>
         <Text variant="caption" color="accent" style={styles.discountText}>
-          {formatDiscount(offer.discount_percent)} RABATT
+          {t.parts.onboarding.discountCaps(formatDiscount(offer.discount_percent, locale))}
         </Text>
         <Text variant="title3" numberOfLines={2}>
           {offer.title}
@@ -195,13 +192,13 @@ function ZoomOfferCard({
       </View>
       <View style={styles.zoomPriceRow}>
         <Text variant="headline" color="accent">
-          {formatPrice(offer.deal_price_cents)}
+          {formatPrice(offer.deal_price_cents, { locale })}
         </Text>
         <Text variant="footnote" color="tertiary" style={styles.oldPrice}>
-          {formatPrice(offer.original_price_cents)}
+          {formatPrice(offer.original_price_cents, { locale })}
         </Text>
         <Text variant="caption" color="secondary" numberOfLines={1} style={styles.offerWhen}>
-          {offerWhenText(offer)}
+          {offerWhenText(offer, undefined, locale)}
         </Text>
       </View>
     </View>
@@ -219,6 +216,7 @@ function VenueZoomArtwork({
   reduceMotion: boolean;
   compact: boolean;
 }) {
+  const { t } = useT();
   const zoom = useSharedValue(reduceMotion ? 1 : 0);
   const pinPop = useSharedValue(reduceMotion ? 1 : 0);
 
@@ -261,7 +259,7 @@ function VenueZoomArtwork({
           style={styles.zoomVenueLabel}
         >
           <Text variant="caption" color="accent" style={styles.placeOverline}>
-            {offer?.company_name ?? 'LOKALER ANBIETER'}
+            {offer?.company_name ?? t.parts.onboarding.localProvider}
           </Text>
           {offer ? (
             <Text variant="footnote" color="secondary" numberOfLines={1}>
@@ -300,6 +298,7 @@ function CarouselOfferCard({
   orbitRadius: number;
   compact: boolean;
 }) {
+  const { locale } = useT();
   const stepAngle = 360 / count;
   const spread = useSharedValue(reduceMotion ? 1 : 0);
 
@@ -370,7 +369,7 @@ function CarouselOfferCard({
             )}
             <View style={styles.discountBadge}>
               <Text variant="caption" style={styles.discountText}>
-                {formatDiscount(offer.discount_percent)}
+                {formatDiscount(offer.discount_percent, locale)}
               </Text>
             </View>
           </View>
@@ -383,10 +382,10 @@ function CarouselOfferCard({
             </Text>
             <View style={styles.carouselPrice}>
               <Text variant="headline" color="accent">
-                {formatPrice(offer.deal_price_cents)}
+                {formatPrice(offer.deal_price_cents, { locale })}
               </Text>
               <Text variant="footnote" color="tertiary" style={styles.oldPrice}>
-                {formatPrice(offer.original_price_cents)}
+                {formatPrice(offer.original_price_cents, { locale })}
               </Text>
             </View>
           </View>
@@ -407,6 +406,7 @@ function OfferCarouselArtwork({
   width: number;
   compact: boolean;
 }) {
+  const { t } = useT();
   const rotation = useSharedValue(0);
   const dragOrigin = useSharedValue(0);
   const cardWidth = Math.min(width - space[16], 184);
@@ -445,8 +445,8 @@ function OfferCarouselArtwork({
             style={styles.carouselWheel}
             accessible
             accessibilityRole="adjustable"
-            accessibilityLabel="Angebotskreis"
-            accessibilityHint="Wische nach links oder rechts, um die Angebote zu drehen."
+            accessibilityLabel={t.parts.onboarding.carousel}
+            accessibilityHint={t.parts.onboarding.carouselHint}
           >
             {offers.map((offer, index) => (
               <CarouselOfferCard
@@ -528,6 +528,8 @@ function Artwork({
 /** Vollbild-Onboarding: Stadtkarte, echter Standort und drehbarer Angebotskreis. */
 export function OnboardingExperience() {
   const router = useRouter();
+  const { t } = useT();
+  const STEPS = t.parts.onboarding.steps;
   const { width, height } = useWindowDimensions();
   const compact = height < 760;
   const reduceMotion = useReducedMotion() ?? false;
@@ -590,7 +592,7 @@ export function OnboardingExperience() {
                   <View
                     style={styles.progress}
                     accessible
-                    accessibilityLabel={'Schritt ' + (step + 1) + ' von 3'}
+                    accessibilityLabel={t.parts.onboarding.stepOf(step + 1, STEPS.length)}
                   >
                     {STEPS.map((item, index) => (
                       <View
@@ -674,7 +676,9 @@ export function OnboardingExperience() {
 
                   <View style={[styles.footer, { maxWidth: Math.min(width - space[8], 680) }]}>
                     <Button
-                      label={step < STEPS.length - 1 ? 'Weiter' : 'Los geht’s'}
+                      label={
+                        step < STEPS.length - 1 ? t.parts.onboarding.next : t.parts.onboarding.start
+                      }
                       icon={step < STEPS.length - 1 ? ArrowRight : Sparkles}
                       size="lg"
                       fullWidth
@@ -686,7 +690,7 @@ export function OnboardingExperience() {
                     {step > 0 ? (
                       <PressableScale
                         accessibilityRole="button"
-                        accessibilityLabel="Vorheriger Schritt"
+                        accessibilityLabel={t.parts.onboarding.previous}
                         onPress={() => moveTo(step - 1)}
                         style={styles.backButton}
                       >

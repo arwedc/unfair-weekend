@@ -9,6 +9,9 @@ import {
   type RpcRow,
   type VoucherStatus,
 } from '@repo/shared';
+import { DEFAULT_LOCALE, type Locale } from '@repo/shared/i18n';
+
+import { getMessages } from '../../lib/i18n/messages';
 
 /** Ein eigener Code (eine Zeile aus `get_my_vouchers`). */
 export type Voucher = RpcRow<'get_my_vouchers'>;
@@ -23,16 +26,20 @@ function optional(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
-export function voucherStatusInfo(voucher: Pick<Voucher, 'status' | 'offer_status'>): StatusInfo {
+export function voucherStatusInfo(
+  voucher: Pick<Voucher, 'status' | 'offer_status'>,
+  locale: Locale = DEFAULT_LOCALE,
+): StatusInfo {
+  const m = getMessages(locale).logic.voucherStatus;
   const byStatus: Record<VoucherStatus, StatusInfo> = {
-    aktiv: { label: 'Aktiv', tone: 'success' },
-    eingeloest: { label: 'Eingelöst', tone: 'neutral' },
-    storniert: { label: 'Storniert', tone: 'neutral' },
-    abgelaufen: { label: 'Abgelaufen', tone: 'neutral' },
-    no_show: { label: 'Nicht erschienen', tone: 'error' },
+    aktiv: { label: m.aktiv, tone: 'success' },
+    eingeloest: { label: m.eingeloest, tone: 'neutral' },
+    storniert: { label: m.storniert, tone: 'neutral' },
+    abgelaufen: { label: m.abgelaufen, tone: 'neutral' },
+    no_show: { label: m.no_show, tone: 'error' },
   };
   if (voucher.status === 'storniert' && voucher.offer_status !== 'aktiv') {
-    return { label: 'Abgesagt', tone: 'warning' };
+    return { label: m.abgesagt, tone: 'warning' };
   }
   return byStatus[voucher.status];
 }
@@ -54,15 +61,20 @@ export function splitVouchers<T extends Pick<Voucher, 'status'>>(
 type Timing = Pick<Voucher, 'offer_type' | 'starts_at' | 'ends_at'>;
 
 /** Wann der Code gilt. Einzeltermin: „Morgen, 18:00–21:00“. Zeitraum: „Einlösbar bis Sa., 14.11.“ */
-export function voucherWhenText(voucher: Timing, now: DateInput = new Date()): string {
+export function voucherWhenText(
+  voucher: Timing,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  const m = getMessages(locale).logic;
   if (voucher.offer_type === 'einzeltermin') {
-    const text = formatTimeRange(voucher.starts_at, voucher.ends_at, now);
+    const text = formatTimeRange(voucher.starts_at, voucher.ends_at, now, locale);
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
   if (toDate(voucher.starts_at).getTime() <= toDate(now).getTime()) {
-    return `Einlösbar bis ${formatDay(voucher.ends_at, now)}`;
+    return m.redeemUntil(formatDay(voucher.ends_at, now, locale));
   }
-  return `Einlösbar ${formatDateRange(voucher.starts_at, voucher.ends_at, now)}`;
+  return m.redeemRange(formatDateRange(voucher.starts_at, voucher.ends_at, now, locale));
 }
 
 type CancelSource = Pick<Voucher, 'status' | 'can_cancel' | 'cancel_deadline' | 'offer_type'>;
@@ -71,43 +83,48 @@ type CancelSource = Pick<Voucher, 'status' | 'can_cancel' | 'cancel_deadline' | 
  * Hinweis zur Stornierung eines aktiven Codes.
  * Der Server entscheidet (`can_cancel`), die App erklärt es nur.
  */
-export function cancelHint(voucher: CancelSource, now: DateInput = new Date()): string | null {
+export function cancelHint(
+  voucher: CancelSource,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): string | null {
   if (voucher.status !== 'aktiv') return null;
+  const m = getMessages(locale).logic.cancelHint;
   const deadline = optional(voucher.cancel_deadline);
   if (voucher.can_cancel) {
-    if (voucher.offer_type === 'zeitraum' || !deadline) {
-      return 'Du kannst kostenlos stornieren, solange du den Code nicht eingelöst hast.';
-    }
-    return `Kostenlos stornierbar bis ${formatDateTime(deadline, now)} Uhr.`;
+    if (voucher.offer_type === 'zeitraum' || !deadline) return m.period;
+    return m.until(formatDateTime(deadline, now, locale));
   }
-  if (deadline) return `Die Stornofrist ist seit ${formatDateTime(deadline, now)} Uhr vorbei.`;
-  return 'Dieser Code lässt sich nicht mehr stornieren.';
+  if (deadline) return m.over(formatDateTime(deadline, now, locale));
+  return m.none;
 }
 
 /** Was mit einem vergangenen Code passiert ist, als kurze Zeile. */
 export function pastSummary(
   voucher: Pick<Voucher, 'status' | 'offer_status' | 'redeemed_at' | 'cancelled_at'>,
   now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
+  const m = getMessages(locale).logic.past;
   const redeemed = optional(voucher.redeemed_at);
   const cancelled = optional(voucher.cancelled_at);
   switch (voucher.status) {
     case 'eingeloest':
-      return redeemed ? `Eingelöst am ${formatDay(redeemed, now)}` : 'Eingelöst';
+      return redeemed ? m.redeemedOn(formatDay(redeemed, now, locale)) : m.redeemed;
     case 'storniert':
-      if (voucher.offer_status !== 'aktiv') return 'Der Anbieter hat das Angebot abgesagt.';
-      return cancelled ? `Storniert am ${formatDay(cancelled, now)}` : 'Storniert';
+      if (voucher.offer_status !== 'aktiv') return m.offerCancelled;
+      return cancelled ? m.cancelledOn(formatDay(cancelled, now, locale)) : m.cancelled;
     case 'no_show':
-      return 'Du bist nicht erschienen.';
+      return m.noShow;
     case 'abgelaufen':
-      return 'Nicht eingelöst.';
+      return m.expired;
     default:
       return '';
   }
 }
 
-export function seatsText(seats: number): string {
-  return seats === 1 ? '1 Platz' : `${seats} Plätze`;
+export function seatsText(seats: number, locale: Locale = DEFAULT_LOCALE): string {
+  return getMessages(locale).logic.seats(seats);
 }
 
 /** So viele Plätze darf man höchstens wählen. */
