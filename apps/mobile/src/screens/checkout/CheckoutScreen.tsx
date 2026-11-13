@@ -5,7 +5,7 @@ import {
   formatPrice,
   reservationSecondsLeft,
 } from '@repo/shared';
-import { PaymentSheetError, useStripe } from '@stripe/stripe-react-native';
+import { PaymentSheet, PaymentSheetError, useStripe } from '@stripe/stripe-react-native';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import { CircleCheck, CloudOff, CreditCard, Lock, TimerOff, Undo2 } from 'lucide-react-native';
@@ -118,14 +118,24 @@ export function CheckoutScreen({ offerId, seats }: { offerId: string; seats: num
         returnURL: stripeReturnUrl(),
         allowsDelayedPaymentMethods: false,
         primaryButtonLabel: m.payNow(formatPrice(booking.amount_cents, { locale })),
+        // Die App ist nur hell. Ohne feste Textfarben nimmt Stripe im Dark Mode weiße
+        // Schrift, auf unseren weißen Feldern war dann nichts zu sehen.
+        style: 'alwaysLight',
+        // Link (Stripes „mit E-Mail speichern“) verwirrt im MVP nur. Karte reicht.
+        link: { display: PaymentSheet.LinkDisplay.NEVER },
         appearance: {
           colors: {
             primary: colors.accent.strong,
             background: colors.surface.raised,
             componentBackground: colors.surface.default,
             componentBorder: colors.border.default,
+            componentDivider: colors.border.default,
             primaryText: colors.text.primary,
             secondaryText: colors.text.secondary,
+            componentText: colors.text.primary,
+            placeholderText: colors.text.tertiary,
+            icon: colors.text.secondary,
+            error: colors.status.error.text,
           },
           shapes: { borderRadius: radius.input },
           primaryButton: {
