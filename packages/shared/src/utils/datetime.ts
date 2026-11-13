@@ -6,6 +6,8 @@
  * allen Plattformen identisch ist.
  */
 
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locale';
+
 export const TIME_ZONE = 'Europe/Berlin';
 export const LOCALE = 'de-DE';
 
@@ -13,7 +15,28 @@ export const LOCALE = 'de-DE';
 export type DateInput = Date | string | number;
 
 const MS_PER_DAY = 86_400_000;
-const WEEKDAYS_SHORT = ['So.', 'Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.'] as const;
+const WEEKDAYS_SHORT: Record<Locale, readonly string[]> = {
+  de: ['So.', 'Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+};
+const MONTHS_SHORT_EN = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+const RELATIVE_DAYS: Record<Locale, { today: string; tomorrow: string; yesterday: string }> = {
+  de: { today: 'heute', tomorrow: 'morgen', yesterday: 'gestern' },
+  en: { today: 'today', tomorrow: 'tomorrow', yesterday: 'yesterday' },
+};
 
 let partsFormatter: Intl.DateTimeFormat | undefined;
 
@@ -102,30 +125,52 @@ export function formatTime(input: DateInput): string {
 export interface FormatDateOptions {
   withWeekday?: boolean;
   withYear?: boolean;
+  /** Sprache der Ausgabe, Standard Deutsch. */
+  locale?: Locale;
 }
 
-/** @example formatDate(date) // "Sa., 14.11." */
+/**
+ * @example formatDate(date) // "Sa., 14.11."
+ * @example formatDate(date, { locale: 'en' }) // "Sat 14 Nov"
+ */
 export function formatDate(input: DateInput, options: FormatDateOptions = {}): string {
-  const { withWeekday = true, withYear = false } = options;
+  const { withWeekday = true, withYear = false, locale = DEFAULT_LOCALE } = options;
   const { year, month, day, weekday } = berlinParts(input);
+  const weekdayName = WEEKDAYS_SHORT[locale][weekday] ?? '';
+  if (locale === 'en') {
+    const date = `${day} ${MONTHS_SHORT_EN[month - 1] ?? ''}${withYear ? ` ${year}` : ''}`;
+    return withWeekday ? `${weekdayName} ${date}` : date;
+  }
   const date = `${pad(day)}.${pad(month)}.${withYear ? String(year) : ''}`;
-  return withWeekday ? `${WEEKDAYS_SHORT[weekday] ?? ''}, ${date}` : date;
+  return withWeekday ? `${weekdayName}, ${date}` : date;
 }
 
 /** Tag relativ zu `now`: „heute“, „morgen“, „gestern“ oder „Sa., 14.11.“ (mit Jahr, falls nicht aktuell). */
-export function formatDay(input: DateInput, now: DateInput = new Date()): string {
+export function formatDay(
+  input: DateInput,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): string {
   const diff = calendarDaysBetween(now, input);
-  if (diff === 0) return 'heute';
-  if (diff === 1) return 'morgen';
-  if (diff === -1) return 'gestern';
-  return formatDate(input, { withYear: berlinParts(input).year !== berlinParts(now).year });
+  const words = RELATIVE_DAYS[locale];
+  if (diff === 0) return words.today;
+  if (diff === 1) return words.tomorrow;
+  if (diff === -1) return words.yesterday;
+  return formatDate(input, {
+    withYear: berlinParts(input).year !== berlinParts(now).year,
+    locale,
+  });
 }
 
 /**
  * @example formatDateTime(start, now) // "heute, 18:00" | "morgen, 18:00" | "Sa., 14.11., 18:00"
  */
-export function formatDateTime(input: DateInput, now: DateInput = new Date()): string {
-  return `${formatDay(input, now)}, ${formatTime(input)}`;
+export function formatDateTime(
+  input: DateInput,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  return `${formatDay(input, now, locale)}, ${formatTime(input)}`;
 }
 
 /**
@@ -137,11 +182,12 @@ export function formatTimeRange(
   start: DateInput,
   end: DateInput,
   now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   if (calendarDaysBetween(start, end) === 0) {
-    return `${formatDateTime(start, now)}–${formatTime(end)}`;
+    return `${formatDateTime(start, now, locale)}–${formatTime(end)}`;
   }
-  return `${formatDateTime(start, now)} – ${formatDateTime(end, now)}`;
+  return `${formatDateTime(start, now, locale)} – ${formatDateTime(end, now, locale)}`;
 }
 
 /**
@@ -152,10 +198,11 @@ export function formatDateRange(
   start: DateInput,
   end: DateInput,
   now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   const currentYear = berlinParts(now).year;
   const withYear = berlinParts(start).year !== currentYear || berlinParts(end).year !== currentYear;
-  const from = formatDate(start, { withWeekday: false, withYear });
-  const until = formatDate(end, { withWeekday: false, withYear });
+  const from = formatDate(start, { withWeekday: false, withYear, locale });
+  const until = formatDate(end, { withWeekday: false, withYear, locale });
   return from === until ? from : `${from} – ${until}`;
 }
