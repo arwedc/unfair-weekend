@@ -1,4 +1,4 @@
-import { otpRequestSchema, otpVerifySchema } from '@repo/shared';
+import { emailSchema, OFFER_CATEGORIES, userSignUpSchema, type OfferCategory } from '@repo/shared';
 import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
@@ -8,18 +8,17 @@ import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NameForm } from '@/components/auth/NameForm';
-import { Button, EmptyState, IconButton, Input, Text } from '@/components/ui';
+import { Button, Chip, EmptyState, IconButton, Input, Text } from '@/components/ui';
 import { splitName } from '@/features/auth/account';
 import {
   CANCELLED,
   isAppleSignInAvailable,
-  requestEmailCode,
   signInWithApple,
   signInWithGoogle,
   signInWithPassword,
   signOut,
+  signUpWithEmail,
   updateProfile,
-  verifyEmailCode,
 } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
@@ -27,7 +26,8 @@ import { env } from '@/lib/env';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
-type Busy = 'apple' | 'google' | 'email' | 'code' | 'dev' | null;
+type Busy = 'apple' | 'google' | 'password' | 'register' | 'dev' | null;
+type Mode = 'login' | 'register';
 
 /** Erstes Test-Konto aus den Seed-Daten. Das Passwort tippt man selbst ein (steht in der .env). */
 const DEV_EMAIL = 'seed-mia@example.com';
@@ -41,22 +41,23 @@ function firstIssue(
   return message ? translateValidationMessage(message, locale) : fallback;
 }
 
-/**
- * Anmelden mit Apple, Google oder E-Mail-Code. Danach, falls nötig, Vor- und Nachname.
- * Schließt sich von selbst, sobald das Konto vollständig ist.
- */
+/** Anmeldung per E-Mail/Passwort; bei der Registrierung sind Alter und Interessen freiwillig. */
 export function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t, locale } = useT();
+  const { t, locale, labels } = useT();
   const a = t.common.auth;
   const { ready, userId, account, accountLoading, accountError, refetchAccount, suggestedName } =
     useAuth();
 
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const [step, setStep] = useState<'start' | 'code'>('start');
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [age, setAge] = useState('');
+  const [interests, setInterests] = useState<OfferCategory[]>([]);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const [devEmail, setDevEmail] = useState(DEV_EMAIL);
   const [devPassword, setDevPassword] = useState('');
   const [busy, setBusy] = useState<Busy>(null);
@@ -66,7 +67,7 @@ export function LoginScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const done = userId !== null && account?.profileComplete === true;
   const showApple = env.auth.apple && appleAvailable;
-  const anyMethod = showApple || env.auth.google || env.auth.emailOtp;
+  const showSocialLogin = mode === 'login' && (showApple || env.auth.google);
 
   useEffect(() => {
     let active = true;
@@ -84,7 +85,7 @@ export function LoginScreen() {
     else router.replace('/');
   }, [done, router]);
 
-  /** Führt einen Login-Schritt aus und zeigt Fehler auf Deutsch. Abbrüche bleiben still. */
+  /** Führt einen Login-Schritt aus und zeigt Fehler in der gewählten Sprache. Abbrüche bleiben still. */
   const run = async (kind: Exclude<Busy, null>, action: () => Promise<void>) => {
     setError(null);
     setBusy(kind);
@@ -110,27 +111,35 @@ export function LoginScreen() {
       }
     });
 
-  const sendCode = () => {
-    const parsed = otpRequestSchema.safeParse({ email: email.trim() });
-    if (!parsed.success) {
-      setError(firstIssue(parsed.error, locale, t.common.checkInput));
+  const login = () => {
+    const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
+    if (!parsedEmail.success) {
+      setError(firstIssue(parsedEmail.error, locale, t.common.checkInput));
       return;
     }
-    void run('email', async () => {
-      await requestEmailCode(parsed.data.email);
-      setEmail(parsed.data.email);
-      setCode('');
-      setStep('code');
-    });
+    if (!password) {
+      setError(a.passwordMissing);
+      return;
+    }
+    void run('password', () => signInWithPassword(parsedEmail.data, password));
   };
 
-  const checkCode = () => {
-    const parsed = otpVerifySchema.safeParse({ email, token: code });
+  const register = () => {
+    const parsed = userSignUpSchema.safeParse({
+      email: email.trim().toLowerCase(),
+      password,
+      username,
+      ...(age.trim() ? { age: Number(age.trim()) } : {}),
+      interests,
+    });
     if (!parsed.success) {
       setError(firstIssue(parsed.error, locale, t.common.checkInput));
       return;
     }
-    void run('code', () => verifyEmailCode(parsed.data.email, parsed.data.token));
+    void run('register', async () => {
+      const hasSession = await signUpWithEmail(parsed.data);
+      if (!hasSession) setConfirmationSent(true);
+    });
   };
 
   const devLogin = () => {
@@ -139,6 +148,14 @@ export function LoginScreen() {
       return;
     }
     void run('dev', () => signInWithPassword(devEmail.trim(), devPassword));
+  };
+
+  const toggleInterest = (category: OfferCategory) => {
+    setInterests((current) =>
+      current.includes(category)
+        ? current.filter((value) => value !== category)
+        : [...current, category],
+    );
   };
 
   let body;
@@ -168,60 +185,37 @@ export function LoginScreen() {
             {a.nameTitle}
           </Text>
           <Text variant="body" color="secondary">
-            {a.nameIntro}
+            {a.nameOptionalIntro}
           </Text>
         </View>
         <NameForm
           initialFirstName={account.firstName || appleName.firstName || suggestion.firstName}
           initialLastName={account.lastName || appleName.lastName || suggestion.lastName}
-          submitLabel={t.common.done}
+          submitLabel={t.common.save}
           onSaved={() => undefined}
         />
+        <Button label={a.addLater} variant="ghost" onPress={close} />
         <Button label={t.common.signOut} variant="ghost" onPress={() => void signOut()} />
       </View>
     );
-  } else if (step === 'code') {
+  } else if (confirmationSent) {
     body = (
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            {a.codeTitle}
+            {a.confirmTitle}
           </Text>
           <Text variant="body" color="secondary">
-            {a.codeIntro(email)}
+            {a.confirmText(email)}
           </Text>
         </View>
-        <Input
-          label={a.codeLabel}
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          maxLength={8}
-          autoFocus
-          onSubmitEditing={checkCode}
-        />
         <Button
-          label={t.common.signIn}
-          size="lg"
-          fullWidth
-          loading={busy === 'code'}
-          disabled={busy !== null && busy !== 'code'}
-          onPress={checkCode}
-        />
-        <Button
-          label={a.resendCode}
-          variant="ghost"
-          loading={busy === 'email'}
-          onPress={sendCode}
-        />
-        <Button
-          label={a.otherEmail}
+          label={a.toLogin}
           variant="ghost"
           onPress={() => {
-            setError(null);
-            setStep('start');
+            setConfirmationSent(false);
+            setMode('login');
+            setPassword('');
           }}
         />
       </View>
@@ -231,20 +225,14 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            {t.common.signIn}
+            {mode === 'register' ? a.registerTitle : t.common.signIn}
           </Text>
           <Text variant="body" color="secondary">
-            {a.intro}
+            {mode === 'register' ? a.registerIntro : a.loginIntro}
           </Text>
         </View>
 
-        {!anyMethod && !__DEV__ ? (
-          <Text variant="callout" color="secondary">
-            {a.notEnabled}
-          </Text>
-        ) : null}
-
-        {showApple || env.auth.google ? (
+        {showSocialLogin ? (
           <View style={styles.providers}>
             {showApple ? (
               <AppleAuthentication.AppleAuthenticationButton
@@ -269,9 +257,9 @@ export function LoginScreen() {
           </View>
         ) : null}
 
-        {env.auth.emailOtp ? (
+        {mode === 'login' ? (
           <>
-            {showApple || env.auth.google ? (
+            {showSocialLogin ? (
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <Text variant="footnote" color="tertiary">
@@ -292,19 +280,115 @@ export function LoginScreen() {
               autoCorrect={false}
               autoComplete="email"
               textContentType="emailAddress"
-              returnKeyType="send"
-              onSubmitEditing={sendCode}
+              returnKeyType="next"
+            />
+            <Input
+              label={a.password}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={login}
             />
             <Button
-              label={a.sendCode}
+              label={t.common.signIn}
               size="lg"
               fullWidth
-              loading={busy === 'email'}
-              disabled={busy !== null && busy !== 'email'}
-              onPress={sendCode}
+              loading={busy === 'password'}
+              disabled={busy !== null && busy !== 'password'}
+              onPress={login}
+            />
+            <Button
+              label={a.toRegister}
+              variant="ghost"
+              onPress={() => {
+                setError(null);
+                setMode('register');
+              }}
             />
           </>
-        ) : null}
+        ) : (
+          <>
+            <Input
+              label={a.username}
+              value={username}
+              onChangeText={setUsername}
+              placeholder={a.usernamePlaceholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="username"
+              textContentType="username"
+              maxLength={20}
+              hint={a.usernameHint}
+            />
+            <Input
+              label={a.emailLabel}
+              icon={Mail}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={a.emailPlaceholder}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+            />
+            <Input
+              label={a.password}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              hint={a.passwordHint}
+            />
+            <Input
+              label={a.age}
+              value={age}
+              onChangeText={setAge}
+              keyboardType="number-pad"
+              maxLength={3}
+              autoComplete="off"
+            />
+            <View style={styles.interests}>
+              <Text variant="subhead" color="secondary">
+                {a.interests}
+              </Text>
+              <View style={styles.chips}>
+                {OFFER_CATEGORIES.map((category) => (
+                  <Chip
+                    key={category}
+                    label={labels.offerCategory[category]}
+                    selected={interests.includes(category)}
+                    onPress={() => toggleInterest(category)}
+                  />
+                ))}
+              </View>
+            </View>
+            <Button
+              label={a.createAccount}
+              size="lg"
+              fullWidth
+              loading={busy === 'register'}
+              disabled={busy !== null && busy !== 'register'}
+              onPress={register}
+            />
+            <Button
+              label={a.toSignIn}
+              variant="ghost"
+              onPress={() => {
+                setError(null);
+                setMode('login');
+              }}
+            />
+          </>
+        )}
 
         {__DEV__ ? (
           <View style={styles.dev}>
@@ -323,7 +407,7 @@ export function LoginScreen() {
               autoCorrect={false}
             />
             <Input
-              label={a.password}
+              label={a.devPassword}
               value={devPassword}
               onChangeText={setDevPassword}
               secureTextEntry
@@ -394,6 +478,8 @@ const styles = StyleSheet.create({
   appleButton: { height: 56, alignSelf: 'stretch' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginVertical: space[1] },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border.strong },
+  interests: { gap: space[2] },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   dev: {
     gap: space[3],
     marginTop: space[6],

@@ -2,6 +2,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import type { UserSignUpInput } from '@repo/shared';
 
 import { forgetDevice, unregisterDevice } from '@/features/push/push';
 import { ApiError, toApiError } from '@/lib/api-error';
@@ -9,7 +10,7 @@ import { getLocale } from '@/lib/i18n/locale-store';
 import { getMessages } from '@/lib/i18n/messages';
 import { supabase } from '@/lib/supabase';
 
-import { parseAccount, sessionTokensFromUrl, type Account } from './account';
+import { authCodeFromUrl, parseAccount, sessionTokensFromUrl, type Account } from './account';
 
 /** Der Nutzer hat den Login selbst abgebrochen. Dafür zeigen wir keinen Fehler. */
 export const CANCELLED = 'ABGEBROCHEN';
@@ -21,8 +22,12 @@ function authMessage(code: string): string | undefined {
   const m = authText();
   const map: Record<string, string> = {
     invalid_credentials: m.invalidCredentials,
+    email_not_confirmed: m.emailNotConfirmed,
+    weak_password: m.weakPassword,
+    user_already_exists: m.userExists,
+    email_address_not_authorized: m.emailNotAuthorized,
     otp_expired: m.otpExpired,
-    over_email_send_rate_limit: m.rateLimit,
+    over_email_send_rate_limit: m.confirmRateLimit,
     over_request_rate_limit: m.rateLimit,
     email_address_invalid: m.emailInvalid,
     provider_disabled: m.notSetUp,
@@ -70,10 +75,47 @@ export async function verifyEmailCode(email: string, token: string): Promise<voi
   if (error) throw toAuthError(error);
 }
 
-/** Nur für Entwicklung: Seed-Konten mit E-Mail und Passwort. */
+/** Anmeldung mit E-Mail und Passwort (auch für die Seed-Konten in der Entwicklung). */
 export async function signInWithPassword(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw toAuthError(error);
+}
+
+/** Registriert einen Nutzer per E-Mail und Passwort. Gibt zurück, ob direkt eine Session besteht. */
+export async function signUpWithEmail(input: UserSignUpInput): Promise<boolean> {
+  const { data: available, error: availabilityError } = await supabase.rpc(
+    'is_username_available',
+    { p_username: input.username },
+  );
+  if (availabilityError) throw toApiError(availabilityError);
+  if (!available) {
+    throw new ApiError('NUTZERNAME_VERGEBEN', authText().usernameTaken);
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: {
+      data: {
+        username: input.username,
+        ...(input.age !== undefined ? { age: input.age } : {}),
+        interests: input.interests,
+      },
+      emailRedirectTo: authRedirectUrl(),
+    },
+  });
+  if (error) {
+    // Der Unique-Index fängt parallele Registrierungen ab; zeige dann den passenden Hinweis.
+    const { data: stillAvailable, error: checkError } = await supabase.rpc(
+      'is_username_available',
+      { p_username: input.username },
+    );
+    if (!checkError && !stillAvailable) {
+      throw new ApiError('NUTZERNAME_VERGEBEN', authText().usernameTaken);
+    }
+    throw toAuthError(error);
+  }
+  return data.session !== null;
 }
 
 export async function isAppleSignInAvailable(): Promise<boolean> {
@@ -137,10 +179,17 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 /**
- * Schließt den Browser-Login ab: liest die Tokens aus der Rücksprung-URL und setzt die Session.
- * Wird auch von der Route /auth/callback genutzt, falls die URL als Deep Link ankommt (Android).
+ * Schließt OAuth oder E-Mail-Bestätigung ab und setzt die Session aus der Rücksprung-URL.
+ * Wird auch von der Route /auth/callback genutzt, falls die URL als Deep Link ankommt.
  */
 export async function completeSignInFromUrl(url: string): Promise<void> {
+  const code = authCodeFromUrl(url);
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw toAuthError(error);
+    return;
+  }
+
   const tokens = sessionTokensFromUrl(url);
   if (!tokens || 'error' in tokens) {
     throw new ApiError('GOOGLE', authText().googleFailed);

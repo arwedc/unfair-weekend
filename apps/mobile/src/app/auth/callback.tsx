@@ -7,7 +7,7 @@ import { completeSignInFromUrl } from '@/features/auth/api';
 import { colors } from '@/theme';
 
 /**
- * Rücksprung nach dem Browser-Login (Google), falls die URL als Deep Link ankommt (Android).
+ * Rücksprung nach OAuth oder E-Mail-Bestätigung, falls die URL als Deep Link ankommt.
  * Setzt die Session und geht zurück dorthin, wo der Login gestartet wurde.
  */
 export default function AuthCallbackRoute() {

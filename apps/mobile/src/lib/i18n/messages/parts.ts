@@ -2,7 +2,27 @@ import type { Widen } from './widen';
 
 /** Texte von Karte, Favoriten, Filtern, Code-holen, Bewertungen und Angebotskarten. */
 export const partsDe = {
+  onboarding: {
+    steps: [
+      { title: 'Dein Stadtplan.', body: 'Tippe auf einen Pin.' },
+      { title: 'Ein Ort. Ein Angebot.', body: 'Sieh dir einen echten Deal genauer an.' },
+      { title: 'Fünf Angebote.', body: 'Wische zum Drehen.' },
+    ],
+    selectCompany: 'Unternehmen auswählen',
+    offerOnSite: 'Ein Angebot direkt vor Ort',
+    discountCaps: (discount: string) => `${discount} RABATT`,
+    localProvider: 'LOKALER ANBIETER',
+    carousel: 'Angebotskreis',
+    carouselHint: 'Wische nach links oder rechts, um die Angebote zu drehen.',
+    stepOf: (n: number, total: number) => `Schritt ${n} von ${total}`,
+    next: 'Weiter',
+    start: 'Los geht’s',
+    previous: 'Vorheriger Schritt',
+  },
   map: {
+    hintTitle: 'Tippe auf einen Pin',
+    hintText: 'Wisch unten durch die Angebote. Dein Standort bleibt optional.',
+    hintClose: 'Hinweis schließen',
     noOffersInCity: (city: string) => `In ${city} gibt es gerade noch keine Angebote.`,
     noneForSelection: 'Für diese Auswahl gibt es gerade kein Angebot.',
     allSoldOut: 'Für diese Auswahl ist gerade alles ausgebucht.',
@@ -27,18 +47,11 @@ export const partsDe = {
     categoryAria: (name: string) => `Kategorie ${name}`,
   },
   favorites: {
-    noOffersTitle: 'Noch nichts gemerkt',
-    noOffersText:
-      'Tipp bei einem Angebot auf das Herz, dann findest du es hier wieder. Vorbei ist vorbei: Abgelaufene Angebote verschwinden von selbst.',
-    discover: 'Angebote entdecken',
     noPlacesTitle: 'Noch keine Lieblingsorte',
     noPlacesText:
       'Tipp bei einem Anbieter auf das Herz. Dann sagen wir dir Bescheid, wenn es dort etwas Neues gibt.',
     signInTitle: 'Melde dich an',
-    signInText:
-      'Mit einem Konto merkst du dir Angebote und Lieblingsorte und findest sie hier wieder.',
-    offers: 'Angebote',
-    places: 'Orte',
+    signInText: 'Mit einem Konto merkst du dir Lieblingsorte und findest sie hier wieder.',
   },
   claim: {
     blockedTitle: 'Gerade gesperrt',
@@ -90,7 +103,27 @@ export const partsDe = {
 };
 
 export const partsEn: Widen<typeof partsDe> = {
+  onboarding: {
+    steps: [
+      { title: 'Your city map.', body: 'Tap a pin.' },
+      { title: 'One place. One offer.', body: 'Take a closer look at a real deal.' },
+      { title: 'Five offers.', body: 'Swipe to spin.' },
+    ],
+    selectCompany: 'Select business',
+    offerOnSite: 'An offer right on site',
+    discountCaps: (discount) => `${discount} OFF`,
+    localProvider: 'LOCAL BUSINESS',
+    carousel: 'Offer wheel',
+    carouselHint: 'Swipe left or right to spin the offers.',
+    stepOf: (n, total) => `Step ${n} of ${total}`,
+    next: 'Next',
+    start: "Let's go",
+    previous: 'Previous step',
+  },
   map: {
+    hintTitle: 'Tap a pin',
+    hintText: 'Swipe through the offers below. Sharing your location is optional.',
+    hintClose: 'Close hint',
     noOffersInCity: (city) => `There are no offers in ${city} yet.`,
     noneForSelection: 'There are no offers for this selection right now.',
     allSoldOut: 'Everything in this selection is sold out right now.',
@@ -114,17 +147,10 @@ export const partsEn: Widen<typeof partsDe> = {
     categoryAria: (name) => `Category ${name}`,
   },
   favorites: {
-    noOffersTitle: 'Nothing saved yet',
-    noOffersText:
-      "Tap the heart on an offer and you'll find it here again. Once it's over, it's gone: expired offers disappear on their own.",
-    discover: 'Discover offers',
     noPlacesTitle: 'No favourite places yet',
     noPlacesText: "Tap the heart on a venue. We'll let you know when there's something new there.",
     signInTitle: 'Sign in',
-    signInText:
-      'With an account, you can save offers and favourite places and find them here again.',
-    offers: 'Offers',
-    places: 'Places',
+    signInText: 'With an account, you can save favourite places and find them here again.',
   },
   claim: {
     blockedTitle: 'Temporarily blocked',

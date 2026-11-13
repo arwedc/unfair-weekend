@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   Bell,
-  Heart,
+  CircleHelp,
   FileText,
   Languages,
   LogOut,
@@ -34,10 +34,10 @@ import {
 import { blockedNotice, fullName } from '@/features/auth/account';
 import { deleteAccount, signOut } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
+import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import {
   useFavoriteCategories,
   useFavoriteLocations,
-  useFavoriteOffers,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
@@ -80,6 +80,19 @@ function LegalRows() {
         }
       />
     </View>
+  );
+}
+
+function OnboardingHelpRow() {
+  const { replay } = useOnboarding();
+  const { t } = useT();
+  return (
+    <ListRow
+      icon={CircleHelp}
+      title={t.common.profile.tour}
+      detail={t.common.profile.tourHint}
+      onPress={replay}
+    />
   );
 }
 
@@ -164,10 +177,9 @@ function FavoriteCategories() {
   );
 }
 
-/** Einstieg zu den Favoriten: gemerkte Angebote und Lieblingsorte, jeweils mit Anzahl. */
+/** Einstieg zu den gemerkten Standorten. */
 function Favorites() {
   const router = useRouter();
-  const { offers } = useFavoriteOffers();
   const { locations } = useFavoriteLocations();
   const { t } = useT();
   const p = t.common.profile;
@@ -175,20 +187,12 @@ function Favorites() {
   return (
     <View style={styles.section}>
       <SectionHeader title={p.favorites} />
-      <View>
-        <ListRow
-          icon={Heart}
-          title={p.savedOffers}
-          detail={offers.length > 0 ? p.savedCount(offers.length) : p.savedHint}
-          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'angebote' } })}
-        />
-        <ListRow
-          icon={Store}
-          title={p.favoritePlaces}
-          detail={locations.length > 0 ? p.placesCount(locations.length) : p.placesHint}
-          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'orte' } })}
-        />
-      </View>
+      <ListRow
+        icon={Store}
+        title={p.favoritePlaces}
+        detail={locations.length > 0 ? p.placesCount(locations.length) : p.placesHint}
+        onPress={() => router.push('/favoriten')}
+      />
     </View>
   );
 }
@@ -240,6 +244,7 @@ export function ProfileScreen() {
     return (
       <Screen>
         <Header title={p.title} />
+        <OnboardingHelpRow />
         <EmptyState icon={UserRound} title={p.notSignedIn} message={p.notSignedInText} />
         <Button
           label={t.common.signIn}
@@ -257,6 +262,7 @@ export function ProfileScreen() {
     return (
       <Screen>
         <Header title={p.title} />
+        <OnboardingHelpRow />
         <EmptyState
           tone="error"
           icon={TriangleAlert}
@@ -290,6 +296,7 @@ export function ProfileScreen() {
   return (
     <Screen>
       <Header title={name || p.yourProfile} subtitle={email ?? undefined} />
+      <OnboardingHelpRow />
 
       {blocked ? (
         <View style={styles.notice} accessibilityRole="alert">

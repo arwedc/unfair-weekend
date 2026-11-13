@@ -5,6 +5,9 @@ import { blockedNotice, fullName, parseAccount, sessionTokensFromUrl, splitName 
 const raw = {
   user_id: 'u1',
   role: 'nutzer',
+  username: 'mia_muster',
+  age: 29,
+  interests: ['kochen_essen'],
   first_name: 'Mia',
   last_name: 'Muster',
   profile_complete: true,
@@ -19,6 +22,9 @@ describe('parseAccount', () => {
     expect(parseAccount(raw)).toEqual({
       userId: 'u1',
       role: 'nutzer',
+      username: 'mia_muster',
+      age: 29,
+      interests: ['kochen_essen'],
       firstName: 'Mia',
       lastName: 'Muster',
       profileComplete: true,
