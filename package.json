@@ -18,7 +18,8 @@
     "db:test": "pnpm --filter @repo/db-tools db:test",
     "db:types": "pnpm --filter @repo/db-tools db:types",
     "db:test:race": "pnpm --filter @repo/db-tools db:test:race",
-    "db:seed": "pnpm --filter @repo/db-tools db:seed"
+    "db:seed": "pnpm --filter @repo/db-tools db:seed",
+    "db:push-secrets": "pnpm --filter @repo/db-tools db:push-secrets"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
