@@ -8,6 +8,14 @@ import Animated, {
 
 import { duration } from '@/theme';
 
+/**
+ * Stil und Animation liegen direkt auf der Pressable. So wirken Layout-Stile wie
+ * `position: 'absolute'`, `flex: 1` oder `alignSelf` auf das antippbare Element selbst.
+ * (Vorher lagen sie auf einer inneren Ansicht: absolut platzierte Knöpfe landeten
+ * außerhalb des Bildschirms und `flex: 1` an Buttons hatte keine Wirkung.)
+ */
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export interface PressableScaleProps extends Omit<PressableProps, 'style'> {
   style?: StyleProp<ViewStyle>;
   /** Wie stark das Element beim Drücken schrumpft (1 = gar nicht). */
@@ -29,7 +37,8 @@ export function PressableScale({
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (
-    <Pressable
+    <AnimatedPressable
+      style={[style, animatedStyle]}
       onPressIn={(event) => {
         if (!reduceMotion) scale.set(withTiming(pressedScale, { duration: duration.fast }));
         onPressIn?.(event);
@@ -40,11 +49,7 @@ export function PressableScale({
       }}
       {...rest}
     >
-      {(state) => (
-        <Animated.View style={[style, animatedStyle]}>
-          {typeof children === 'function' ? children(state) : children}
-        </Animated.View>
-      )}
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }

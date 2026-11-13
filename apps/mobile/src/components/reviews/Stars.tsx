@@ -30,16 +30,16 @@ export function Stars({ value, size = 16 }: StarsProps) {
             <Star
               size={size}
               strokeWidth={1.75}
-              color={fill === 'empty' ? colors.border.strong : colors.accent.solid}
-              fill={fill === 'full' ? colors.accent.solid : 'transparent'}
+              color={fill === 'empty' ? colors.border.strong : colors.accent.vivid}
+              fill={fill === 'full' ? colors.accent.vivid : 'transparent'}
             />
             {fill === 'half' ? (
               <View style={StyleSheet.absoluteFill}>
                 <StarHalf
                   size={size}
                   strokeWidth={1.75}
-                  color={colors.accent.solid}
-                  fill={colors.accent.solid}
+                  color={colors.accent.vivid}
+                  fill={colors.accent.vivid}
                 />
               </View>
             ) : null}
@@ -77,8 +77,8 @@ export function StarInput({ value, onChange }: StarInputProps) {
             <Star
               size={36}
               strokeWidth={1.75}
-              color={active ? colors.accent.solid : colors.border.strong}
-              fill={active ? colors.accent.solid : 'transparent'}
+              color={active ? colors.accent.vivid : colors.border.strong}
+              fill={active ? colors.accent.vivid : 'transparent'}
             />
           </PressableScale>
         );
