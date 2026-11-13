@@ -11,6 +11,7 @@ Unter Windows in PowerShell immer `pnpm.cmd` statt `pnpm` (die Execution Policy 
 | `pnpm.cmd start`                       | Metro starten, QR-Code mit Expo Go scannen                    |
 | `pnpm.cmd start --tunnel`              | falls das Handy den PC im WLAN nicht erreicht                 |
 | `pnpm.cmd typecheck` / `pnpm.cmd lint` | TypeScript und ESLint (inkl. React-Compiler-Regeln)           |
+| `pnpm.cmd test`                        | Unit-Tests (Vitest) für die reine Logik in `src/features`     |
 | `pnpm.cmd exec expo install <paket>`   | Bibliothek in der zum SDK passenden Version installieren      |
 | `pnpm.cmd exec expo install --check`   | prüfen, ob alle Expo-Pakete zum SDK passen                    |
 | `pnpm.cmd exec expo export -p ios`     | kompletten Bundle bauen (schneller Test, ob alles kompiliert) |
@@ -24,11 +25,15 @@ Bibliotheken nie mit `pnpm add` in der neuesten Version holen, sondern mit `expo
 ```
 src/
   app/              nur Routen (Expo Router). (tabs)/ = die vier Tabs
-  screens/          Inhalte der Screens, nach Bereich (feed/, offer/, codes/ …)
-  components/ui/    Komponentenbibliothek: Text, Button, Card, Chip, Badge, Input,
-                    Sheet, Skeleton, EmptyState, Screen, PressableScale
-  components/       größere, fachliche Bausteine (OfferCard …)
-  lib/              supabase.ts, env.ts, secure-session-storage.ts
+  screens/          Inhalte der Screens, nach Bereich (feed/, offer/, location/, map/ …)
+  features/         Daten und Logik ohne Oberfläche, nach Bereich:
+    offers/           api.ts (RPC-Aufrufe), queries.ts (TanStack-Query-Hooks),
+                      feed-logic.ts (Filter, Abschnitte, Badges; mit Tests), filters-context.tsx
+    map/              map-html.ts (Karte als Webseite für die WebView; mit Tests)
+  components/ui/    Komponentenbibliothek: Text, Button, IconButton, Card, Chip, Badge, Input,
+                    Sheet, Skeleton, EmptyState, SectionHeader, Screen, PressableScale
+  components/offers/ fachliche Bausteine: OfferCard, OfferImage, PriceRow, FilterBar, ImageGallery
+  lib/              supabase.ts, env.ts, query-client.ts, api-error.ts, open-external.ts
   theme/            Brücke zu den Tokens aus @repo/shared
 ```
 
@@ -37,7 +42,10 @@ src/
 - **Nur Bausteine aus `@/components/ui`.** Kein rohes `<Text>` aus react-native, keine eigenen Buttons in Screens. Fehlt etwas, die Bibliothek erweitern.
 - **Farben, Abstände, Radien, Schatten, Schrift nur über `@/theme`** (`colors`, `space`, `layout`, `radius`, `radii`, `shadow`, `badge`, `fonts`, `textStyle()`). Keine Hex-Werte, keine Zahlen für Abstände außerhalb des Rasters.
 - **Aus `@repo/shared`, nie nachbauen:** Typen (`Database`), Zod-Schemas, Kategorien und Labels, `parseRpcError`, `formatPrice`, `formatDiscount`, `formatDateTime`, `offerTimeLabel`, `seatsLabel`, `storageImageUrl`.
-- **Supabase nur über `@/lib/supabase`.** Daten über die RPCs aus [docs/BACKEND.md](../../docs/BACKEND.md). Fehler immer über `parseRpcError(error)` anzeigen, nie `error.message` direkt.
+- **Supabase nur über `@/lib/supabase`.** Daten über die RPCs aus [docs/BACKEND.md](../../docs/BACKEND.md). Fehler immer über `toApiError`/`errorMessage` aus `@/lib/api-error` anzeigen (nutzt `parseRpcError`), nie `error.message` direkt.
+- **Daten laden mit TanStack Query.** RPC-Aufrufe stehen in `features/<bereich>/api.ts`, Screens nutzen nur die Hooks aus `queries.ts`. Jeder Screen zeigt Laden (Skeleton), Fehler und Leerzustand (`EmptyState`).
+- **Logik ohne React gehört nach `features/`** und bekommt Tests (`*.test.ts` daneben). Zeiten dabei immer über die Berlin-Helfer aus `@repo/shared`.
+- **Karte:** MapLibre GL JS in einer WebView (`features/map/map-html.ts`), Kacheln von OpenFreeMap. Die Quellenangabe muss sichtbar bleiben (`compact: false`).
 - **Secrets:** In `apps/mobile/.env` stehen nur `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und optional `EXPO_PUBLIC_MAP_STYLE_URL`. Nie den Secret Key. Werte nie in Antworten ausgeben.
 - **Expo Go muss laufen**, bis es Development Builds gibt (SPEC-APP, Annahme 1). Vor einer neuen Bibliothek prüfen, ob sie nativen Code braucht, der nicht in Expo Go steckt.
 - **React Compiler ist an.** Shared Values von Reanimated mit `.get()`/`.set()` statt `.value`. Kein `setState` direkt im Effekt-Körper (Daten in einer Funktion laden und im `.then` setzen, mit Abbruch-Flag).
