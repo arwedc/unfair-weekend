@@ -25,13 +25,17 @@ import {
   type Voucher,
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, radius, space, textStyle } from '@/theme';
 
 function VoucherCard({ voucher }: { voucher: Voucher }) {
   const router = useRouter();
-  const status = voucherStatusInfo(voucher);
+  const { locale } = useT();
+  const status = voucherStatusInfo(voucher, locale);
   const active = voucher.status === 'aktiv';
-  const line = active ? voucherWhenText(voucher) : pastSummary(voucher);
+  const line = active
+    ? voucherWhenText(voucher, undefined, locale)
+    : pastSummary(voucher, undefined, locale);
 
   return (
     <Card
@@ -54,7 +58,7 @@ function VoucherCard({ voucher }: { voucher: Voucher }) {
           {line}
         </Text>
         <Text variant="footnote" color="tertiary" numberOfLines={1}>
-          {seatsText(voucher.seats)} · {voucher.company_name}
+          {seatsText(voucher.seats, locale)} · {voucher.company_name}
         </Text>
         {active ? <Text style={styles.code}>{voucher.short_code}</Text> : null}
       </View>
@@ -63,13 +67,14 @@ function VoucherCard({ voucher }: { voucher: Voucher }) {
 }
 
 function Header() {
+  const { t } = useT();
   return (
     <View style={styles.header}>
       <Text variant="overline" color="accent">
-        Deine Plätze
+        {t.screens.codes.overline}
       </Text>
       <Text variant="title1" accessibilityRole="header">
-        Meine Codes
+        {t.screens.codes.title}
       </Text>
     </View>
   );
@@ -78,6 +83,8 @@ function Header() {
 /** Tab „Meine Codes“: aktive Codes oben, darunter der Verlauf. */
 export function CodesScreen() {
   const router = useRouter();
+  const { t } = useT();
+  const m = t.screens.codes;
   const { ready, userId } = useAuth();
   const { data, error, isPending, isRefetching, refetch } = useMyVouchers();
 
@@ -94,12 +101,13 @@ export function CodesScreen() {
     return (
       <Screen>
         <Header />
-        <EmptyState
-          icon={Ticket}
-          title="Hier landen deine Codes"
-          message="Melde dich an, hol dir einen Code und zeig ihn vor Ort einfach vor."
+        <EmptyState icon={Ticket} title={m.signedOutTitle} message={m.signedOutText} />
+        <Button
+          label={t.common.signIn}
+          size="lg"
+          fullWidth
+          onPress={() => router.push('/anmelden')}
         />
-        <Button label="Anmelden" size="lg" fullWidth onPress={() => router.push('/anmelden')} />
       </Screen>
     );
   }
@@ -120,7 +128,7 @@ export function CodesScreen() {
       <Header />
 
       {isPending ? (
-        <View style={styles.list} accessible accessibilityLabel="Codes werden geladen">
+        <View style={styles.list} accessible accessibilityLabel={m.loading}>
           <Skeleton height={132} radius={radius.card} />
           <Skeleton height={132} radius={radius.card} />
         </View>
@@ -128,24 +136,24 @@ export function CodesScreen() {
         <EmptyState
           tone="error"
           icon={CloudOff}
-          title={isOffline(error) ? 'Kein Netz' : 'Das hat nicht geklappt'}
+          title={isOffline(error) ? t.common.noNetwork : t.common.failed}
           message={errorMessage(error)}
-          actionLabel="Nochmal versuchen"
+          actionLabel={t.common.retry}
           onAction={() => void refetch()}
         />
       ) : active.length === 0 && past.length === 0 ? (
         <EmptyState
           icon={Ticket}
-          title="Noch kein Code 🎟️"
-          message="Such dir ein Angebot aus und sichere dir deinen Platz. Der Code erscheint dann hier."
-          actionLabel="Angebote entdecken"
+          title={m.emptyTitle}
+          message={m.emptyText}
+          actionLabel={m.discover}
           onAction={() => router.navigate('/')}
         />
       ) : (
         <>
           {active.length > 0 ? (
             <View style={styles.list}>
-              <SectionHeader title="Aktiv" detail={String(active.length)} />
+              <SectionHeader title={m.active} detail={String(active.length)} />
               {active.map((voucher, index) => (
                 <Appear key={voucher.id} index={index}>
                   <VoucherCard voucher={voucher} />
@@ -155,15 +163,15 @@ export function CodesScreen() {
           ) : (
             <EmptyState
               icon={Ticket}
-              title="Gerade kein aktiver Code"
-              message="Zeit für etwas Neues?"
-              actionLabel="Angebote entdecken"
+              title={m.noActiveTitle}
+              message={m.noActiveText}
+              actionLabel={m.discover}
               onAction={() => router.navigate('/')}
             />
           )}
           {past.length > 0 ? (
             <View style={styles.list}>
-              <SectionHeader title="Vergangen" detail={String(past.length)} />
+              <SectionHeader title={m.past} detail={String(past.length)} />
               {past.map((voucher, index) => (
                 <Appear key={voucher.id} index={active.length + index}>
                   <VoucherCard voucher={voucher} />

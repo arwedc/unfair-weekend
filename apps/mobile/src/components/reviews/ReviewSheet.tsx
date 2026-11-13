@@ -6,6 +6,7 @@ import { Button, Input, Sheet, Text, type SheetRef } from '@/components/ui';
 import { useCreateReview } from '@/features/reviews/queries';
 import { ratingWord, REVIEW_COMMENT_MAX } from '@/features/reviews/review-logic';
 import { errorMessage } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, space } from '@/theme';
 
 import { StarInput } from './Stars';
@@ -21,7 +22,9 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
   const create = useCreateReview();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const word = ratingWord(rating);
+  const { t, locale } = useT();
+  const m = t.parts.review;
+  const word = ratingWord(rating, locale);
 
   const send = () => {
     create.mutate(
@@ -39,17 +42,17 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
   };
 
   return (
-    <Sheet ref={sheetRef} title={`Wie war's bei ${locationName}?`} onDismiss={() => create.reset()}>
+    <Sheet ref={sheetRef} title={m.howWas(locationName)} onDismiss={() => create.reset()}>
       <View style={styles.stars}>
         <StarInput value={rating} onChange={setRating} />
         <Text variant="callout" color={word ? 'accent' : 'tertiary'} align="center">
-          {word ?? 'Tipp auf die Sterne'}
+          {word ?? m.tapStars}
         </Text>
       </View>
 
       <Input
-        label="Erzähl gern mehr (optional)"
-        placeholder="Was hat dir gefallen? Was könnte besser sein?"
+        label={m.tellMore}
+        placeholder={m.placeholder}
         value={comment}
         onChangeText={setComment}
         multiline
@@ -58,8 +61,7 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
       />
 
       <Text variant="footnote" color="tertiary">
-        Dein Vorname und der erste Buchstabe deines Nachnamens stehen bei der Bewertung. Du kannst
-        jeden Ort einmal bewerten.
+        {m.privacy}
       </Text>
 
       {create.error ? (
@@ -73,7 +75,7 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
       ) : null}
 
       <Button
-        label="Bewertung senden"
+        label={m.send}
         size="lg"
         fullWidth
         haptic

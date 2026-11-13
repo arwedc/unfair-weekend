@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import { PressableScale } from '@/components/ui';
 import { buildMiniMapHtml } from '@/features/map/mini-map-html';
 import { env } from '@/lib/env';
+import { useT } from '@/lib/i18n/context';
 import { colors, radii } from '@/theme';
 
 export interface MiniMapProps {
@@ -17,6 +18,7 @@ export interface MiniMapProps {
 
 /** Kleine Kartenvorschau mit einem Pin. Ein Tipp öffnet die Karten-App. */
 export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps) {
+  const { t } = useT();
   const html = buildMiniMapHtml({
     styleUrl: env.mapStyleUrl,
     lat,
@@ -41,8 +43,8 @@ export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps
       />
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={`Karte: ${label}`}
-        accessibilityHint="Öffnet die Adresse in deiner Karten-App"
+        accessibilityLabel={t.parts.card.mapLabel(label)}
+        accessibilityHint={t.parts.card.openAddressHint}
         onPress={onPress}
         pressedScale={0.99}
         style={StyleSheet.absoluteFill}

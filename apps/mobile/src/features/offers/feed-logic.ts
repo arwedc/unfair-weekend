@@ -13,25 +13,25 @@ import {
   formatTimeRange,
   isFewSeatsLeft,
   OFFER_CATEGORIES,
-  OFFER_CATEGORY_LABELS,
   offerTimeLabel,
   seatsLabel,
   toDate,
   type DateInput,
   type OfferCategory,
 } from '@repo/shared';
+import { DEFAULT_LOCALE, getLabels, type Locale } from '@repo/shared/i18n';
+
+import { getMessages } from '../../lib/i18n/messages';
 
 import type { FeedOffer, Offer } from './types';
 
 export const TIME_FILTERS = ['alle', 'heute', 'morgen', 'wochenende'] as const;
 export type TimeFilter = (typeof TIME_FILTERS)[number];
 
-export const TIME_FILTER_LABELS = {
-  alle: 'Alle',
-  heute: 'Heute',
-  morgen: 'Morgen',
-  wochenende: 'Wochenende',
-} as const satisfies Record<TimeFilter, string>;
+/** Beschriftung der Zeitfilter in der gewählten Sprache. */
+export function timeFilterLabels(locale: Locale = DEFAULT_LOCALE): Record<TimeFilter, string> {
+  return getMessages(locale).logic.timeFilters;
+}
 
 export interface OfferFilters {
   /** Gewählte Kategorien. Leer = alle. Mehrere = Angebote aus irgendeiner davon. */
@@ -96,7 +96,10 @@ function normalize(text: string): string {
 
 type Searchable = Pick<Offer, 'title' | 'location_name' | 'company_name' | 'category' | 'address'>;
 
-/** Jedes Suchwort muss in Titel, Standort, Unternehmen, Kategorie oder Adresse vorkommen. */
+/**
+ * Jedes Suchwort muss in Titel, Standort, Unternehmen, Kategorie oder Adresse vorkommen.
+ * Die Kategorie zählt in beiden Sprachen („kochen“ und „cooking“ finden dasselbe).
+ */
 export function matchesSearch(offer: Searchable, query: string): boolean {
   const words = normalize(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
@@ -105,7 +108,8 @@ export function matchesSearch(offer: Searchable, query: string): boolean {
       offer.title,
       offer.location_name,
       offer.company_name,
-      OFFER_CATEGORY_LABELS[offer.category],
+      getLabels('de').offerCategory[offer.category],
+      getLabels('en').offerCategory[offer.category],
       offer.address,
     ].join(' '),
   );
@@ -205,9 +209,17 @@ interface SectionDraft {
  */
 export function buildSections(
   offers: readonly FeedOffer[],
-  options: { cityName: string; now?: DateInput; favoriteIds?: readonly string[] },
+  options: {
+    cityName: string;
+    now?: DateInput;
+    favoriteIds?: readonly string[];
+    locale?: Locale;
+  },
 ): FeedSection[] {
   const now = options.now ?? new Date();
+  const locale = options.locale ?? DEFAULT_LOCALE;
+  const m = getMessages(locale).logic.sections;
+  const categoryLabels = getLabels(locale).offerCategory;
   const available = offers.filter((offer) => offer.free_seats > 0);
 
   const time = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
@@ -219,10 +231,7 @@ export function buildSections(
     minOffers: THEME_MIN_OFFERS,
   });
   // Jede Kategorie hat eine Reihe, so taucht jedes holbare Angebot mindestens einmal auf.
-  const category = (
-    value: OfferCategory,
-    title: string = OFFER_CATEGORY_LABELS[value],
-  ): SectionDraft => ({
+  const category = (value: OfferCategory, title: string = categoryLabels[value]): SectionDraft => ({
     section: {
       key: `kategorie-${value}`,
       title,
@@ -240,15 +249,15 @@ export function buildSections(
   });
 
   const drafts: SectionDraft[] = [
-    time('favoriten', 'Deine Favoriten', favorites),
+    time('favoriten', m.favorites, favorites),
     time(
       'heute',
-      `Heute in ${options.cityName}`,
+      m.today(options.cityName),
       available.filter((offer) => matchesTimeFilter(offer, 'heute', now)),
     ),
     time(
       'bald',
-      'Startet bald',
+      m.soon,
       available.filter((offer) => {
         if (offer.type !== 'einzeltermin') return false;
         const days = calendarDaysBetween(now, offer.starts_at);
@@ -257,19 +266,19 @@ export function buildSections(
     ),
     time(
       'knapp',
-      'Fast ausgebucht',
+      m.almostFull,
       available.filter((offer) => isFewSeatsLeft(offer.free_seats)),
     ),
     theme(
       'halber-preis',
-      'Zum halben Preis',
+      m.halfPrice,
       available
         .filter((offer) => offer.discount_percent >= BIG_DISCOUNT_PERCENT)
         .sort((a, b) => b.discount_percent - a.discount_percent),
     ),
     time(
       'neu',
-      'Neu dabei',
+      m.new,
       offers
         .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -278,7 +287,7 @@ export function buildSections(
     category('sport_bewegung'),
     theme(
       'feierabend',
-      'Nach Feierabend',
+      m.evening,
       available.filter(
         (offer) =>
           offer.type === 'einzeltermin' && berlinParts(offer.starts_at).hour >= EVENING_FROM_HOUR,
@@ -287,7 +296,7 @@ export function buildSections(
     category('kreativ_workshops'),
     theme(
       'budget',
-      `Bis ${formatPrice(BUDGET_PRICE_CENTS, { omitZeroCents: true })}`,
+      m.budget(formatPrice(BUDGET_PRICE_CENTS, { omitZeroCents: true, locale })),
       available
         .filter((offer) => offer.deal_price_cents <= BUDGET_PRICE_CENTS)
         .sort((a, b) => a.deal_price_cents - b.deal_price_cents),
@@ -296,10 +305,10 @@ export function buildSections(
     category('kultur_events'),
     theme(
       'flexibel',
-      'Einlösen, wann du willst',
+      m.flexible,
       available.filter((offer) => offer.type === 'zeitraum'),
     ),
-    category('sonstiges', 'Noch mehr entdecken'),
+    category('sonstiges', m.more),
   ];
 
   return drafts
@@ -325,21 +334,28 @@ type BadgeSource = Pick<
  * Badges auf dem Angebotsbild: immer der Rabatt, dazu Zeitdruck („Startet in 2 Std.“)
  * und knappe Plätze („Nur noch 2 Plätze“) bzw. „Ausgebucht“.
  */
-export function offerBadges(offer: BadgeSource, now: DateInput = new Date()): OfferBadge[] {
-  const badges: OfferBadge[] = [{ label: formatDiscount(offer.discount_percent), variant: 'deal' }];
+export function offerBadges(
+  offer: BadgeSource,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): OfferBadge[] {
+  const badges: OfferBadge[] = [
+    { label: formatDiscount(offer.discount_percent, locale), variant: 'deal' },
+  ];
 
   if (offer.free_seats === 0) {
-    badges.push({ label: seatsLabel(0), variant: 'soldOut' });
+    badges.push({ label: seatsLabel(0, locale), variant: 'soldOut' });
     return badges;
   }
 
   const time = offerTimeLabel(
     { type: offer.type, startsAt: offer.starts_at, endsAt: offer.ends_at },
     now,
+    locale,
   );
   if (time.urgent) badges.push({ label: capitalize(time.text), variant: 'urgent' });
   if (isFewSeatsLeft(offer.free_seats)) {
-    badges.push({ label: seatsLabel(offer.free_seats), variant: 'neutral' });
+    badges.push({ label: seatsLabel(offer.free_seats, locale), variant: 'neutral' });
   }
   return badges;
 }
@@ -348,26 +364,32 @@ export function offerBadges(offer: BadgeSource, now: DateInput = new Date()): Of
  * Wann das Angebot stattfindet, als kurze Zeile.
  * Einzeltermin: „Heute, 18:00–21:00“. Zeitraum: „Einlösbar bis Sa., 14.11.“
  */
-export function offerWhenText(offer: Timing, now: DateInput = new Date()): string {
+export function offerWhenText(
+  offer: Timing,
+  now: DateInput = new Date(),
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  const m = getMessages(locale).logic;
   if (offer.type === 'einzeltermin') {
-    return capitalize(formatTimeRange(offer.starts_at, offer.ends_at, now));
+    return capitalize(formatTimeRange(offer.starts_at, offer.ends_at, now, locale));
   }
   if (toDate(offer.starts_at).getTime() <= toDate(now).getTime()) {
-    return `Einlösbar bis ${formatDay(offer.ends_at, now)}`;
+    return m.redeemUntil(formatDay(offer.ends_at, now, locale));
   }
-  return `Einlösbar ${formatDateRange(offer.starts_at, offer.ends_at, now)}`;
+  return m.redeemRange(formatDateRange(offer.starts_at, offer.ends_at, now, locale));
 }
 
 /** Hinweis zur Stornofrist. Einzeltermin: bis X Std. vor Beginn. Zeitraum: jederzeit. */
 export function cancelPolicyText(
   type: Offer['type'],
   cancelDeadlineHours: number | undefined,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
-  if (type === 'zeitraum')
-    return 'Kostenlos stornierbar, solange du den Code nicht eingelöst hast.';
-  if (cancelDeadlineHours === undefined) return 'Kostenlos stornierbar bis kurz vor Beginn.';
-  if (cancelDeadlineHours === 0) return 'Kostenlos stornierbar bis zum Beginn.';
-  return `Kostenlos stornierbar bis ${cancelDeadlineHours} Std. vor Beginn.`;
+  const m = getMessages(locale).logic.cancelPolicy;
+  if (type === 'zeitraum') return m.period;
+  if (cancelDeadlineHours === undefined) return m.unknown;
+  if (cancelDeadlineHours === 0) return m.untilStart;
+  return m.hours(cancelDeadlineHours);
 }
 
 /** Eindeutige Standorte mit ihren Angeboten, für die Pins der Karte. */
@@ -396,11 +418,15 @@ export function placeKeyOf(offer: Pick<Offer, 'lat' | 'lng'>): string | null {
  * Kategorien als Vorschläge unter der Suche (Karte). Ohne Eingabe alle,
  * sonst die, deren Name zum Text passt („koch“ → Kochen & Essen).
  */
-export function categorySuggestions(query: string): OfferCategory[] {
+export function categorySuggestions(
+  query: string,
+  locale: Locale = DEFAULT_LOCALE,
+): OfferCategory[] {
   const words = normalize(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) return [...OFFER_CATEGORIES];
+  const labels = getLabels(locale).offerCategory;
   return OFFER_CATEGORIES.filter((category) => {
-    const label = normalize(OFFER_CATEGORY_LABELS[category]);
+    const label = normalize(labels[category]);
     return words.every((word) => label.includes(word));
   });
 }

@@ -6,6 +6,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { CITIES, countOffersByCity, isCityId, type CityId } from '@/features/offers/cities';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { useT } from '@/lib/i18n/context';
 
 export interface CityMenuProps {
   /** Auslöser, z. B. „Münster ⌄“. Muss eine reine Ansicht sein, kein eigener Button. */
@@ -19,12 +20,13 @@ export interface CityMenuProps {
  */
 export function CityMenu({ children, style }: CityMenuProps) {
   const { cityId, setCityId } = useOfferFilters();
+  const { t } = useT();
   const { data } = useOffers();
   const counts = countOffersByCity(data ?? []);
 
   return (
     <MenuView
-      title="Stadt wählen"
+      title={t.parts.filter.chooseCity}
       style={style}
       actions={CITIES.map((city) => {
         const count = counts[city.id];

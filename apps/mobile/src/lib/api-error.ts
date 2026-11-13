@@ -1,6 +1,9 @@
 import { parseRpcError } from '@repo/shared';
 
-/** Fehler mit festem Code und fertigem deutschen Text für die Oberfläche. */
+import { getLocale } from '@/lib/i18n/locale-store';
+import { getMessages } from '@/lib/i18n/messages';
+
+/** Fehler mit festem Code und fertigem Text (in der gewählten Sprache) für die Oberfläche. */
 export class ApiError extends Error {
   constructor(
     readonly code: string,
@@ -11,8 +14,6 @@ export class ApiError extends Error {
   }
 }
 
-const OFFLINE_MESSAGE = 'Keine Verbindung. Prüf dein Internet und versuch es nochmal.';
-
 interface SupabaseLikeError {
   message?: string | null;
   details?: string | null;
@@ -20,12 +21,14 @@ interface SupabaseLikeError {
 
 /** Wandelt einen Supabase-Fehler in einen ApiError um (Codes und Texte aus @repo/shared). */
 export function toApiError(error: SupabaseLikeError): ApiError {
+  const locale = getLocale();
+  const t = getMessages(locale).common;
   const raw = `${error.message ?? ''} ${error.details ?? ''}`;
   if (/network request failed|failed to fetch|fetch failed/i.test(raw)) {
-    return new ApiError('OFFLINE', OFFLINE_MESSAGE);
+    return new ApiError('OFFLINE', t.offline);
   }
-  const parsed = parseRpcError(error);
-  return new ApiError(parsed?.code ?? 'UNBEKANNT', parsed?.message ?? 'Etwas ist schiefgelaufen.');
+  const parsed = parseRpcError(error, locale);
+  return new ApiError(parsed?.code ?? 'UNBEKANNT', parsed?.message ?? t.unknownError);
 }
 
 /** Text für die Oberfläche, egal was geworfen wurde. */

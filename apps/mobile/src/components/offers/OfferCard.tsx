@@ -7,6 +7,7 @@ import { OfferFavoriteButton } from '@/components/favorites/OfferFavoriteButton'
 import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
+import { useT } from '@/lib/i18n/context';
 import { badge, colors, radius, space } from '@/theme';
 
 import { OfferImage } from './OfferImage';
@@ -27,8 +28,9 @@ export const COMPACT_CARD_WIDTH = 264;
 /** Angebotskarte: großes Foto mit Deal-Badges, darunter Titel, Ort, Zeit und Preis. */
 export function OfferCard({ offer, variant = 'large', onOpen, priority, style }: OfferCardProps) {
   const router = useRouter();
-  const badges = offerBadges(offer);
-  const when = offerWhenText(offer);
+  const { t, locale } = useT();
+  const badges = offerBadges(offer, undefined, locale);
+  const when = offerWhenText(offer, undefined, locale);
   const soldOut = offer.free_seats === 0;
   const compact = variant === 'compact';
 
@@ -36,15 +38,18 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
     offer.title,
     offer.location_name,
     when,
-    `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`,
-    seatsLabel(offer.free_seats),
+    t.parts.card.priceAria(
+      formatPrice(offer.deal_price_cents, { locale }),
+      formatPrice(offer.original_price_cents, { locale }),
+    ),
+    seatsLabel(offer.free_seats, locale),
   ].join(', ');
 
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint="Öffnet das Angebot"
+      accessibilityHint={t.parts.card.openHint}
       pressedScale={0.98}
       onPress={() => {
         onOpen?.();
@@ -92,7 +97,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
           />
           {!compact ? (
             <Text variant="footnote" color={soldOut ? 'tertiary' : 'secondary'}>
-              {seatsLabel(offer.free_seats)}
+              {seatsLabel(offer.free_seats, locale)}
             </Text>
           ) : null}
         </View>

@@ -1,4 +1,4 @@
-import { OFFER_CATEGORY_LABELS, type OfferCategory } from '@repo/shared';
+import type { OfferCategory } from '@repo/shared';
 import { ChevronDown, CloudOff, MapPin, Search, SearchX, Sparkles, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
@@ -23,6 +23,7 @@ import { useOffers } from '@/features/offers/queries';
 import { useCityFromLocation } from '@/features/offers/use-location-city';
 import type { FeedOffer } from '@/features/offers/types';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, space } from '@/theme';
 
 function Carousel({
@@ -32,14 +33,15 @@ function Carousel({
   section: FeedSection;
   onShowAll?: (category: OfferCategory) => void;
 }) {
+  const { t } = useT();
   const category = section.category;
   return (
     <View style={styles.section}>
       <SectionHeader
         title={section.title}
         inset
-        actionLabel={category && onShowAll ? 'Alle' : undefined}
-        actionAccessibilityLabel={`Alle Angebote aus ${section.title}`}
+        actionLabel={category && onShowAll ? t.common.all : undefined}
+        actionAccessibilityLabel={t.screens.feed.showAllAria(section.title)}
         onAction={category && onShowAll ? () => onShowAll(category) : undefined}
       />
       <ScrollView
@@ -61,8 +63,9 @@ function Carousel({
 }
 
 function LoadingState() {
+  const { t } = useT();
   return (
-    <View style={styles.loading} accessibilityLabel="Angebote werden geladen" accessible>
+    <View style={styles.loading} accessibilityLabel={t.screens.feed.loading} accessible>
       <View style={styles.carousel}>
         <OfferCardSkeleton variant="compact" />
         <OfferCardSkeleton variant="compact" />
@@ -84,6 +87,8 @@ function LoadingState() {
  */
 export function FeedScreen() {
   const insets = useSafeAreaInsets();
+  const { t, locale, labels } = useT();
+  const m = t.screens.feed;
   const list = useRef<FlatList<FeedOffer>>(null);
   const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
@@ -105,12 +110,12 @@ export function FeedScreen() {
     : byCategory
       ? sectionsByCategory(visible, filters.categories).map(({ category, offers }) => ({
           key: `kategorie-${category}`,
-          title: OFFER_CATEGORY_LABELS[category],
+          title: labels.offerCategory[category],
           offers,
         }))
       : listMode
         ? []
-        : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
+        : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [], locale });
   // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
   // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
   const listItems = isPending || byCategory || !listMode ? [] : visible;
@@ -133,8 +138,8 @@ export function FeedScreen() {
 
   const listTitle =
     filters.categories.length === 1 && filters.categories[0] && filters.query.trim() === ''
-      ? OFFER_CATEGORY_LABELS[filters.categories[0]]
-      : 'Passt zu dir';
+      ? labels.offerCategory[filters.categories[0]]
+      : m.forYou;
 
   const top = (
     <View style={[styles.top, { paddingTop: insets.top + space[1] }]}>
@@ -144,8 +149,8 @@ export function FeedScreen() {
             style={styles.cityButton}
             accessible
             accessibilityRole="button"
-            accessibilityLabel={`Stadt: ${city.name}`}
-            accessibilityHint="Öffnet die Auswahl der Städte"
+            accessibilityLabel={m.cityAria(city.name)}
+            accessibilityHint={m.cityHint}
           >
             <Text variant="title2" numberOfLines={1} style={styles.cityName}>
               {city.name}
@@ -158,7 +163,7 @@ export function FeedScreen() {
         <IconButton
           variant="plain"
           icon={showSearch ? X : Search}
-          accessibilityLabel={showSearch ? 'Suche schließen' : 'Angebote durchsuchen'}
+          accessibilityLabel={showSearch ? m.closeSearch : m.search}
           onPress={toggleSearch}
         />
       </View>
@@ -168,8 +173,8 @@ export function FeedScreen() {
           <Input
             shape="pill"
             icon={Search}
-            placeholder="Kochkurs, Yoga, Keramik …"
-            accessibilityLabel="Angebote durchsuchen"
+            placeholder={m.searchPlaceholder}
+            accessibilityLabel={m.search}
             value={filters.query}
             onChangeText={(query) => setFilters({ query })}
             returnKeyType="search"
@@ -193,11 +198,7 @@ export function FeedScreen() {
       ))}
 
       {listItems.length > 0 ? (
-        <SectionHeader
-          title={listTitle}
-          detail={`${visible.length} ${visible.length === 1 ? 'Angebot' : 'Angebote'}`}
-          inset
-        />
+        <SectionHeader title={listTitle} detail={m.count(visible.length)} inset />
       ) : null}
     </View>
   );
@@ -206,36 +207,32 @@ export function FeedScreen() {
     <EmptyState
       tone="error"
       icon={CloudOff}
-      title={isOffline(error) ? 'Kein Netz' : 'Das hat nicht geklappt'}
+      title={isOffline(error) ? t.common.noNetwork : t.common.failed}
       message={errorMessage(error)}
-      actionLabel="Nochmal versuchen"
+      actionLabel={t.common.retry}
       onAction={() => void refetch()}
     />
   ) : cityOffers.length === 0 && !city.launched ? (
     <EmptyState
       icon={MapPin}
-      title={`Bald auch in ${city.name} ✨`}
-      message="Hier suchen wir gerade die ersten Partner. Bis dahin findest du Angebote in den anderen Städten."
-      actionLabel={`Zu ${fallbackCity(cityId).name} wechseln`}
+      title={m.comingSoonTitle(city.name)}
+      message={m.comingSoonText}
+      actionLabel={m.switchCity(fallbackCity(cityId).name)}
       onAction={() => setCityId(fallbackCity(cityId).id)}
     />
   ) : filtering && cityOffers.length > 0 ? (
     <EmptyState
       icon={SearchX}
-      title="Nichts gefunden"
-      message="Für diese Auswahl gibt es gerade kein Angebot. Probier einen anderen Tag oder eine andere Kategorie."
-      actionLabel="Filter zurücksetzen"
+      title={m.nothingFoundTitle}
+      message={m.nothingFoundText}
+      actionLabel={m.resetFilters}
       onAction={() => {
         resetFilters();
         setSearchOpen(false);
       }}
     />
   ) : (
-    <EmptyState
-      icon={Sparkles}
-      title="Gerade ist Ruhe ✨"
-      message="Im Moment gibt es keine Angebote. Schau später nochmal rein, hier tut sich oft kurzfristig was."
-    />
+    <EmptyState icon={Sparkles} title={m.quietTitle} message={m.quietText} />
   );
 
   return (

@@ -1,4 +1,5 @@
 import { otpRequestSchema, otpVerifySchema } from '@repo/shared';
+import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { Mail, X } from 'lucide-react-native';
@@ -23,6 +24,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
 type Busy = 'apple' | 'google' | 'email' | 'code' | 'dev' | null;
@@ -30,8 +32,13 @@ type Busy = 'apple' | 'google' | 'email' | 'code' | 'dev' | null;
 /** Erstes Test-Konto aus den Seed-Daten. Das Passwort tippt man selbst ein (steht in der .env). */
 const DEV_EMAIL = 'seed-mia@example.com';
 
-function firstIssue(error: { issues: { message: string }[] }): string {
-  return error.issues[0]?.message ?? 'Bitte prüf deine Eingabe.';
+function firstIssue(
+  error: { issues: { message: string }[] },
+  locale: Locale,
+  fallback: string,
+): string {
+  const message = error.issues[0]?.message;
+  return message ? translateValidationMessage(message, locale) : fallback;
 }
 
 /**
@@ -41,6 +48,8 @@ function firstIssue(error: { issues: { message: string }[] }): string {
 export function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, locale } = useT();
+  const a = t.common.auth;
   const { ready, userId, account, accountLoading, accountError, refetchAccount, suggestedName } =
     useAuth();
 
@@ -104,7 +113,7 @@ export function LoginScreen() {
   const sendCode = () => {
     const parsed = otpRequestSchema.safeParse({ email: email.trim() });
     if (!parsed.success) {
-      setError(firstIssue(parsed.error));
+      setError(firstIssue(parsed.error, locale, t.common.checkInput));
       return;
     }
     void run('email', async () => {
@@ -118,7 +127,7 @@ export function LoginScreen() {
   const checkCode = () => {
     const parsed = otpVerifySchema.safeParse({ email, token: code });
     if (!parsed.success) {
-      setError(firstIssue(parsed.error));
+      setError(firstIssue(parsed.error, locale, t.common.checkInput));
       return;
     }
     void run('code', () => verifyEmailCode(parsed.data.email, parsed.data.token));
@@ -126,7 +135,7 @@ export function LoginScreen() {
 
   const devLogin = () => {
     if (!devEmail.trim() || !devPassword) {
-      setError('Bitte E-Mail und Passwort des Test-Kontos eingeben.');
+      setError(a.devMissing);
       return;
     }
     void run('dev', () => signInWithPassword(devEmail.trim(), devPassword));
@@ -144,9 +153,9 @@ export function LoginScreen() {
       <EmptyState
         tone="error"
         icon={Mail}
-        title="Konto nicht geladen"
+        title={t.common.accountNotLoaded}
         message={errorMessage(accountError)}
-        actionLabel="Nochmal versuchen"
+        actionLabel={t.common.retry}
         onAction={() => void refetchAccount()}
       />
     );
@@ -156,19 +165,19 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Wie heißt du?
+            {a.nameTitle}
           </Text>
           <Text variant="body" color="secondary">
-            Dein Name steht auf der Teilnehmerliste, damit der Anbieter dich vor Ort findet.
+            {a.nameIntro}
           </Text>
         </View>
         <NameForm
           initialFirstName={account.firstName || appleName.firstName || suggestion.firstName}
           initialLastName={account.lastName || appleName.lastName || suggestion.lastName}
-          submitLabel="Fertig"
+          submitLabel={t.common.done}
           onSaved={() => undefined}
         />
-        <Button label="Abmelden" variant="ghost" onPress={() => void signOut()} />
+        <Button label={t.common.signOut} variant="ghost" onPress={() => void signOut()} />
       </View>
     );
   } else if (step === 'code') {
@@ -176,14 +185,14 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Code eingeben
+            {a.codeTitle}
           </Text>
           <Text variant="body" color="secondary">
-            Wir haben dir einen Code an {email} geschickt. Schau auch im Spam-Ordner nach.
+            {a.codeIntro(email)}
           </Text>
         </View>
         <Input
-          label="Code aus der E-Mail"
+          label={a.codeLabel}
           value={code}
           onChangeText={setCode}
           keyboardType="number-pad"
@@ -194,7 +203,7 @@ export function LoginScreen() {
           onSubmitEditing={checkCode}
         />
         <Button
-          label="Anmelden"
+          label={t.common.signIn}
           size="lg"
           fullWidth
           loading={busy === 'code'}
@@ -202,13 +211,13 @@ export function LoginScreen() {
           onPress={checkCode}
         />
         <Button
-          label="Code nochmal schicken"
+          label={a.resendCode}
           variant="ghost"
           loading={busy === 'email'}
           onPress={sendCode}
         />
         <Button
-          label="Andere E-Mail-Adresse"
+          label={a.otherEmail}
           variant="ghost"
           onPress={() => {
             setError(null);
@@ -222,17 +231,16 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Anmelden
+            {t.common.signIn}
           </Text>
           <Text variant="body" color="secondary">
-            Mit einem Konto holst du dir Codes und findest sie jederzeit wieder. Kostenlos und ohne
-            Zahlungsdaten.
+            {a.intro}
           </Text>
         </View>
 
         {!anyMethod && !__DEV__ ? (
           <Text variant="callout" color="secondary">
-            Die Anmeldung ist in dieser Testversion noch nicht freigeschaltet. Bald geht's los!
+            {a.notEnabled}
           </Text>
         ) : null}
 
@@ -249,7 +257,7 @@ export function LoginScreen() {
             ) : null}
             {env.auth.google ? (
               <Button
-                label="Weiter mit Google"
+                label={a.google}
                 variant="outline"
                 size="lg"
                 fullWidth
@@ -267,18 +275,18 @@ export function LoginScreen() {
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <Text variant="footnote" color="tertiary">
-                  oder mit E-Mail
+                  {a.orEmail}
                 </Text>
                 <View style={styles.line} />
               </View>
             ) : null}
 
             <Input
-              label="E-Mail-Adresse"
+              label={a.emailLabel}
               icon={Mail}
               value={email}
               onChangeText={setEmail}
-              placeholder="du@beispiel.de"
+              placeholder={a.emailPlaceholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -288,7 +296,7 @@ export function LoginScreen() {
               onSubmitEditing={sendCode}
             />
             <Button
-              label="Code per E-Mail schicken"
+              label={a.sendCode}
               size="lg"
               fullWidth
               loading={busy === 'email'}
@@ -301,13 +309,13 @@ export function LoginScreen() {
         {__DEV__ ? (
           <View style={styles.dev}>
             <Text variant="overline" color="tertiary">
-              Nur in der Entwicklung
+              {a.devOnly}
             </Text>
             <Text variant="footnote" color="secondary">
-              Test-Konto aus den Seed-Daten. Das Passwort ist SEED_TEST_PASSWORD aus der .env.
+              {a.devHint}
             </Text>
             <Input
-              label="Test-E-Mail"
+              label={a.devEmail}
               value={devEmail}
               onChangeText={setDevEmail}
               keyboardType="email-address"
@@ -315,7 +323,7 @@ export function LoginScreen() {
               autoCorrect={false}
             />
             <Input
-              label="Passwort"
+              label={a.password}
               value={devPassword}
               onChangeText={setDevPassword}
               secureTextEntry
@@ -324,7 +332,7 @@ export function LoginScreen() {
               onSubmitEditing={devLogin}
             />
             <Button
-              label="Mit Test-Konto anmelden"
+              label={a.devSubmit}
               variant="secondary"
               fullWidth
               loading={busy === 'dev'}
@@ -367,7 +375,7 @@ export function LoginScreen() {
       <IconButton
         icon={X}
         variant="plain"
-        accessibilityLabel="Schließen"
+        accessibilityLabel={t.common.close}
         onPress={close}
         style={[styles.close, { top: Platform.OS === 'ios' ? space[3] : insets.top + space[2] }]}
       />

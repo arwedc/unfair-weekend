@@ -12,6 +12,8 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { getLocale } from '@/lib/i18n/locale-store';
+import { getMessages } from '@/lib/i18n/messages';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/theme';
 
@@ -58,7 +60,7 @@ export function configureNotificationHandler(): void {
 export async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: 'Angebote und Codes',
+    name: getMessages(getLocale()).common.pushChannel,
     importance: Notifications.AndroidImportance.HIGH,
     lightColor: colors.accent.solid,
   });

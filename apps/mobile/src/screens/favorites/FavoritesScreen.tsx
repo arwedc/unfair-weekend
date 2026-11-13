@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { useFavoriteLocations, useFavoriteOffers } from '@/features/favorites/queries';
 import { errorMessage } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, space } from '@/theme';
 
 type Tab = 'angebote' | 'orte';
@@ -27,6 +28,7 @@ function isTab(value: unknown): value is Tab {
 
 function OfferFavorites() {
   const router = useRouter();
+  const { t } = useT();
   const { offers, isPending } = useFavoriteOffers();
 
   if (isPending) return <OfferCardSkeleton />;
@@ -34,9 +36,9 @@ function OfferFavorites() {
     return (
       <EmptyState
         icon={Heart}
-        title="Noch nichts gemerkt"
-        message="Tipp bei einem Angebot auf das Herz, dann findest du es hier wieder. Vorbei ist vorbei: Abgelaufene Angebote verschwinden von selbst."
-        actionLabel="Angebote entdecken"
+        title={t.parts.favorites.noOffersTitle}
+        message={t.parts.favorites.noOffersText}
+        actionLabel={t.parts.favorites.discover}
         onAction={() => router.navigate('/')}
       />
     );
@@ -54,6 +56,7 @@ function OfferFavorites() {
 
 function LocationFavorites() {
   const router = useRouter();
+  const { t } = useT();
   const { locations, isPending, error } = useFavoriteLocations();
 
   if (isPending) return <Skeleton height={64} />;
@@ -68,8 +71,8 @@ function LocationFavorites() {
     return (
       <EmptyState
         icon={Store}
-        title="Noch keine Lieblingsorte"
-        message="Tipp bei einem Anbieter auf das Herz. Dann sagen wir dir Bescheid, wenn es dort etwas Neues gibt."
+        title={t.parts.favorites.noPlacesTitle}
+        message={t.parts.favorites.noPlacesText}
       />
     );
   }
@@ -92,6 +95,7 @@ function LocationFavorites() {
 /** „Favoriten“ aus dem Profil: gemerkte Angebote und Lieblingsorte, umschaltbar. */
 export function FavoritesScreen() {
   const router = useRouter();
+  const { t } = useT();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(isTab(params.tab) ? params.tab : 'angebote');
   const { userId } = useAuth();
@@ -105,23 +109,28 @@ export function FavoritesScreen() {
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
     >
-      <Stack.Screen options={{ title: 'Favoriten' }} />
+      <Stack.Screen options={{ title: t.common.screens.favorites }} />
 
       {userId === null ? (
         <>
           <EmptyState
             icon={Heart}
-            title="Melde dich an"
-            message="Mit einem Konto merkst du dir Angebote und Lieblingsorte und findest sie hier wieder."
+            title={t.parts.favorites.signInTitle}
+            message={t.parts.favorites.signInText}
           />
-          <Button label="Anmelden" size="lg" fullWidth onPress={() => router.push('/anmelden')} />
+          <Button
+            label={t.common.signIn}
+            size="lg"
+            fullWidth
+            onPress={() => router.push('/anmelden')}
+          />
         </>
       ) : (
         <>
           <SegmentedTabs
             tabs={[
-              { key: 'angebote', label: 'Angebote', count: offers.length },
-              { key: 'orte', label: 'Orte', count: locations.length },
+              { key: 'angebote', label: t.parts.favorites.offers, count: offers.length },
+              { key: 'orte', label: t.parts.favorites.places, count: locations.length },
             ]}
             value={tab}
             onChange={setTab}

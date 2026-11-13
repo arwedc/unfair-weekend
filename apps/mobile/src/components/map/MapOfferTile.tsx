@@ -9,6 +9,7 @@ import { PriceRow } from '@/components/offers/PriceRow';
 import { PressableScale, Text } from '@/components/ui';
 import { offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
+import { useT } from '@/lib/i18n/context';
 import { colors, radius, shadow, space } from '@/theme';
 
 export const MAP_TILE_HEIGHT = 128;
@@ -23,7 +24,8 @@ export interface MapOfferTileProps {
 /** Kleine Angebotskachel über der Karte: Foto links, das Wichtigste rechts. Tippen öffnet das Angebot. */
 export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
   const router = useRouter();
-  const when = offerWhenText(offer);
+  const { t, locale } = useT();
+  const when = offerWhenText(offer, undefined, locale);
   const fewSeats = isFewSeatsLeft(offer.free_seats);
 
   return (
@@ -33,12 +35,15 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
         offer.title,
         offer.location_name,
         when,
-        `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`,
-        `${offer.discount_percent} Prozent günstiger`,
-        seatsLabel(offer.free_seats),
+        t.parts.card.priceAria(
+          formatPrice(offer.deal_price_cents, { locale }),
+          formatPrice(offer.original_price_cents, { locale }),
+        ),
+        t.parts.card.cheaper(offer.discount_percent),
+        seatsLabel(offer.free_seats, locale),
         position,
       ].join(', ')}
-      accessibilityHint="Öffnet das Angebot. Zum nächsten Angebot nach links oder rechts wischen."
+      accessibilityHint={t.parts.card.openSwipeHint}
       pressedScale={0.98}
       onPress={() => router.push({ pathname: '/angebot/[id]', params: { id: offer.id } })}
       style={[styles.tile, { width }]}
@@ -59,7 +64,7 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
           {when}
           {fewSeats ? (
             <Text variant="caption" color="accent">
-              {` · ${seatsLabel(offer.free_seats)}`}
+              {` · ${seatsLabel(offer.free_seats, locale)}`}
             </Text>
           ) : null}
         </Text>

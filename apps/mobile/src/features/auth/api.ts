@@ -5,6 +5,8 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { forgetDevice, unregisterDevice } from '@/features/push/push';
 import { ApiError, toApiError } from '@/lib/api-error';
+import { getLocale } from '@/lib/i18n/locale-store';
+import { getMessages } from '@/lib/i18n/messages';
 import { supabase } from '@/lib/supabase';
 
 import { parseAccount, sessionTokensFromUrl, type Account } from './account';
@@ -12,32 +14,37 @@ import { parseAccount, sessionTokensFromUrl, type Account } from './account';
 /** Der Nutzer hat den Login selbst abgebrochen. Dafür zeigen wir keinen Fehler. */
 export const CANCELLED = 'ABGEBROCHEN';
 
-const AUTH_MESSAGES: Record<string, string> = {
-  invalid_credentials: 'E-Mail oder Passwort stimmt nicht.',
-  otp_expired: 'Der Code ist abgelaufen oder falsch. Fordere einen neuen an.',
-  over_email_send_rate_limit: 'Zu viele Versuche. Warte kurz und probier es dann nochmal.',
-  over_request_rate_limit: 'Zu viele Versuche. Warte kurz und probier es dann nochmal.',
-  email_address_invalid: 'Diese E-Mail-Adresse können wir nicht nutzen.',
-  provider_disabled: 'Diese Anmeldung ist noch nicht eingerichtet.',
-  validation_failed: 'Diese Anmeldung ist noch nicht eingerichtet.',
-};
+/** Texte der Anmeldung in der gewählten Sprache. */
+const authText = () => getMessages(getLocale()).common.auth;
 
-/** Fehler von Supabase Auth in einen deutschen Text übersetzen (nie den Rohtext zeigen). */
+function authMessage(code: string): string | undefined {
+  const m = authText();
+  const map: Record<string, string> = {
+    invalid_credentials: m.invalidCredentials,
+    otp_expired: m.otpExpired,
+    over_email_send_rate_limit: m.rateLimit,
+    over_request_rate_limit: m.rateLimit,
+    email_address_invalid: m.emailInvalid,
+    provider_disabled: m.notSetUp,
+    validation_failed: m.notSetUp,
+  };
+  return map[code];
+}
+
+/** Fehler von Supabase Auth in einen verständlichen Text übersetzen (nie den Rohtext zeigen). */
 function toAuthError(error: { message?: string; code?: string | null }): ApiError {
   const code = error.code ?? '';
-  const known = AUTH_MESSAGES[code];
+  const known = authMessage(code);
   if (known) return new ApiError(code, known);
   const fallback = toApiError({ message: error.message });
-  return fallback.code === 'OFFLINE'
-    ? fallback
-    : new ApiError(code || 'AUTH', 'Die Anmeldung hat nicht geklappt. Versuch es nochmal.');
+  return fallback.code === 'OFFLINE' ? fallback : new ApiError(code || 'AUTH', authText().failed);
 }
 
 export async function fetchAccount(): Promise<Account> {
   const { data, error } = await supabase.rpc('get_my_account');
   if (error) throw toApiError(error);
   const account = parseAccount(data);
-  if (!account) throw new ApiError('KEIN_PROFIL', 'Dein Konto konnte nicht geladen werden.');
+  if (!account) throw new ApiError('KEIN_PROFIL', authText().accountLoadFailed);
   return account;
 }
 
@@ -93,10 +100,10 @@ export async function signInWithApple(): Promise<{ firstName: string; lastName: 
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === 'ERR_REQUEST_CANCELED') throw new ApiError(CANCELLED, '');
-    throw new ApiError('APPLE', 'Die Anmeldung mit Apple hat nicht geklappt.');
+    throw new ApiError('APPLE', authText().appleFailed);
   }
   if (!credential.identityToken) {
-    throw new ApiError('APPLE', 'Die Anmeldung mit Apple hat nicht geklappt.');
+    throw new ApiError('APPLE', authText().appleFailed);
   }
   const { error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
@@ -122,7 +129,7 @@ export async function signInWithGoogle(): Promise<void> {
     options: { redirectTo, skipBrowserRedirect: true },
   });
   if (error) throw toAuthError(error);
-  if (!data.url) throw new ApiError('GOOGLE', 'Die Anmeldung mit Google hat nicht geklappt.');
+  if (!data.url) throw new ApiError('GOOGLE', authText().googleFailed);
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
   if (result.type !== 'success') throw new ApiError(CANCELLED, '');
@@ -136,7 +143,7 @@ export async function signInWithGoogle(): Promise<void> {
 export async function completeSignInFromUrl(url: string): Promise<void> {
   const tokens = sessionTokensFromUrl(url);
   if (!tokens || 'error' in tokens) {
-    throw new ApiError('GOOGLE', 'Die Anmeldung mit Google hat nicht geklappt.');
+    throw new ApiError('GOOGLE', authText().googleFailed);
   }
   const session = await supabase.auth.setSession({
     access_token: tokens.accessToken,

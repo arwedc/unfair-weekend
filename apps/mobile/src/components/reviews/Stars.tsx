@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/ui';
 import { formatRating, starFill } from '@/features/reviews/review-logic';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, space } from '@/theme';
 
 const STAR_INDEXES = [1, 2, 3, 4, 5] as const;
@@ -16,12 +17,13 @@ export interface StarsProps {
 
 /** Fünf Sterne zur Anzeige. Für Screenreader: „4,7 von 5 Sternen“. */
 export function Stars({ value, size = 16 }: StarsProps) {
+  const { t, locale } = useT();
   return (
     <View
       style={styles.row}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`${formatRating(value)} von 5 Sternen`}
+      accessibilityLabel={t.parts.review.starsAria(formatRating(value, locale))}
     >
       {STAR_INDEXES.map((index) => {
         const fill = starFill(value, index);
@@ -57,8 +59,13 @@ export interface StarInputProps {
 
 /** Fünf große, antippbare Sterne zum Bewerten. */
 export function StarInput({ value, onChange }: StarInputProps) {
+  const { t } = useT();
   return (
-    <View style={styles.inputRow} accessibilityRole="adjustable" accessibilityLabel="Sterne">
+    <View
+      style={styles.inputRow}
+      accessibilityRole="adjustable"
+      accessibilityLabel={t.parts.review.stars}
+    >
       {STAR_INDEXES.map((index) => {
         const active = value >= index;
         return (

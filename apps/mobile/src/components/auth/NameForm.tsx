@@ -1,4 +1,5 @@
 import { profileSchema } from '@repo/shared';
+import { translateValidationMessage } from '@repo/shared/i18n';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,6 +7,7 @@ import { Button, Input, Text } from '@/components/ui';
 import { updateProfile } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
 import { errorMessage } from '@/lib/api-error';
+import { useT } from '@/lib/i18n/context';
 import { colors, space } from '@/theme';
 
 export interface NameFormProps {
@@ -23,6 +25,7 @@ export function NameForm({
   onSaved,
 }: NameFormProps) {
   const { refetchAccount } = useAuth();
+  const { t, locale } = useT();
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [fieldErrors, setFieldErrors] = useState<{ first_name?: string; last_name?: string }>({});
@@ -35,7 +38,8 @@ export function NameForm({
       const errors: { first_name?: string; last_name?: string } = {};
       for (const issue of parsed.error.issues) {
         const field = issue.path[0];
-        if (field === 'first_name' || field === 'last_name') errors[field] ??= issue.message;
+        if (field === 'first_name' || field === 'last_name')
+          errors[field] ??= translateValidationMessage(issue.message, locale);
       }
       setFieldErrors(errors);
       return;
@@ -57,7 +61,7 @@ export function NameForm({
   return (
     <View style={styles.form}>
       <Input
-        label="Vorname"
+        label={t.common.auth.firstName}
         value={firstName}
         onChangeText={setFirstName}
         error={fieldErrors.first_name}
@@ -67,7 +71,7 @@ export function NameForm({
         returnKeyType="next"
       />
       <Input
-        label="Nachname"
+        label={t.common.auth.lastName}
         value={lastName}
         onChangeText={setLastName}
         error={fieldErrors.last_name}

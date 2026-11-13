@@ -19,6 +19,7 @@ import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
 import { usePushSetup } from '@/features/push/use-push';
 import { hideDevToolsButton } from '@/lib/dev-tools';
+import { useLoadLocale, useT } from '@/lib/i18n/context';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
 
@@ -33,6 +34,8 @@ function PushBridge() {
 }
 
 export default function RootLayout() {
+  useLoadLocale();
+  const { t } = useT();
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -81,13 +84,16 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
                 <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="code/[id]" options={{ title: 'Dein Code' }} />
+                <Stack.Screen name="code/[id]" options={{ title: t.common.screens.code }} />
                 <Stack.Screen
                   name="anmelden"
                   options={{ headerShown: false, presentation: 'modal' }}
                 />
-                <Stack.Screen name="name" options={{ title: 'Dein Name', presentation: 'modal' }} />
-                <Stack.Screen name="favoriten" options={{ title: 'Favoriten' }} />
+                <Stack.Screen
+                  name="name"
+                  options={{ title: t.common.screens.name, presentation: 'modal' }}
+                />
+                <Stack.Screen name="favoriten" options={{ title: t.common.screens.favorites }} />
                 <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                 <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
               </Stack>

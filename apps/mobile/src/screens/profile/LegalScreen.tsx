@@ -2,21 +2,10 @@ import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
-const PAGES = {
-  datenschutz: {
-    title: 'Datenschutz',
-    intro:
-      'Hier steht später die Datenschutzerklärung: welche Daten die App speichert (Name, E-Mail, Codes, Favoriten), wofür und wie du sie löschen kannst.',
-  },
-  impressum: {
-    title: 'Impressum',
-    intro: 'Hier stehen später Anbieter, Anschrift und Kontakt nach § 5 DDG.',
-  },
-} as const;
-
-export type LegalPage = keyof typeof PAGES;
+export type LegalPage = 'datenschutz' | 'impressum';
 
 export function isLegalPage(value: unknown): value is LegalPage {
   return value === 'datenschutz' || value === 'impressum';
@@ -24,7 +13,11 @@ export function isLegalPage(value: unknown): value is LegalPage {
 
 /** Platzhalter für Datenschutz und Impressum. Die echten Texte kommen vor dem Start. */
 export function LegalScreen({ page }: { page: LegalPage }) {
-  const content = PAGES[page];
+  const { t } = useT();
+  const content =
+    page === 'datenschutz'
+      ? { title: t.common.profile.privacy, intro: t.common.legal.privacyIntro }
+      : { title: t.common.profile.imprint, intro: t.common.legal.imprintIntro };
   return (
     <ScrollView
       style={styles.screen}
@@ -34,14 +27,14 @@ export function LegalScreen({ page }: { page: LegalPage }) {
       <Stack.Screen options={{ title: content.title }} />
       <View style={styles.placeholder}>
         <Text variant="overline" color="tertiary">
-          Platzhalter
+          {t.common.legal.placeholder}
         </Text>
         <Text variant="body" color="secondary">
           {content.intro}
         </Text>
       </View>
       <Text variant="footnote" color="tertiary">
-        Diese Testversion ist noch nicht öffentlich. Der endgültige Text wird vor dem Start ergänzt.
+        {t.common.legal.notPublic}
       </Text>
     </ScrollView>
   );

@@ -1,12 +1,12 @@
-import { OFFER_CATEGORY_LABELS } from '@repo/shared';
 import { ChevronDown, MapPin, SlidersHorizontal } from 'lucide-react-native';
 import { useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Chip, Text, type SheetRef } from '@/components/ui';
 import { getCity } from '@/features/offers/cities';
-import { TIME_FILTER_LABELS, TIME_FILTERS } from '@/features/offers/feed-logic';
+import { timeFilterLabels, TIME_FILTERS } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
+import { useT } from '@/lib/i18n/context';
 import { colors, fonts, layout, radius, space } from '@/theme';
 
 import { CATEGORY_ICONS } from './category-icons';
@@ -30,16 +30,18 @@ export interface FilterBarProps {
  * Sind Kategorien gewählt, stehen sie (bzw. ihre Anzahl) statt „Filter“ in der ersten Pille.
  */
 export function FilterBar({ showCity = false }: FilterBarProps) {
+  const { t, locale, labels } = useT();
+  const m = t.parts.filter;
   const { filters, setFilters, cityId } = useOfferFilters();
   const filterSheet = useRef<SheetRef>(null);
   const { categories } = filters;
   const single = categories.length === 1 ? categories[0] : undefined;
   // Eine Kategorie: ihr Name. Mehrere: „2 Kategorien“. Keine: „Filter“.
   const filterLabel = single
-    ? OFFER_CATEGORY_LABELS[single]
+    ? labels.offerCategory[single]
     : categories.length > 1
-      ? `${categories.length} Kategorien`
-      : 'Filter';
+      ? m.categories(categories.length)
+      : m.filter;
 
   return (
     <>
@@ -56,7 +58,7 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
               accessible
               accessibilityRole="button"
               accessibilityLabel={`Stadt: ${getCity(cityId).name}`}
-              accessibilityHint="Öffnet die Auswahl der Städte"
+              accessibilityHint={m.cityHint}
             >
               <MapPin size={14} strokeWidth={2.25} color={colors.text.inverse} />
               <Text variant="footnote" style={styles.cityLabel}>
@@ -71,7 +73,7 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
           label={filterLabel}
           icon={single ? CATEGORY_ICONS[single] : SlidersHorizontal}
           selected={categories.length > 0}
-          accessibilityHint="Öffnet Zeit- und Kategoriefilter"
+          accessibilityHint={m.filterHint}
           onPress={() => filterSheet.current?.present()}
         />
         <View style={styles.divider} />
@@ -79,7 +81,7 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
           <Chip
             key={time}
             size="sm"
-            label={TIME_FILTER_LABELS[time]}
+            label={timeFilterLabels(locale)[time]}
             icon={TIME_ICONS[time]}
             selected={filters.time === time}
             onPress={() => setFilters({ time: filters.time === time ? 'alle' : time })}
