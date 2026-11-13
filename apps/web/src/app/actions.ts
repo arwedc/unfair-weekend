@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { emailSchema } from '@repo/shared';
-import { getAccount } from '@/lib/auth';
+import { getMyAccount } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
 export interface LoginState {
@@ -30,14 +30,21 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     };
   }
 
-  // Die Website ist nur für Standorte. Nutzer- und Admin-Konten direkt wieder abmelden.
-  const account = await getAccount();
-  if (!account) {
-    await supabase.auth.signOut();
-    return { error: 'Dieses Konto gehört zu keinem Standort.', email };
+  const account = await getMyAccount();
+  if (account?.role === 'admin') redirect('/admin');
+  if (account?.role === 'standort') {
+    if (!account.location) redirect('/registrieren');
+    redirect(account.location.status === 'approved' ? '/angebote' : '/antrag');
   }
 
-  redirect('/angebote');
+  // Nutzerkonten gehören nicht in das Partnerportal.
+  await supabase.auth.signOut();
+  return {
+    error: account
+      ? 'Dieses Konto gehört nicht zum Partnerportal.'
+      : 'Das Konto konnte nicht geladen werden.',
+    email,
+  };
 }
 
 export async function logout(): Promise<void> {
