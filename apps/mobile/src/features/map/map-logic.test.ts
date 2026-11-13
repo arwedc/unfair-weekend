@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { Offer } from '@/features/offers/types';
 
-import { countAtPlace, firstIndexAtPlace, mapOffers, snappedIndex } from './map-logic';
+import {
+  countAtPlace,
+  firstIndexAtPlace,
+  mapOffers,
+  nearestLoopPosition,
+  realIndex,
+  recenteredPosition,
+  snappedIndex,
+} from './map-logic';
 
 const offer = (id: string, lng: number, lat: number, free_seats = 3): Offer =>
   ({ id, lng, lat, free_seats }) as Offer;
@@ -55,5 +63,28 @@ describe('snappedIndex', () => {
     expect(snappedIndex(-50, 300, 5)).toBe(0);
     expect(snappedIndex(9999, 300, 5)).toBe(4);
     expect(snappedIndex(100, 300, 0)).toBe(0);
+  });
+});
+
+describe('Endlos-Wischen', () => {
+  it('rechnet virtuelle Positionen auf echte Angebote um', () => {
+    expect(realIndex(0, 3)).toBe(0);
+    expect(realIndex(4, 3)).toBe(1);
+    expect(realIndex(8, 3)).toBe(2);
+    expect(realIndex(-1, 3)).toBe(2);
+  });
+
+  it('nimmt beim Tipp auf eine Nadel den kurzen Weg, auch über das Ende', () => {
+    // 4 Angebote, man steht auf dem letzten (virtuell 7): zum ersten geht es vorwärts (8).
+    expect(nearestLoopPosition(0, 7, 4)).toBe(8);
+    expect(nearestLoopPosition(2, 5, 4)).toBe(6);
+  });
+
+  it('springt nach dem Ausrollen in die mittlere Kopie zurück', () => {
+    // Vom letzten Angebot nach rechts gewischt: virtuell 8 = Angebot 0 → Mitte 4.
+    expect(recenteredPosition(8, 4)).toBe(4);
+    expect(recenteredPosition(3, 4)).toBe(7);
+    expect(recenteredPosition(5, 4)).toBeNull();
+    expect(recenteredPosition(0, 1)).toBeNull();
   });
 });

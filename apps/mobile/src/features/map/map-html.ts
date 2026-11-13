@@ -52,6 +52,8 @@ export type MapMessage =
   | { type: 'ready' }
   | { type: 'place'; key: string }
   | { type: 'dismiss' }
+  /** Die Karte ist am eigenen Standort angekommen (Ladesymbol im Knopf ausblenden). */
+  | { type: 'userShown' }
   | { type: 'link'; url: string }
   | { type: 'error'; message: string };
 
@@ -66,6 +68,7 @@ export function parseMapMessage(raw: string): MapMessage | null {
     switch (value.type) {
       case 'ready':
       case 'dismiss':
+      case 'userShown':
         return { type: value.type };
       case 'place':
         return typeof value.key === 'string' ? { type: 'place', key: value.key } : null;
@@ -288,6 +291,9 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     // Weit weg (andere Stadt): springen statt lange fliegen. In der Nähe: kurze Fahrt.
     var far = map.getCenter().distanceTo(maplibregl.LngLat.convert(lngLat)) > 20000;
     var target = { center: lngLat, zoom: Math.max(map.getZoom(), 14) };
+    // Melden, sobald die Karte steht (und die Kacheln dort gezeichnet sind), damit die App das
+    // Ladesymbol genau dann ausblendet.
+    map.once('idle', function () { send({ type: 'userShown' }); });
     if (far) map.jumpTo(target); else map.easeTo(Object.assign(target, { duration: 300 }));
   };
 

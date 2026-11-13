@@ -65,6 +65,9 @@ type MapWebView = WebView<object>;
  * Tab „Karte“: jedes Angebot mit freien Plätzen als Nadel (passend zu den Filtern).
  * Tipp auf eine Nadel zeigt unten eine Kachel; Wischen führt zum Angebot links oder rechts daneben.
  */
+/** Länger dreht sich der Ladekreis im Standort-Knopf nie (falls die Karte nichts meldet). */
+const LOCATING_MAX_MS = 12_000;
+
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const webview = useRef<MapWebView>(null);
@@ -109,6 +112,14 @@ export function MapScreen() {
   // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel, auch aus „Entdecken“).
   // Kam der Wechsel vom Standort-Knopf, danach gleich zum eigenen Standort weiter.
   const pendingUser = useRef<Coordinates | null>(null);
+  // Sicherheitsnetz: Meldet die Karte nichts zurück, verschwindet der Ladekreis trotzdem.
+  const locatingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (locatingTimeout.current) clearTimeout(locatingTimeout.current);
+    },
+    [],
+  );
   const centerScript = setCenterScript(city.center.lat, city.center.lng);
   useEffect(() => {
     if (!mapReady) return;
@@ -134,6 +145,9 @@ export function MapScreen() {
       case 'ready':
         setMapReady(true);
         setMapFailed(false);
+        break;
+      case 'userShown':
+        setLocating(false);
         break;
       case 'place': {
         const index = firstIndexAtPlace(offers, message.key);
@@ -187,17 +201,20 @@ export function MapScreen() {
   const showMyLocation = async () => {
     if (locating) return;
     void Haptics.selectionAsync();
+    // Ab dem Tippen dreht sich ein Ladekreis im Knopf, bis die Karte meldet, dass sie am
+    // Standort steht ('userShown'). So sieht man immer, dass etwas passiert.
+    setLocating(true);
+    if (locatingTimeout.current) clearTimeout(locatingTimeout.current);
+    locatingTimeout.current = setTimeout(() => setLocating(false), LOCATING_MAX_MS);
 
     // Schnellster Weg: Position ist schon bekannt, sofort springen.
     const known = peekPosition();
     if (known) jumpToUser(known);
 
-    // Sonst (oder zum Nachschärfen) orten; bis dahin dreht sich das Symbol im Knopf.
-    setLocating(!known);
     const result = await quickPosition();
-    setLocating(false);
     if (result.status !== 'ok') {
       if (!known) {
+        setLocating(false);
         setNotice(result.status);
         noticeSheet.current?.present();
       }
@@ -320,6 +337,8 @@ export function MapScreen() {
               exiting={FadeOutDown.duration(duration.fast).reduceMotion(ReduceMotion.System)}
             >
               <MapOfferCarousel
+                // Neue Trefferliste (Filter geändert): Kacheln frisch aufbauen.
+                key={offers.map((offer) => offer.id).join(',')}
                 offers={offers}
                 index={selectedIndex}
                 onIndexChange={(index) => {

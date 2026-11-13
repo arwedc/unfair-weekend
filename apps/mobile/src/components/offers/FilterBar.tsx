@@ -27,12 +27,19 @@ export interface FilterBarProps {
 /**
  * Eine schlanke Filterzeile für Feed und Karte (beide teilen denselben Stand):
  * „Filter“ öffnet Zeit und Kategorie im Bottom Sheet, daneben die Tage zum schnellen Umschalten.
- * Ist eine Kategorie gewählt, steht sie statt „Filter“ in der ersten Pille.
+ * Sind Kategorien gewählt, stehen sie (bzw. ihre Anzahl) statt „Filter“ in der ersten Pille.
  */
 export function FilterBar({ showCity = false }: FilterBarProps) {
   const { filters, setFilters, cityId } = useOfferFilters();
   const filterSheet = useRef<SheetRef>(null);
-  const category = filters.category;
+  const { categories } = filters;
+  const single = categories.length === 1 ? categories[0] : undefined;
+  // Eine Kategorie: ihr Name. Mehrere: „2 Kategorien“. Keine: „Filter“.
+  const filterLabel = single
+    ? OFFER_CATEGORY_LABELS[single]
+    : categories.length > 1
+      ? `${categories.length} Kategorien`
+      : 'Filter';
 
   return (
     <>
@@ -61,9 +68,9 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
         ) : null}
         <Chip
           size="sm"
-          label={category ? OFFER_CATEGORY_LABELS[category] : 'Filter'}
-          icon={category ? CATEGORY_ICONS[category] : SlidersHorizontal}
-          selected={category !== null}
+          label={filterLabel}
+          icon={single ? CATEGORY_ICONS[single] : SlidersHorizontal}
+          selected={categories.length > 0}
           accessibilityHint="Öffnet Zeit- und Kategoriefilter"
           onPress={() => filterSheet.current?.present()}
         />

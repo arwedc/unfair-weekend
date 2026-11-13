@@ -32,3 +32,36 @@ export function snappedIndex(offsetX: number, interval: number, count: number): 
   if (count === 0 || interval <= 0) return 0;
   return Math.min(count - 1, Math.max(0, Math.round(offsetX / interval)));
 }
+
+/**
+ * Endlos wischen: Die Kacheln liegen dreimal hintereinander (Kopie 0, 1, 2), angezeigt wird
+ * die mittlere. Eine Position in der Liste heißt hier „virtuell“, das Angebot dahinter „echt“.
+ */
+export const LOOP_COPIES = 3;
+
+/** Echter Index zu einer virtuellen Position. */
+export function realIndex(virtual: number, count: number): number {
+  if (count <= 0) return 0;
+  return ((virtual % count) + count) % count;
+}
+
+/**
+ * Virtuelle Position für ein Angebot, möglichst nah an der aktuellen. So scrollt die Liste
+ * beim Tipp auf eine Nadel den kurzen Weg (auch über das Ende hinweg).
+ */
+export function nearestLoopPosition(real: number, currentVirtual: number, count: number): number {
+  const candidates = Array.from({ length: LOOP_COPIES }, (_, copy) => copy * count + real);
+  return candidates.reduce((best, value) =>
+    Math.abs(value - currentVirtual) < Math.abs(best - currentVirtual) ? value : best,
+  );
+}
+
+/**
+ * Nach dem Ausrollen zurück in die mittlere Kopie (ohne Animation, unsichtbar), damit man in
+ * beide Richtungen weiterwischen kann. `null`, wenn man schon in der Mitte ist.
+ */
+export function recenteredPosition(virtual: number, count: number): number | null {
+  if (count <= 1) return null;
+  if (virtual >= count && virtual < count * 2) return null;
+  return count + realIndex(virtual, count);
+}

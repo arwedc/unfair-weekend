@@ -8,6 +8,8 @@ import {
   groupByPlace,
   hasActiveFilters,
   isListMode,
+  sectionsByCategory,
+  toggleCategory,
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
@@ -131,14 +133,23 @@ describe('filterOffers', () => {
   it('kombiniert Kategorie, Zeit und Suche', () => {
     expect(filterOffers(offers, EMPTY_FILTERS, NOW).map((o) => o.id)).toEqual(['a', 'b']);
     expect(
-      filterOffers(offers, { ...EMPTY_FILTERS, category: 'sport_bewegung' }, NOW).map((o) => o.id),
+      filterOffers(offers, { ...EMPTY_FILTERS, categories: ['sport_bewegung'] }, NOW).map(
+        (o) => o.id,
+      ),
     ).toEqual(['b']);
     expect(filterOffers(offers, { ...EMPTY_FILTERS, time: 'heute' }, NOW).map((o) => o.id)).toEqual(
       ['b'],
     );
     expect(
-      filterOffers(offers, { category: 'kochen_essen', time: 'heute', query: '' }, NOW),
+      filterOffers(offers, { categories: ['kochen_essen'], time: 'heute', query: '' }, NOW),
     ).toEqual([]);
+  });
+
+  it('zeigt bei mehreren Kategorien Angebote aus jeder davon', () => {
+    const both = { ...EMPTY_FILTERS, categories: ['kochen_essen', 'sport_bewegung'] as const };
+    expect(filterOffers(offers, { ...both, categories: [...both.categories] }, NOW)).toHaveLength(
+      2,
+    );
   });
 
   it('erkennt aktive Filter', () => {
@@ -242,11 +253,38 @@ describe('buildSections', () => {
   });
 });
 
+describe('toggleCategory', () => {
+  it('wählt an und ab und hält die feste Reihenfolge', () => {
+    expect(toggleCategory([], 'sonstiges')).toEqual(['sonstiges']);
+    expect(toggleCategory(['sonstiges'], 'kochen_essen')).toEqual(['kochen_essen', 'sonstiges']);
+    expect(toggleCategory(['kochen_essen', 'sonstiges'], 'kochen_essen')).toEqual(['sonstiges']);
+  });
+});
+
+describe('sectionsByCategory', () => {
+  it('bildet je gewählter Kategorie einen Abschnitt und lässt leere weg', () => {
+    const offers = [
+      offer({ id: 'pasta', category: 'kochen_essen' }),
+      offer({ id: 'yoga', category: 'sport_bewegung' }),
+      offer({ id: 'wein', category: 'kochen_essen' }),
+    ];
+    const sections = sectionsByCategory(offers, [
+      'kochen_essen',
+      'kultur_events',
+      'sport_bewegung',
+    ]);
+    expect(sections.map((s) => [s.category, s.offers.map((o) => o.id)])).toEqual([
+      ['kochen_essen', ['pasta', 'wein']],
+      ['sport_bewegung', ['yoga']],
+    ]);
+  });
+});
+
 describe('isListMode', () => {
   it('zeigt eine Liste bei Kategorie oder Suche, nicht beim Zeitfilter', () => {
     expect(isListMode(EMPTY_FILTERS)).toBe(false);
     expect(isListMode({ ...EMPTY_FILTERS, time: 'heute' })).toBe(false);
-    expect(isListMode({ ...EMPTY_FILTERS, category: 'kochen_essen' })).toBe(true);
+    expect(isListMode({ ...EMPTY_FILTERS, categories: ['kochen_essen'] })).toBe(true);
     expect(isListMode({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
     expect(isListMode({ ...EMPTY_FILTERS, query: '   ' })).toBe(false);
   });
