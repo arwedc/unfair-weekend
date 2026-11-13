@@ -8,7 +8,7 @@ export const OFFER_STEPS = [
   {
     id: 'was',
     title: 'Worum geht es?',
-    description: 'Titel, Beschreibung und Bilder sind das Erste, was die Leute sehen.',
+    description: 'Titel, Beschreibung und ein Bild sind das Erste, was die Leute sehen.',
     fields: ['title', 'description', 'category', 'image_paths'],
   },
   {
@@ -99,8 +99,6 @@ export function validateStep(
         errors.description = `Beschreibung: mindestens ${OFFER_LIMITS.descriptionMin} Zeichen.`;
       if (!(OFFER_CATEGORIES as readonly string[]).includes(s('category')))
         errors.category = 'Bitte eine Kategorie wählen.';
-      if ((v.image_paths?.length ?? 0) < OFFER_LIMITS.imagesMin)
-        errors.image_paths = 'Bitte mindestens ein Bild hinzufügen.';
       break;
     }
     case 'wann': {
