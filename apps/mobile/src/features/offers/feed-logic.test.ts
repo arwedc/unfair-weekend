@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSections,
   countByCategory,
+  dayPart,
   EMPTY_FILTERS,
   filterOffers,
   groupByPlace,
   hasActiveFilters,
   isListMode,
+  type LocationRatingSummary,
   sectionsByCategory,
   toggleCategory,
   matchesSearch,
@@ -160,96 +162,145 @@ describe('filterOffers', () => {
 });
 
 describe('buildSections', () => {
-  const titles = (offers: FeedOffer[]) =>
-    buildSections(offers, { cityName: 'Münster', now: NOW }).map((section) => section.title);
-  const ids = (offers: FeedOffer[], key: string) =>
-    buildSections(offers, { cityName: 'Münster', now: NOW })
+  const rated = (entries: [string, number, number][]) =>
+    new Map(entries.map(([id, average, count]) => [id, { average, count }]));
+  const ids = (
+    offers: FeedOffer[],
+    key: string,
+    ratings?: ReadonlyMap<string, LocationRatingSummary>,
+  ) =>
+    buildSections(offers, { ratings, now: NOW })
       .find((section) => section.key === key)
       ?.offers.map((o) => o.id);
 
-  it('teilt in heute, startet bald und neu dabei', () => {
+  it('zeigt die Reihen in fester Reihenfolge mit Titeln', () => {
     const offers = [
-      offer({ id: 'heute', starts_at: at(0, '19:00'), createdAt: '2026-11-08T10:00:00Z' }),
-      offer({ id: 'heute-voll', starts_at: at(0, '20:00'), free_seats: 0 }),
-      offer({ id: 'morgen', starts_at: at(1), createdAt: '2026-11-10T10:00:00Z' }),
-      offer({ id: 'in-3', starts_at: at(3) }),
-      offer({ id: 'in-4', starts_at: at(4) }),
-      offer({ id: 'zeitraum', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
+      offer({
+        id: 'a',
+        capacity: 10,
+        free_seats: 4,
+        createdAt: '2026-11-08T10:00:00Z',
+        location_id: 'l1',
+      }),
+      offer({ id: 'b', capacity: 10, free_seats: 9, max_per_user: 1, location_id: 'l2' }),
     ];
-    expect(ids(offers, 'heute')).toEqual(['heute', 'zeitraum']);
-    expect(ids(offers, 'bald')).toEqual(['morgen', 'in-3']);
-    expect(ids(offers, 'neu')).toEqual(['morgen', 'heute']);
-  });
-
-  it('nennt die Stadt im Abschnitt für heute', () => {
-    expect(titles([offer({ starts_at: at(0, '19:00') })])[0]).toBe('Heute in Münster');
-  });
-
-  it('macht aus jeder Kategorie einen Abschnitt, ohne ausgebuchte, „Sonstiges“ am Ende', () => {
-    const offers = [
-      offer({ id: 'pasta', category: 'kochen_essen' }),
-      offer({ id: 'yoga', category: 'sport_bewegung' }),
-      offer({ id: 'yoga-voll', category: 'sport_bewegung', free_seats: 0 }),
-      offer({ id: 'rad', category: 'sonstiges' }),
-    ];
-    const sections = buildSections(offers, { cityName: 'Münster', now: NOW });
-    const categories = sections.filter((section) => section.category);
-    expect(categories.map((s) => [s.category, s.title, s.offers.map((o) => o.id)])).toEqual([
-      ['kochen_essen', 'Kochen & Essen', ['pasta']],
-      ['sport_bewegung', 'Sport & Bewegung', ['yoga']],
-      ['sonstiges', 'Noch mehr entdecken', ['rad']],
+    const sections = buildSections(offers, { ratings: rated([['l1', 4.8, 12]]), now: NOW });
+    expect(sections.map((s) => s.key)).toEqual([
+      'trending',
+      'highlights',
+      'rabatt',
+      'neu',
+      'crew',
+      'guenstig',
+    ]);
+    expect(sections.map((s) => s.title)).toEqual([
+      'Gerade angesagt 🔥',
+      'Community-Lieblinge ⭐',
+      'Mega-Rabatte 💥',
+      'Frisch reingekommen ✨',
+      'Bring deine Crew 👯',
+      'Schnäppchen 💸',
     ]);
   });
 
-  it('zeigt Themen erst ab zwei Angeboten', () => {
-    const halb = offer({ id: 'halb', discount_percent: 50 });
-    expect(ids([halb], 'halber-preis')).toBeUndefined();
-    const halb2 = offer({ id: 'halb2', discount_percent: 66 });
-    expect(ids([halb, halb2], 'halber-preis')).toEqual(['halb2', 'halb']);
-  });
-
-  it('findet Feierabend-Termine, kleine Preise und flexible Zeiträume', () => {
+  it('sortiert „Gerade angesagt“ nach vergebenen Plätzen', () => {
     const offers = [
-      offer({ id: 'abend', starts_at: at(1, '18:00'), deal_price_cents: 900 }),
-      offer({ id: 'spaet', starts_at: at(2, '19:30'), deal_price_cents: 2900 }),
-      offer({ id: 'mittag', starts_at: at(2, '12:00'), deal_price_cents: 500 }),
-      offer({ id: 'flex1', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
-      offer({ id: 'flex2', type: 'zeitraum', starts_at: at(0), ends_at: at(9) }),
+      offer({ id: 'wenig', capacity: 10, free_seats: 9 }),
+      offer({ id: 'viel', capacity: 10, free_seats: 2 }),
+      offer({ id: 'keiner', capacity: 10, free_seats: 10 }),
     ];
-    expect(ids(offers, 'feierabend')).toEqual(['abend', 'spaet']);
-    expect(ids(offers, 'budget')).toEqual(['mittag', 'abend']);
-    expect(titles(offers)).toContain('Bis 15\u00a0€');
-    expect(ids(offers, 'flexibel')).toEqual(['flex1', 'flex2']);
+    expect(ids(offers, 'trending')).toEqual(['viel', 'wenig']);
   });
 
-  it('zeigt Favoriten ganz oben, in gemerkter Reihenfolge, nur wenn es welche gibt', () => {
-    const offers = [offer({ id: 'a' }), offer({ id: 'b', free_seats: 0 }), offer({ id: 'c' })];
-    const sections = buildSections(offers, {
-      cityName: 'Münster',
-      now: NOW,
-      favoriteIds: ['c', 'weg', 'b'],
-    });
-    expect(sections[0]?.title).toBe('Deine Favoriten');
-    expect(sections[0]?.offers.map((o) => o.id)).toEqual(['c', 'b']);
-    expect(ids(offers, 'favoriten')).toBeUndefined();
+  it('zeigt Community-Lieblinge erst ab 4,5 Sternen, die besten zuerst', () => {
+    const offers = [
+      offer({ id: 'top', location_id: 'l1' }),
+      offer({ id: 'gut', location_id: 'l2' }),
+      offer({ id: 'mittel', location_id: 'l3' }),
+    ];
+    const ratings = rated([
+      ['l1', 4.9, 40],
+      ['l2', 4.6, 8],
+      ['l3', 4.1, 50],
+    ]);
+    expect(ids(offers, 'highlights', ratings)).toEqual(['top', 'gut']);
+    expect(ids(offers, 'highlights')).toBeUndefined();
   });
 
-  it('lässt leere Abschnitte weg', () => {
-    expect(buildSections([], { cityName: 'Vilnius', now: NOW })).toEqual([]);
+  it('sortiert Mega-Rabatte nach Prozent und Schnäppchen nach Preis', () => {
+    const offers = [
+      offer({ id: 'teuer', discount_percent: 20, deal_price_cents: 4000 }),
+      offer({ id: 'rabatt', discount_percent: 60, deal_price_cents: 2000 }),
+      offer({ id: 'billig', discount_percent: 30, deal_price_cents: 800 }),
+    ];
+    expect(ids(offers, 'rabatt')).toEqual(['rabatt', 'billig', 'teuer']);
+    expect(ids(offers, 'guenstig')).toEqual(['billig', 'rabatt', 'teuer']);
   });
 
-  it('begrenzt jeden Abschnitt auf 8 Angebote', () => {
-    const many = Array.from({ length: 12 }, (_, i) =>
-      offer({
-        id: `o${i}`,
-        starts_at: at(0, '20:00'),
-        createdAt: `2026-11-0${(i % 9) + 1}T10:00:00Z`,
-      }),
+  it('zeigt Ranglisten erst ab zwei Angeboten', () => {
+    expect(ids([offer({ id: 'allein' })], 'rabatt')).toBeUndefined();
+    expect(ids([offer({ id: 'allein' })], 'guenstig')).toBeUndefined();
+  });
+
+  it('nimmt in „Bring deine Crew“ nur Angebote für mehrere Plätze', () => {
+    const offers = [
+      offer({ id: 'gruppe', max_per_user: 4, free_seats: 6 }),
+      offer({ id: 'solo', max_per_user: 1 }),
+      offer({ id: 'letzter-platz', max_per_user: 4, free_seats: 1 }),
+    ];
+    expect(ids(offers, 'crew')).toEqual(['gruppe']);
+  });
+
+  it('sortiert „Frisch reingekommen“ nach Veröffentlichung', () => {
+    const offers = [
+      offer({ id: 'alt', createdAt: '2026-11-01T10:00:00Z' }),
+      offer({ id: 'neu', createdAt: '2026-11-10T10:00:00Z' }),
+      offer({ id: 'ohne' }),
+    ];
+    expect(ids(offers, 'neu')).toEqual(['neu', 'alt']);
+  });
+
+  it('lässt Ausgebuchte und leere Reihen weg', () => {
+    expect(buildSections([])).toEqual([]);
+    expect(buildSections([offer({ free_seats: 0 }), offer({ id: 'x', free_seats: 0 })])).toEqual(
+      [],
     );
-    const sections = buildSections(many, { cityName: 'Münster', now: NOW });
+  });
+
+  it('begrenzt jede Reihe auf 8 Angebote', () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
+      offer({ id: `o${i}`, discount_percent: 20 + i, capacity: 10, free_seats: 5 }),
+    );
+    const sections = buildSections(many);
     expect(sections.every((section) => section.offers.length <= 8)).toBe(true);
-    expect(ids(many, 'heute')).toHaveLength(8);
-    expect(ids(many, 'neu')).toHaveLength(8);
+    expect(ids(many, 'rabatt')).toHaveLength(8);
+  });
+
+  it('zeigt unter „Last Minute“ nur heutige Angebote, das früheste zuerst', () => {
+    const offers = [
+      offer({
+        id: 'abend',
+        starts_at: at(0, '20:00'),
+        ends_at: at(0, '22:00'),
+        relevant_at: at(0, '20:00'),
+      }),
+      offer({
+        id: 'mittag',
+        starts_at: at(0, '14:00'),
+        ends_at: at(0, '16:00'),
+        relevant_at: at(0, '14:00'),
+      }),
+      offer({ id: 'morgen' }),
+    ];
+    const sections = buildSections(offers, { now: NOW });
+    expect(sections[0]?.key).toBe('last-minute');
+    expect(sections[0]?.title).toBe('Last Minute ⏰');
+    expect(ids(offers, 'last-minute')).toEqual(['mittag', 'abend']);
+  });
+
+  it('übersetzt die Titel', () => {
+    const offers = [offer({ id: 'a' }), offer({ id: 'b' })];
+    expect(buildSections(offers, { locale: 'en' }).map((s) => s.title)).toContain('Mega deals 💥');
   });
 });
 
@@ -353,5 +404,17 @@ describe('similarOffers', () => {
     ];
     expect(similarOffers(offers, current).map((o) => o.id)).toEqual(['wein', 'yoga']);
     expect(similarOffers(offers, current, 1).map((o) => o.id)).toEqual(['wein']);
+  });
+});
+
+describe('dayPart', () => {
+  // Berlin ist im November UTC+1.
+  it('wechselt nach Berliner Uhrzeit', () => {
+    expect(dayPart('2026-11-13T05:00:00Z')).toBe('morning'); // 06:00
+    expect(dayPart('2026-11-13T09:59:00Z')).toBe('morning'); // 10:59
+    expect(dayPart('2026-11-13T10:00:00Z')).toBe('day'); // 11:00
+    expect(dayPart('2026-11-13T16:00:00Z')).toBe('evening'); // 17:00
+    expect(dayPart('2026-11-13T21:00:00Z')).toBe('night'); // 22:00
+    expect(dayPart('2026-11-13T03:00:00Z')).toBe('night'); // 04:00
   });
 });

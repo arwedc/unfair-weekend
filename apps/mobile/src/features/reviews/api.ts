@@ -38,6 +38,18 @@ export async function fetchLocationRating(locationId: string): Promise<LocationR
   return data[0] ?? null;
 }
 
+/** Bewertungen vieler Standorte auf einmal, z. B. für „Community-Lieblinge“ im Feed. */
+export async function fetchLocationRatings(
+  locationIds: readonly string[],
+): Promise<LocationRating[]> {
+  if (locationIds.length === 0) return [];
+  const { data, error } = await supabase.rpc('get_location_ratings', {
+    p_location_ids: [...locationIds],
+  });
+  if (error) throw toApiError(error);
+  return data;
+}
+
 export async function fetchMyReviews(): Promise<MyReview[]> {
   const { data, error } = await supabase
     .from('reviews')

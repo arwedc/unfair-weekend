@@ -81,6 +81,20 @@ export const soft = {
   tintStrong: gold[200],
 } as const;
 
+/**
+ * Bunte Töne für die Kategorie-Kacheln in „Entdecken“. Gold bleibt die Markenfarbe,
+ * diese Töne machen den Feed lebendig. `ink` ist der lesbare Text auf `bg` (AA).
+ */
+export const fun = {
+  peach: { bg: '#FFE4D6', ink: '#8A3A12' },
+  mint: { bg: '#D5F4E4', ink: '#14593A' },
+  lilac: { bg: '#E9E1FF', ink: '#4B2E91' },
+  sky: { bg: '#DCEEFF', ink: '#1A4F80' },
+  pink: { bg: '#FFE0EC', ink: '#8C1D4B' },
+  lemon: { bg: gold[100], ink: gold[800] },
+} as const;
+export type FunTint = keyof typeof fun;
+
 export { badge, duration, layout, radii, radius, shadow, space };
 export type { TextStyleName };
 
