@@ -1,6 +1,6 @@
 /** Filter und Stadt für Feed und Karte. Beide Tabs teilen sich denselben Stand. */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, use, useEffect, useState, type ReactNode } from 'react';
+import { createContext, use, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { DEFAULT_CITY_ID, isCityId, type CityId } from './cities';
 import { EMPTY_FILTERS, type OfferFilters } from './feed-logic';
@@ -22,12 +22,15 @@ const OfferFiltersContext = createContext<OfferFiltersContextValue | null>(null)
 export function OfferFiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setState] = useState<OfferFilters>(EMPTY_FILTERS);
   const [cityId, setCityState] = useState<CityId>(DEFAULT_CITY_ID);
+  // Wurde die Stadt schon gesetzt (Standort oder von Hand), darf die gespeicherte sie
+  // nicht mehr überschreiben, falls sie erst danach geladen ist.
+  const cityChosen = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(CITY_STORAGE_KEY)
       .then((stored) => {
-        if (!cancelled && isCityId(stored)) setCityState(stored);
+        if (!cancelled && !cityChosen.current && isCityId(stored)) setCityState(stored);
       })
       .catch(() => {
         // Ohne gespeicherte Stadt startet die App einfach in der Startstadt.
@@ -45,6 +48,7 @@ export function OfferFiltersProvider({ children }: { children: ReactNode }) {
         resetFilters: () => setState(EMPTY_FILTERS),
         cityId,
         setCityId: (next) => {
+          cityChosen.current = true;
           setCityState(next);
           AsyncStorage.setItem(CITY_STORAGE_KEY, next).catch(() => {
             // Nicht schlimm: Beim nächsten Start ist wieder die Startstadt gewählt.

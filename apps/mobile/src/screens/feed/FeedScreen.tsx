@@ -19,6 +19,7 @@ import {
 import { useFavoriteOfferIds } from '@/features/favorites/queries';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { useCityFromLocation } from '@/features/offers/use-location-city';
 import type { FeedOffer } from '@/features/offers/types';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { colors, layout, radii, space } from '@/theme';
@@ -87,6 +88,8 @@ export function FeedScreen() {
   const { data, error, isPending, isRefetching, refetch } = useOffers();
   const { data: favoriteIds } = useFavoriteOfferIds();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Beim App-Start die Stadt des eigenen Standorts wählen (danach von Hand änderbar).
+  useCityFromLocation();
 
   const city = getCity(cityId);
   const cityOffers = offersInCity(data ?? [], cityId);

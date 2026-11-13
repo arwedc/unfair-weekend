@@ -1,5 +1,4 @@
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
 import { CloudOff, LocateFixed } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -29,12 +28,13 @@ import {
   showUserScript,
 } from '@/features/map/map-html';
 import { firstIndexAtPlace, mapOffers } from '@/features/map/map-logic';
-import { getCity, offersInCity } from '@/features/offers/cities';
+import { getCity, nearestCityId, offersInCity } from '@/features/offers/cities';
 import { filterOffers, groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import { currentPosition, type Coordinates } from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -64,7 +64,7 @@ export function MapScreen() {
   const webview = useRef<MapWebView>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
-  const { filters, resetFilters, cityId } = useOfferFilters();
+  const { filters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, refetch } = useOffers();
 
   const [mapReady, setMapReady] = useState(false);
@@ -100,10 +100,18 @@ export function MapScreen() {
     if (mapReady) webview.current?.injectJavaScript(placesScript);
   }, [mapReady, placesScript]);
 
-  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel).
+  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel, auch aus „Entdecken“).
+  // Kam der Wechsel vom Standort-Knopf, danach gleich zum eigenen Standort weiter.
+  const pendingUser = useRef<Coordinates | null>(null);
   const centerScript = setCenterScript(city.center.lat, city.center.lng);
   useEffect(() => {
-    if (mapReady) webview.current?.injectJavaScript(centerScript);
+    if (!mapReady) return;
+    webview.current?.injectJavaScript(centerScript);
+    const user = pendingUser.current;
+    if (user) {
+      pendingUser.current = null;
+      webview.current?.injectJavaScript(showUserScript(user.lat, user.lng));
+    }
   }, [mapReady, centerScript]);
 
   // Ausgewählte Nadel hervorheben und in den sichtbaren Bereich holen.
@@ -148,27 +156,27 @@ export function MapScreen() {
     void refetch();
   };
 
+  // Eigener Standort: blauen Punkt zeigen und die Stadt dorthin wechseln. Die Stadt gilt
+  // für Karte und „Entdecken“ gemeinsam, der Feed springt also mit.
   const showMyLocation = async () => {
     if (locating) return;
     setLocating(true);
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
-        setNotice('denied');
-        noticeSheet.current?.present();
-        return;
-      }
-      const position =
-        (await Location.getLastKnownPositionAsync()) ??
-        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-      webview.current?.injectJavaScript(
-        showUserScript(position.coords.latitude, position.coords.longitude),
-      );
-    } catch {
-      setNotice('failed');
+    const result = await currentPosition();
+    setLocating(false);
+    if (result.status !== 'ok') {
+      setNotice(result.status);
       noticeSheet.current?.present();
-    } finally {
-      setLocating(false);
+      return;
+    }
+    const { lat, lng } = result.coords;
+    const nextCity = nearestCityId(result.coords);
+    if (nextCity !== cityId) {
+      // Erst springt die Karte auf die neue Stadt (Effekt oben), dann auf den Standort.
+      pendingUser.current = result.coords;
+      setSelectedId(null);
+      setCityId(nextCity);
+    } else {
+      webview.current?.injectJavaScript(showUserScript(lat, lng));
     }
   };
 
@@ -231,7 +239,8 @@ export function MapScreen() {
         onLayout={(event) => setTopInset(event.nativeEvent.layout.height)}
       >
         <MapSearchBar>
-          <FilterBar showCity />
+          {/* Ohne Städtewahl: Die Stadt kommt aus „Entdecken“ oder vom Standort-Knopf. */}
+          <FilterBar />
         </MapSearchBar>
         {error ? (
           <View style={styles.banner}>
