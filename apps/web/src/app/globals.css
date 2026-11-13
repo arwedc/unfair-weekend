@@ -7,6 +7,34 @@
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Schrittwechsel im Angebots-Assistenten (nur mit motion-safe genutzt). */
+@theme {
+  --animate-step-in-forward: step-in-forward 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-step-in-back: step-in-back 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes step-in-forward {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes step-in-back {
+    from {
+      opacity: 0;
+      transform: translateX(-16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 body {
   background: var(--color-background-subtle);
   color: var(--color-text-primary);
