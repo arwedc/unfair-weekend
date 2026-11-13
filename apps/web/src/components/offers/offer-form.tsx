@@ -586,7 +586,14 @@ export function OfferForm({
           ) : null}
           <div className="flex items-center justify-between gap-3">
             {step === 0 ? (
-              <Link key="cancel" href="/angebote" className={buttonClass('ghost')}>
+              <Link
+                key="cancel"
+                href="/angebote"
+                className={buttonClass(
+                  'ghost',
+                  'border border-border-default hover:border-border-strong',
+                )}
+              >
                 Abbrechen
               </Link>
             ) : (

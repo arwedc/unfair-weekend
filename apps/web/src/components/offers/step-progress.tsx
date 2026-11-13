@@ -32,21 +32,13 @@ export function StepProgress({
 }) {
   const total = steps.length;
   const percent = Math.round(((current + 1) / total) * 100);
-  const remaining = total - current - 1;
   const currentTitle = steps[current]?.title ?? '';
 
   return (
     <nav aria-label="Fortschritt">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="text-footnote font-semibold uppercase tracking-wider text-text-accent">
-          Schritt {current + 1} von {total}
-        </p>
-        <p className="text-footnote text-text-tertiary">
-          {remaining === 0
-            ? 'Letzter Schritt'
-            : `Noch ${remaining} ${remaining === 1 ? 'Schritt' : 'Schritte'}`}
-        </p>
-      </div>
+      <p className="text-footnote font-semibold uppercase tracking-wider text-text-accent">
+        Schritt {current + 1} von {total}
+      </p>
 
       <div
         role="progressbar"
@@ -75,6 +67,7 @@ export function StepProgress({
                 disabled={!selectable}
                 aria-current={active ? 'step' : undefined}
                 aria-label={`Schritt ${i + 1}: ${s.title}${done ? ' (erledigt)' : ''}`}
+                title={selectable ? `Zu „${s.title}“ wechseln` : undefined}
                 className="group flex w-full min-w-0 items-center gap-2 rounded-input py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus enabled:cursor-pointer disabled:cursor-default"
               >
                 <span
@@ -95,7 +88,7 @@ export function StepProgress({
                     active
                       ? 'text-text-primary'
                       : i <= reached
-                        ? 'text-text-secondary group-enabled:group-hover:text-text-primary'
+                        ? 'text-text-secondary underline-offset-4 group-enabled:group-hover:text-text-primary group-enabled:group-hover:underline'
                         : 'text-text-tertiary'
                   }`}
                 >
