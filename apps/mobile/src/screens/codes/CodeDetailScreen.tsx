@@ -1,7 +1,7 @@
 import * as Brightness from 'expo-brightness';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
-import { CalendarClock, CloudOff, MapPin, SearchX, Ticket, Users } from 'lucide-react-native';
+import { CalendarClock, CloudOff, MapPin, SearchX, Star, Ticket, Users } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -16,7 +16,10 @@ import {
   Text,
   type SheetRef,
 } from '@/components/ui';
+import { ReviewSheet } from '@/components/reviews/ReviewSheet';
+import { Stars } from '@/components/reviews/Stars';
 import { useAuth } from '@/features/auth/auth-context';
+import { useMyReviewForLocation } from '@/features/reviews/queries';
 import { useCancelVoucher, useMyVouchers } from '@/features/vouchers/queries';
 import {
   cancelHint,
@@ -27,7 +30,7 @@ import {
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { openInMaps } from '@/lib/open-external';
-import { colors, layout, radius, shadow, space, textStyle } from '@/theme';
+import { colors, layout, radius, shadow, soft, space, textStyle } from '@/theme';
 
 const QR_SIZE = 232;
 
@@ -67,6 +70,8 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const cancel = useCancelVoucher();
 
   const voucher = data?.find((entry) => entry.id === voucherId) ?? null;
+  const reviewSheet = useRef<SheetRef>(null);
+  const myReview = useMyReviewForLocation(voucher?.location_id ?? '');
   const active = voucher?.status === 'aktiv';
   useMaxBrightness(active);
 
@@ -235,6 +240,33 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
         />
       </View>
 
+      {voucher.status === 'eingeloest' ? (
+        <View style={styles.reviewCard}>
+          {myReview ? (
+            <>
+              <Stars value={myReview.rating} size={20} />
+              <Text variant="callout" color="secondary">
+                Danke für deine Bewertung von {voucher.location_name || voucher.company_name}!
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text variant="headline">Wie war's?</Text>
+              <Text variant="callout" color="secondary">
+                Hilf anderen mit ein paar Sternen für{' '}
+                {voucher.location_name || voucher.company_name}.
+              </Text>
+              <Button
+                label="Jetzt bewerten"
+                icon={Star}
+                fullWidth
+                onPress={() => reviewSheet.current?.present()}
+              />
+            </>
+          )}
+        </View>
+      ) : null}
+
       {active ? (
         <View style={styles.cancelBlock}>
           {hint ? (
@@ -254,6 +286,14 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
             />
           ) : null}
         </View>
+      ) : null}
+
+      {voucher.status === 'eingeloest' && !myReview ? (
+        <ReviewSheet
+          sheetRef={reviewSheet}
+          voucherId={voucher.id}
+          locationName={voucher.location_name || voucher.company_name}
+        />
       ) : null}
 
       <Sheet ref={cancelSheet} title="Wirklich stornieren?">
@@ -292,6 +332,12 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
 }
 
 const styles = StyleSheet.create({
+  reviewCard: {
+    gap: space[3],
+    padding: space[4],
+    borderRadius: radius.card,
+    backgroundColor: soft.tint,
+  },
   screen: { flex: 1, backgroundColor: colors.background.default },
   content: {
     paddingHorizontal: layout.screenPaddingX,

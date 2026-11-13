@@ -38,7 +38,19 @@ select tests.authenticate_as(tests.id('loc_user'));
 select lives_ok(pg_temp.create_sql(), 'gültiges Angebot');
 select throws_ok(pg_temp.create_sql(p_title => 'ab'), 'P0001', 'UNGUELTIGE_EINGABE', 'Titel zu kurz');
 select throws_ok(pg_temp.create_sql(p_description => 'zu kurz'), 'P0001', 'UNGUELTIGE_EINGABE', 'Beschreibung zu kurz');
-select throws_ok(pg_temp.create_sql(p_images => 'array[]::text[]'), 'P0001', 'BILDER_UNGUELTIG', 'kein Bild');
+select lives_ok(pg_temp.create_sql(p_title => 'TEST AUTOTEST Ohne Bild', p_images => 'array[]::text[]'), 'ohne Bild erlaubt');
+select lives_ok(pg_temp.create_sql(p_title => 'TEST AUTOTEST Bild NULL', p_images => 'null'), 'NULL zählt als kein Bild');
+select is(
+  (select array_agg(cardinality(image_paths)) from public.offers where title in ('TEST AUTOTEST Ohne Bild', 'TEST AUTOTEST Bild NULL')),
+  array[0, 0],
+  'ohne Bild gespeichert als leeres Array'
+);
+select lives_ok(pg_temp.create_sql(p_title => 'TEST AUTOTEST Getrimmt', p_images => 'array['' a.jpg '', ''b.jpg'']'), 'Bildpfade mit Leerzeichen');
+select is(
+  (select image_paths from public.offers where title = 'TEST AUTOTEST Getrimmt'),
+  array['a.jpg', 'b.jpg'],
+  'Bildpfade getrimmt, Reihenfolge bleibt'
+);
 select throws_ok(pg_temp.create_sql(p_images => 'array[''1'',''2'',''3'',''4'',''5'',''6'']'), 'P0001', 'BILDER_UNGUELTIG', '6 Bilder');
 select throws_ok(pg_temp.create_sql(p_images => 'array[''a.jpg'', null]'), 'P0001', 'BILDER_UNGUELTIG', 'leerer Bildeintrag');
 select throws_ok(pg_temp.create_sql(p_deal => 4000), 'P0001', 'PREIS_UNGUELTIG', 'Deal = Original');
@@ -104,6 +116,7 @@ select throws_ok(pg_temp.update_sql(p_original => 5000, p_deal => 2900), 'P0001'
 select throws_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_address => 'Ludgeristraße 1, Münster'), 'P0001', 'FELD_GESPERRT', 'mit Codes: Adresse gesperrt');
 select throws_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_start => 'now() + interval ''2 days 1 hour'''), 'P0001', 'FELD_GESPERRT', 'mit Codes: Zeit gesperrt');
 select lives_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_capacity => 20), 'Kontingent erhöhen');
+select lives_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_images => 'array[]::text[]'), 'mit Codes: alle Bilder entfernbar');
 select lives_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_capacity => 4), 'Kontingent auf vergebene Plätze senken');
 select throws_ok(pg_temp.update_sql(p_original => 5000, p_deal => 3000, p_capacity => 3), 'P0001', 'KONTINGENT_ZU_KLEIN', 'Kontingent unter vergebene Plätze');
 

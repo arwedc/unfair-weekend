@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 
-/** Ein Icon pro Kategorie, für Chips und Vorschläge. */
+/** Ein Lucide-Icon je Kategorie, gleich in Filter, Sheet und Karte. */
 export const CATEGORY_ICONS = {
   kochen_essen: ChefHat,
   sport_bewegung: Dumbbell,

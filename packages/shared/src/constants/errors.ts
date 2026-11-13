@@ -30,10 +30,15 @@ export const RPC_ERROR_MESSAGES = {
   PREIS_UNGUELTIG: 'Der Deal-Preis muss unter dem Originalpreis liegen.',
   ZEIT_UNGUELTIG: 'Bitte prüfe Beginn und Ende.',
   ZEIT_IN_VERGANGENHEIT: 'Der Zeitpunkt liegt in der Vergangenheit.',
-  BILDER_UNGUELTIG: 'Bitte füge 1 bis 5 Bilder hinzu.',
+  BILDER_UNGUELTIG: 'Bitte höchstens 5 Bilder hinzufügen.',
   ADRESSE_UNGUELTIG: 'Bitte gib eine Adresse mit Koordinaten an.',
   KONTINGENT_ZU_KLEIN: 'Das Kontingent kann nicht unter die vergebenen Plätze sinken.',
   FELD_GESPERRT: 'Es gibt schon Codes. Zeit, Adresse und Preise sind deshalb gesperrt.',
+
+  // Angebotsvorlagen
+  VORLAGE_NICHT_GEFUNDEN: 'Diese Vorlage gibt es nicht.',
+  VORLAGENNAME_VERGEBEN: 'Eine Vorlage mit diesem Namen gibt es schon.',
+  VORLAGEN_LIMIT: 'Es sind höchstens 30 Vorlagen möglich.',
 
   // Codes
   CODE_NICHT_GEFUNDEN: 'Diesen Code gibt es nicht.',
@@ -46,6 +51,23 @@ export const RPC_ERROR_MESSAGES = {
   NO_SHOW_NUR_EINZELTERMIN: 'No-Shows gibt es nur bei Einzelterminen.',
   NO_SHOW_ZU_FRUEH: 'No-Show erst ab Beginn des Termins.',
   NO_SHOW_ZU_SPAET: 'No-Show ist nur bis 48 Std. nach Ende möglich.',
+
+  // Bewertungen
+  BEWERTUNG_NICHT_MOEGLICH: 'Bewerten kannst du, sobald dein Code vor Ort eingelöst wurde.',
+  BEREITS_BEWERTET: 'Diesen Ort hast du schon bewertet.',
+  BEWERTUNG_NICHT_GEFUNDEN: 'Diese Bewertung gibt es nicht.',
+
+  // Zahlungen (Variante B, docs/SPEC-PAYMENTS.md)
+  ZAHLUNGEN_AUS: 'Buchen mit Bezahlung ist gerade nicht möglich.',
+  ZAHLUNG_ERFORDERLICH: 'Dieses Angebot kannst du nur noch mit Bezahlung in der App buchen.',
+  ANBIETER_NICHT_BEREIT: 'Dieser Anbieter kann gerade keine Buchungen mit Bezahlung annehmen.',
+  AUSZAHLUNGEN_EINRICHTEN:
+    'Bitte richte zuerst die Auszahlungen ein. Danach kannst du Angebote veröffentlichen.',
+  BETRAG_ZU_GERING: 'Buchungen mit Bezahlung gehen ab 0,50 €.',
+  BUCHUNG_NICHT_GEFUNDEN: 'Diese Buchung gibt es nicht.',
+  BUCHUNG_NICHT_AKTIV: 'Diese Buchung lässt sich nicht mehr stornieren.',
+  RESERVIERUNG_ABGELAUFEN: 'Deine Reservierung ist abgelaufen. Bitte starte die Buchung neu.',
+  NO_SHOW_BEZAHLT: 'Bezahlte Buchungen werden ohne Sperre als nicht erschienen markiert.',
 
   // Standorte und Admin
   KEIN_STANDORTKONTO: 'Dieses Konto gehört zu keinem Standort.',

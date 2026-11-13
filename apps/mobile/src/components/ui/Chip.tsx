@@ -12,11 +12,13 @@ export interface ChipProps {
   selected?: boolean;
   onPress?: () => void;
   icon?: LucideIcon;
+  /** „sm“ = dezente, flache Pille, z. B. für die Filterzeile über dem Feed. */
+  size?: 'md' | 'sm';
   /** Kleines Icon rechts, z. B. ein Pfeil für „öffnet eine Auswahl“. */
   trailingIcon?: LucideIcon;
   /** Mit Schatten, z. B. schwebend über der Karte. */
   elevated?: boolean;
-  /** Für Screenreader, falls der sichtbare Text nicht reicht (z. B. „Filter, 2 aktiv“). */
+  /** Für Screenreader, falls der sichtbare Text nicht reicht. */
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }
@@ -27,12 +29,14 @@ export function Chip({
   selected = false,
   onPress,
   icon: Icon,
+  size = 'md',
   trailingIcon: TrailingIcon,
   elevated = false,
   accessibilityLabel,
   accessibilityHint,
 }: ChipProps) {
   const foreground = selected ? colors.accent.onSolid : colors.text.primary;
+  const small = size === 'sm';
 
   return (
     <PressableScale
@@ -44,17 +48,32 @@ export function Chip({
         void Haptics.selectionAsync();
         onPress?.();
       }}
-      hitSlop={4}
-      style={[styles.chip, selected ? styles.selected : styles.idle, elevated && styles.elevated]}
+      // Kleine Chips sind 32 pt hoch, der hitSlop ergänzt sie auf die Mindestgröße.
+      hitSlop={small ? SMALL_HIT_SLOP : 4}
+      style={[
+        styles.chip,
+        small && styles.small,
+        selected ? styles.selected : styles.idle,
+        elevated && styles.elevated,
+      ]}
     >
-      {Icon ? <Icon size={16} color={foreground} strokeWidth={2.25} /> : null}
-      <Text variant="subhead" style={[styles.label, { color: foreground }]} numberOfLines={1}>
+      {Icon ? <Icon size={small ? 14 : 16} color={foreground} strokeWidth={2.25} /> : null}
+      <Text
+        variant={small ? 'footnote' : 'subhead'}
+        style={[styles.label, { color: foreground }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
-      {TrailingIcon ? <TrailingIcon size={16} color={foreground} strokeWidth={2.25} /> : null}
+      {TrailingIcon ? (
+        <TrailingIcon size={small ? 14 : 16} color={foreground} strokeWidth={2.25} />
+      ) : null}
     </PressableScale>
   );
 }
+
+const SMALL_HEIGHT = space[8];
+const SMALL_HIT_SLOP = (layout.minTouchTarget - SMALL_HEIGHT) / 2;
 
 const styles = StyleSheet.create({
   chip: {
@@ -66,6 +85,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space[1.5],
   },
+  small: { minHeight: SMALL_HEIGHT, paddingHorizontal: space[3], gap: space[1] },
   idle: { backgroundColor: colors.surface.default, borderColor: colors.border.default },
   selected: { backgroundColor: colors.accent.solid, borderColor: colors.accent.solid },
   elevated: { borderColor: 'transparent', boxShadow: shadow.card },

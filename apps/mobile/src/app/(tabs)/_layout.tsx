@@ -11,7 +11,8 @@ export default function TabsLayout() {
     <NativeTabs
       tintColor={colors.accent.solid}
       labelStyle={{ fontFamily: fonts.semibold }}
-      minimizeBehavior="onScrollDown"
+      // Die Leiste bleibt beim Scrollen immer voll sichtbar.
+      minimizeBehavior="never"
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Entdecken</NativeTabs.Trigger.Label>

@@ -5,7 +5,7 @@
 import { contrastRatio } from '@repo/shared/tokens';
 import { describe, expect, it } from 'vitest';
 
-import { colors } from './index';
+import { colors, soft } from './index';
 
 /** WCAG AA: Fließtext 4,5:1, Icons und große Schrift 3:1. */
 const AA_TEXT = 4.5;
@@ -43,6 +43,11 @@ const textPairs: Pair[] = [
   ['Karte: Cluster-Zahl (invers auf invers)', colors.text.inverse, colors.background.inverse],
   ['Karte: Rabatt im Pin (auf Akzent)', colors.accent.onSolid, colors.accent.solid],
   ['Gefahr-Button (Konto löschen)', colors.status.error.onSolid, colors.status.error.solid],
+  ['Kategorie-Pille und Avatar (dunkles Akzent auf Apricot)', colors.accent.onSubtle, soft.tint],
+  ['„Du sparst“ (dunkles Akzent auf warmem Weiß)', colors.accent.onSubtle, soft.warm],
+  ['Rabatt-Sticker (weiß auf Akzent)', colors.accent.onSolid, colors.accent.solid],
+  ['Location-Karte: Text sekundär auf warmem Weiß', colors.text.secondary, soft.warm],
+  ['Location-Karte: Akzent-Overline auf warmem Weiß', colors.text.accent, soft.warm],
   ['Fehlertext unter Eingabefeld', colors.status.error.text, colors.surface.default],
 ];
 

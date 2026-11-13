@@ -1,22 +1,45 @@
-import { CloudOff, SearchX, Sparkles } from 'lucide-react-native';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { OFFER_CATEGORY_LABELS, type OfferCategory } from '@repo/shared';
+import { ChevronDown, CloudOff, MapPin, Search, SearchX, Sparkles, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
 import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
-import { Appear, EmptyState, SectionHeader, Text } from '@/components/ui';
-import { buildSections, hasActiveFilters } from '@/features/offers/feed-logic';
+import { Appear, EmptyState, IconButton, Input, SectionHeader, Text } from '@/components/ui';
+import { getCity, offersInCity } from '@/features/offers/cities';
+import {
+  buildSections,
+  filterOffers,
+  hasActiveFilters,
+  isListMode,
+  type FeedSection,
+} from '@/features/offers/feed-logic';
+import { useFavoriteOfferIds } from '@/features/favorites/queries';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { useFilteredOffers } from '@/features/offers/use-filtered-offers';
+import { useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
 import { errorMessage, isOffline } from '@/lib/api-error';
-import { colors, layout, space } from '@/theme';
+import { colors, layout, radii, space } from '@/theme';
 
-function Carousel({ title, offers }: { title: string; offers: FeedOffer[] }) {
-  if (offers.length === 0) return null;
+function Carousel({
+  section,
+  onShowAll,
+}: {
+  section: FeedSection;
+  onShowAll?: (category: OfferCategory) => void;
+}) {
+  const category = section.category;
   return (
     <View style={styles.section}>
-      <SectionHeader title={title} inset />
+      <SectionHeader
+        title={section.title}
+        inset
+        actionLabel={category && onShowAll ? 'Alle' : undefined}
+        actionAccessibilityLabel={`Alle Angebote aus ${section.title}`}
+        onAction={category && onShowAll ? () => onShowAll(category) : undefined}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -25,7 +48,7 @@ function Carousel({ title, offers }: { title: string; offers: FeedOffer[] }) {
         snapToInterval={COMPACT_CARD_WIDTH + space[3]}
         snapToAlignment="start"
       >
-        {offers.map((offer, index) => (
+        {section.offers.map((offer, index) => (
           <Appear key={offer.id} index={index}>
             <OfferCard offer={offer} variant="compact" />
           </Appear>
@@ -49,42 +72,114 @@ function LoadingState() {
   );
 }
 
-/** Tab „Entdecken“: Suche, Filter, Abschnitte als Karussells und darunter alle Angebote. */
+/**
+ * Tab „Entdecken“: oben fest Stadt, Suche und Filter, darunter Abschnitte als Karussells
+ * (Zeit, Themen, Kategorien) und alle Angebote der Stadt.
+ *
+ * Die Kopfzeile steht bewusst vor der Liste: So findet die native Tab-Leiste auf iOS keine
+ * ScrollView in der „ersten Kette“ und setzt oben keinen zweiten Abstand. Die Liste regelt
+ * ihren Abstand zur Tab-Leiste unten selbst (`contentInsetAdjustmentBehavior`).
+ */
 export function FeedScreen() {
   const insets = useSafeAreaInsets();
-  const { filters, resetFilters } = useOfferFilters();
-  const { data, error, isPending, isRefetching, refetch, visible } = useFilteredOffers();
+  const list = useRef<FlatList<FeedOffer>>(null);
+  const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
+  const { data, error, isPending, isRefetching, refetch } = useOffers();
+  const { data: favoriteIds } = useFavoriteOfferIds();
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const offers = data ?? [];
+  const city = getCity(cityId);
+  const cityOffers = offersInCity(data ?? [], cityId);
+  const listMode = isListMode(filters);
   const filtering = hasActiveFilters(filters);
-  const sections = buildSections(offers);
+  const visible = filterOffers(cityOffers, filters);
+  // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.
+  const sections =
+    listMode || isPending
+      ? []
+      : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
+  const showSearch = searchOpen || filters.query !== '';
+
+  const toggleSearch = () => {
+    if (showSearch) {
+      Keyboard.dismiss();
+      setFilters({ query: '' });
+      setSearchOpen(false);
+    } else {
+      setSearchOpen(true);
+    }
+  };
+
+  const showCategory = (category: OfferCategory) => {
+    setFilters({ category });
+    list.current?.scrollToOffset({ offset: 0, animated: false });
+  };
+
+  const listTitle = !listMode
+    ? 'Alle Angebote'
+    : filters.category && filters.query.trim() === ''
+      ? OFFER_CATEGORY_LABELS[filters.category]
+      : 'Passt zu dir';
+
+  const top = (
+    <View style={[styles.top, { paddingTop: insets.top + space[1] }]}>
+      <View style={styles.titleRow}>
+        <CityMenu style={styles.cityMenu}>
+          <View
+            style={styles.cityButton}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={`Stadt: ${city.name}`}
+            accessibilityHint="Öffnet die Auswahl der Städte"
+          >
+            <Text variant="title2" numberOfLines={1} style={styles.cityName}>
+              {city.name}
+            </Text>
+            <View style={styles.chevron}>
+              <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.solid} />
+            </View>
+          </View>
+        </CityMenu>
+        <IconButton
+          variant="plain"
+          icon={showSearch ? X : Search}
+          accessibilityLabel={showSearch ? 'Suche schließen' : 'Angebote durchsuchen'}
+          onPress={toggleSearch}
+        />
+      </View>
+
+      {showSearch ? (
+        <View style={styles.inset}>
+          <Input
+            shape="pill"
+            icon={Search}
+            placeholder="Kochkurs, Yoga, Keramik …"
+            accessibilityLabel="Angebote durchsuchen"
+            value={filters.query}
+            onChangeText={(query) => setFilters({ query })}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoFocus={searchOpen}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      ) : null}
+
+      <FilterBar />
+    </View>
+  );
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.inset}>
-        <Text variant="overline" color="accent">
-          Münster
-        </Text>
-        <Text variant="title1" accessibilityRole="header">
-          Was geht heute?
-        </Text>
-      </View>
-
-      <FilterBar />
-
       {isPending ? <LoadingState /> : null}
 
-      {!isPending && !filtering ? (
-        <>
-          <Carousel title="Heute in Münster" offers={sections.today} />
-          <Carousel title="Startet bald" offers={sections.startingSoon} />
-          <Carousel title="Neu dabei" offers={sections.newest} />
-        </>
-      ) : null}
+      {sections.map((section) => (
+        <Carousel key={section.key} section={section} onShowAll={showCategory} />
+      ))}
 
       {!isPending && visible.length > 0 ? (
         <SectionHeader
-          title={filtering ? 'Passt zu dir' : 'Alle Angebote'}
+          title={listTitle}
           detail={`${visible.length} ${visible.length === 1 ? 'Angebot' : 'Angebote'}`}
           inset
         />
@@ -101,13 +196,24 @@ export function FeedScreen() {
       actionLabel="Nochmal versuchen"
       onAction={() => void refetch()}
     />
-  ) : filtering ? (
+  ) : cityOffers.length === 0 && !city.launched ? (
+    <EmptyState
+      icon={MapPin}
+      title={`Bald auch in ${city.name} ✨`}
+      message="Hier suchen wir gerade die ersten Partner. Bis dahin findest du Angebote in den anderen Städten."
+      actionLabel={`Zu ${fallbackCity(cityId).name} wechseln`}
+      onAction={() => setCityId(fallbackCity(cityId).id)}
+    />
+  ) : filtering && cityOffers.length > 0 ? (
     <EmptyState
       icon={SearchX}
       title="Nichts gefunden"
       message="Für diese Auswahl gibt es gerade kein Angebot. Probier einen anderen Tag oder eine andere Kategorie."
       actionLabel="Filter zurücksetzen"
-      onAction={resetFilters}
+      onAction={() => {
+        resetFilters();
+        setSearchOpen(false);
+      }}
     />
   ) : (
     <EmptyState
@@ -118,31 +224,37 @@ export function FeedScreen() {
   );
 
   return (
-    <FlatList
-      data={isPending ? [] : visible}
-      keyExtractor={(offer) => offer.id}
-      renderItem={({ item, index }) => (
-        <Appear index={index} style={styles.inset}>
-          <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
-        </Appear>
-      )}
-      ListHeaderComponent={header}
-      ListEmptyComponent={empty ?? undefined}
-      ItemSeparatorComponent={Separator}
-      style={styles.list}
-      contentContainerStyle={{ paddingTop: insets.top + space[4], paddingBottom: space[12] }}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-          tintColor={colors.accent.solid}
-          colors={[colors.accent.solid]}
-        />
-      }
-    />
+    <View style={styles.screen}>
+      {top}
+
+      <FlatList
+        ref={list}
+        data={isPending ? [] : visible}
+        keyExtractor={(offer) => offer.id}
+        renderItem={({ item, index }) => (
+          <Appear index={index} style={styles.inset}>
+            <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
+          </Appear>
+        )}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty ?? undefined}
+        ItemSeparatorComponent={Separator}
+        style={styles.list}
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+            tintColor={colors.accent.solid}
+            colors={[colors.accent.solid]}
+          />
+        }
+      />
+    </View>
   );
 }
 
@@ -151,7 +263,40 @@ function Separator() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background.default },
+  top: {
+    gap: space[1],
+    paddingBottom: space[1],
+    backgroundColor: colors.background.default,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border.subtle,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space[3],
+    paddingLeft: layout.screenPaddingX,
+    paddingRight: layout.screenPaddingX - space[2],
+  },
+  cityMenu: { flexShrink: 1 },
+  cityButton: {
+    minHeight: layout.minTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
+  },
+  cityName: { flexShrink: 1 },
+  chevron: {
+    width: space[6],
+    height: space[6],
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.subtle,
+  },
   list: { flex: 1, backgroundColor: colors.background.default },
+  content: { paddingTop: space[5], paddingBottom: space[12] },
   header: { gap: space[6], paddingBottom: space[4] },
   inset: { paddingHorizontal: layout.screenPaddingX },
   section: { gap: space[3] },

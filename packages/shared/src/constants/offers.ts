@@ -42,7 +42,7 @@ export const OFFER_LIMITS = {
   titleMax: 80,
   descriptionMin: 10,
   descriptionMax: 2000,
-  imagesMin: 1,
+  imagesMin: 0,
   imagesMax: 5,
   capacityMax: 1000,
   maxPerUserMax: 20,
@@ -50,4 +50,13 @@ export const OFFER_LIMITS = {
   addressMax: 200,
   originalPriceMaxCents: 10_000_000,
   maxDurationDays: 90,
+} as const;
+
+/** Grenzen für Angebotsvorlagen (gleich wie in der Datenbank). */
+export const OFFER_TEMPLATE_LIMITS = {
+  nameMin: 2,
+  nameMax: 60,
+  durationMinMinutes: 1,
+  durationMaxMinutes: OFFER_LIMITS.maxDurationDays * 24 * 60,
+  maxPerLocation: 30,
 } as const;

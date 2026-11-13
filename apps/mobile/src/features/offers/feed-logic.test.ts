@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  activeFilterCount,
   buildSections,
-  categorySuggestions,
+  countByCategory,
   EMPTY_FILTERS,
   filterOffers,
   groupByPlace,
   hasActiveFilters,
+  isListMode,
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
+  similarOffers,
 } from './feed-logic';
 import type { FeedOffer } from './types';
 
@@ -136,55 +137,25 @@ describe('filterOffers', () => {
       ['b'],
     );
     expect(
-      filterOffers(offers, { ...EMPTY_FILTERS, category: 'kochen_essen', time: 'heute' }, NOW),
+      filterOffers(offers, { category: 'kochen_essen', time: 'heute', query: '' }, NOW),
     ).toEqual([]);
   });
 
-  it('zeigt mit „Noch Plätze frei“ keine ausgebuchten Angebote', () => {
-    const mitVoll = [...offers, offer({ id: 'voll', free_seats: 0 })];
-    expect(
-      filterOffers(mitVoll, { ...EMPTY_FILTERS, onlyAvailable: true }, NOW).map((o) => o.id),
-    ).toEqual(['a', 'b']);
-  });
-
-  it('zeigt mit „Lieblingsorte“ nur Angebote dieser Standorte', () => {
-    const zwei = [offer({ id: 'a', location_id: 'l1' }), offer({ id: 'c', location_id: 'l2' })];
-    const nurFavoriten = { ...EMPTY_FILTERS, favoritesOnly: true };
-    expect(filterOffers(zwei, nurFavoriten, NOW, new Set(['l2'])).map((o) => o.id)).toEqual(['c']);
-    // nicht angemeldet: keine Liste, also nichts
-    expect(filterOffers(zwei, nurFavoriten, NOW)).toEqual([]);
-  });
-
-  it('erkennt und zählt aktive Filter (ohne Suche)', () => {
+  it('erkennt aktive Filter', () => {
     expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '  ' })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, time: 'morgen' })).toBe(true);
-    expect(hasActiveFilters({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
-    expect(activeFilterCount({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(0);
-    expect(
-      activeFilterCount({
-        ...EMPTY_FILTERS,
-        category: 'kochen_essen',
-        onlyAvailable: true,
-        favoritesOnly: true,
-      }),
-    ).toBe(3);
-  });
-});
-
-describe('categorySuggestions', () => {
-  it('schlägt ohne Eingabe alle Kategorien vor', () => {
-    expect(categorySuggestions('')).toHaveLength(6);
-  });
-
-  it('findet Kategorien über Teile des Namens, ohne auf Umlaute und Groß-/Kleinschreibung zu achten', () => {
-    expect(categorySuggestions('koch')).toEqual(['kochen_essen']);
-    expect(categorySuggestions('WELL')).toEqual(['wellness_beauty']);
-    expect(categorySuggestions('Pizza')).toEqual([]);
   });
 });
 
 describe('buildSections', () => {
+  const titles = (offers: FeedOffer[]) =>
+    buildSections(offers, { cityName: 'Münster', now: NOW }).map((section) => section.title);
+  const ids = (offers: FeedOffer[], key: string) =>
+    buildSections(offers, { cityName: 'Münster', now: NOW })
+      .find((section) => section.key === key)
+      ?.offers.map((o) => o.id);
+
   it('teilt in heute, startet bald und neu dabei', () => {
     const offers = [
       offer({ id: 'heute', starts_at: at(0, '19:00'), createdAt: '2026-11-08T10:00:00Z' }),
@@ -194,10 +165,65 @@ describe('buildSections', () => {
       offer({ id: 'in-4', starts_at: at(4) }),
       offer({ id: 'zeitraum', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
     ];
-    const sections = buildSections(offers, NOW);
-    expect(sections.today.map((o) => o.id)).toEqual(['heute', 'zeitraum']);
-    expect(sections.startingSoon.map((o) => o.id)).toEqual(['morgen', 'in-3']);
-    expect(sections.newest.map((o) => o.id)).toEqual(['morgen', 'heute']);
+    expect(ids(offers, 'heute')).toEqual(['heute', 'zeitraum']);
+    expect(ids(offers, 'bald')).toEqual(['morgen', 'in-3']);
+    expect(ids(offers, 'neu')).toEqual(['morgen', 'heute']);
+  });
+
+  it('nennt die Stadt im Abschnitt für heute', () => {
+    expect(titles([offer({ starts_at: at(0, '19:00') })])[0]).toBe('Heute in Münster');
+  });
+
+  it('macht aus Kategorien eigene Abschnitte, ohne ausgebuchte und ohne „Sonstiges“', () => {
+    const offers = [
+      offer({ id: 'pasta', category: 'kochen_essen' }),
+      offer({ id: 'yoga', category: 'sport_bewegung' }),
+      offer({ id: 'yoga-voll', category: 'sport_bewegung', free_seats: 0 }),
+      offer({ id: 'rad', category: 'sonstiges' }),
+    ];
+    const sections = buildSections(offers, { cityName: 'Münster', now: NOW });
+    const categories = sections.filter((section) => section.category);
+    expect(categories.map((s) => [s.category, s.title, s.offers.map((o) => o.id)])).toEqual([
+      ['kochen_essen', 'Kochen & Essen', ['pasta']],
+      ['sport_bewegung', 'Sport & Bewegung', ['yoga']],
+    ]);
+  });
+
+  it('zeigt Themen erst ab zwei Angeboten', () => {
+    const halb = offer({ id: 'halb', discount_percent: 50 });
+    expect(ids([halb], 'halber-preis')).toBeUndefined();
+    const halb2 = offer({ id: 'halb2', discount_percent: 66 });
+    expect(ids([halb, halb2], 'halber-preis')).toEqual(['halb2', 'halb']);
+  });
+
+  it('findet Feierabend-Termine, kleine Preise und flexible Zeiträume', () => {
+    const offers = [
+      offer({ id: 'abend', starts_at: at(1, '18:00'), deal_price_cents: 900 }),
+      offer({ id: 'spaet', starts_at: at(2, '19:30'), deal_price_cents: 2900 }),
+      offer({ id: 'mittag', starts_at: at(2, '12:00'), deal_price_cents: 500 }),
+      offer({ id: 'flex1', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
+      offer({ id: 'flex2', type: 'zeitraum', starts_at: at(0), ends_at: at(9) }),
+    ];
+    expect(ids(offers, 'feierabend')).toEqual(['abend', 'spaet']);
+    expect(ids(offers, 'budget')).toEqual(['mittag', 'abend']);
+    expect(titles(offers)).toContain('Bis 15\u00a0€');
+    expect(ids(offers, 'flexibel')).toEqual(['flex1', 'flex2']);
+  });
+
+  it('zeigt Favoriten ganz oben, in gemerkter Reihenfolge, nur wenn es welche gibt', () => {
+    const offers = [offer({ id: 'a' }), offer({ id: 'b', free_seats: 0 }), offer({ id: 'c' })];
+    const sections = buildSections(offers, {
+      cityName: 'Münster',
+      now: NOW,
+      favoriteIds: ['c', 'weg', 'b'],
+    });
+    expect(sections[0]?.title).toBe('Deine Favoriten');
+    expect(sections[0]?.offers.map((o) => o.id)).toEqual(['c', 'b']);
+    expect(ids(offers, 'favoriten')).toBeUndefined();
+  });
+
+  it('lässt leere Abschnitte weg', () => {
+    expect(buildSections([], { cityName: 'Vilnius', now: NOW })).toEqual([]);
   });
 
   it('begrenzt jeden Abschnitt auf 8 Angebote', () => {
@@ -208,9 +234,20 @@ describe('buildSections', () => {
         createdAt: `2026-11-0${(i % 9) + 1}T10:00:00Z`,
       }),
     );
-    const sections = buildSections(many, NOW);
-    expect(sections.today).toHaveLength(8);
-    expect(sections.newest).toHaveLength(8);
+    const sections = buildSections(many, { cityName: 'Münster', now: NOW });
+    expect(sections.every((section) => section.offers.length <= 8)).toBe(true);
+    expect(ids(many, 'heute')).toHaveLength(8);
+    expect(ids(many, 'neu')).toHaveLength(8);
+  });
+});
+
+describe('isListMode', () => {
+  it('zeigt eine Liste bei Kategorie oder Suche, nicht beim Zeitfilter', () => {
+    expect(isListMode(EMPTY_FILTERS)).toBe(false);
+    expect(isListMode({ ...EMPTY_FILTERS, time: 'heute' })).toBe(false);
+    expect(isListMode({ ...EMPTY_FILTERS, category: 'kochen_essen' })).toBe(true);
+    expect(isListMode({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
+    expect(isListMode({ ...EMPTY_FILTERS, query: '   ' })).toBe(false);
   });
 });
 
@@ -250,5 +287,32 @@ describe('groupByPlace', () => {
 
   it('überspringt Angebote ohne Koordinaten', () => {
     expect(groupByPlace([offer({ lat: null as unknown as number })])).toEqual([]);
+  });
+});
+
+describe('countByCategory', () => {
+  it('zählt je Kategorie, auch leere', () => {
+    const counts = countByCategory([
+      offer({ category: 'kochen_essen' }),
+      offer({ category: 'kochen_essen' }),
+      offer({ category: 'sonstiges' }),
+    ]);
+    expect(counts.kochen_essen).toBe(2);
+    expect(counts.sonstiges).toBe(1);
+    expect(counts.wellness_beauty).toBe(0);
+  });
+});
+
+describe('similarOffers', () => {
+  it('zeigt erst dieselbe Kategorie, ohne das Angebot selbst und ohne ausgebuchte', () => {
+    const current = offer({ id: 'pasta', category: 'kochen_essen' });
+    const offers = [
+      current,
+      offer({ id: 'yoga', category: 'sport_bewegung' }),
+      offer({ id: 'wein', category: 'kochen_essen' }),
+      offer({ id: 'sushi-voll', category: 'kochen_essen', free_seats: 0 }),
+    ];
+    expect(similarOffers(offers, current).map((o) => o.id)).toEqual(['wein', 'yoga']);
+    expect(similarOffers(offers, current, 1).map((o) => o.id)).toEqual(['wein']);
   });
 });

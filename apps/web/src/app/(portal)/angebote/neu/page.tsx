@@ -4,12 +4,19 @@ import { Suspense } from 'react';
 import { OfferForm } from '@/components/offers/offer-form';
 import { requireAccount } from '@/lib/auth';
 import { getMinDiscountPercent, getMyLocationAddress } from '@/lib/offers/queries';
+import { formatDuration, templateToOfferValues } from '@/lib/templates/form';
+import { getMyTemplate, listMyTemplates } from '@/lib/templates/queries';
 import { createOfferAction } from '../actions';
 
 export const metadata: Metadata = { title: 'Neues Angebot' };
 
-async function NewOfferForm() {
-  const { location } = await requireAccount();
+interface PageProps {
+  /** `vorlage`: Angebot aus dieser Vorlage erstellen (alles vorausgefüllt bis auf die Zeit). */
+  searchParams: Promise<{ vorlage?: string }>;
+}
+
+async function NewOfferForm({ searchParams }: PageProps) {
+  const [{ location }, { vorlage }] = await Promise.all([requireAccount(), searchParams]);
 
   if (location.status !== 'approved') {
     return (
@@ -20,23 +27,70 @@ async function NewOfferForm() {
     );
   }
 
-  const [address, minDiscountPercent] = await Promise.all([
+  const [address, minDiscountPercent, template, templates] = await Promise.all([
     getMyLocationAddress(location.id),
     getMinDiscountPercent(),
+    vorlage ? getMyTemplate(vorlage) : null,
+    vorlage ? [] : listMyTemplates(),
   ]);
 
+  if (template) {
+    return (
+      <OfferForm
+        // Eigener key: Beim Wechsel der Vorlage beginnt das Formular frisch.
+        key={template.id}
+        mode="create"
+        action={createOfferAction}
+        locationId={location.id}
+        minDiscountPercent={minDiscountPercent}
+        initialValues={{ ...address, ...templateToOfferValues(template) }}
+        template={{ name: template.name, durationMinutes: template.duration_minutes }}
+      />
+    );
+  }
+
   return (
-    <OfferForm
-      mode="create"
-      action={createOfferAction}
-      locationId={location.id}
-      minDiscountPercent={minDiscountPercent}
-      initialValues={{ ...address, type: 'einzeltermin' }}
-    />
+    <>
+      {vorlage ? (
+        <p
+          role="alert"
+          className="mb-5 rounded-card bg-status-error-subtle px-4 py-3 text-subhead text-status-error-on-subtle"
+        >
+          Diese Vorlage gibt es nicht (mehr). Du kannst das Angebot hier von Hand anlegen.
+        </p>
+      ) : null}
+      {templates.length > 0 ? (
+        <section aria-labelledby="aus-vorlage" className="mb-6">
+          <h2 id="aus-vorlage" className="text-subhead text-text-secondary">
+            Schneller geht es mit einer Vorlage:
+          </h2>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {templates.map((t) => (
+              <li key={t.id}>
+                <Link
+                  href={`/angebote/neu?vorlage=${t.id}`}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-button border border-border-default bg-surface-default px-4 text-subhead text-text-primary transition-colors duration-150 hover:border-accent-vivid hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                >
+                  <span className="font-semibold">{t.name}</span>
+                  <span className="text-text-tertiary">{formatDuration(t.duration_minutes)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <OfferForm
+        mode="create"
+        action={createOfferAction}
+        locationId={location.id}
+        minDiscountPercent={minDiscountPercent}
+        initialValues={{ ...address, type: 'einzeltermin' }}
+      />
+    </>
   );
 }
 
-export default function NewOfferPage() {
+export default function NewOfferPage(props: PageProps) {
   return (
     <>
       <Link href="/angebote" className="text-subhead text-text-link hover:underline">
@@ -46,7 +100,7 @@ export default function NewOfferPage() {
       <Suspense
         fallback={<p className="text-callout text-text-tertiary">Formular wird geladen …</p>}
       >
-        <NewOfferForm />
+        <NewOfferForm {...props} />
       </Suspense>
     </>
   );

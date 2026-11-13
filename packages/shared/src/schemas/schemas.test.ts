@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   createOfferInputSchema,
+  createOfferTemplateSchema,
   normalizeShortCode,
   offerInputSchema,
+  offerTemplateSchema,
   profileSchema,
   registerCompanySchema,
   toRpcArgs,
@@ -90,8 +92,8 @@ describe('offerInputSchema', () => {
     ).toContain('ends_at');
   });
 
-  it('verlangt 1 bis 5 Bilder', () => {
-    expect(offerInputSchema.safeParse({ ...validOffer, image_paths: [] }).success).toBe(false);
+  it('erlaubt 0 bis 5 Bilder', () => {
+    expect(offerInputSchema.safeParse({ ...validOffer, image_paths: [] }).success).toBe(true);
     expect(
       offerInputSchema.safeParse({ ...validOffer, image_paths: Array(6).fill('x.jpg') }).success,
     ).toBe(false);
@@ -118,6 +120,52 @@ describe('createOfferInputSchema', () => {
     };
     expect(issuePaths(schema.safeParse(past))).toContain('starts_at');
     expect(schema.safeParse({ ...past, type: 'zeitraum' }).success).toBe(true);
+  });
+});
+
+describe('offerTemplateSchema', () => {
+  const validTemplate = {
+    name: 'Kochkurs Standard',
+    title: validOffer.title,
+    description: validOffer.description,
+    category: validOffer.category,
+    image_paths: [],
+    original_price_cents: 4000,
+    deal_price_cents: 2400,
+    capacity: 10,
+    max_per_user: 2,
+    type: 'einzeltermin' as const,
+    duration_minutes: 180,
+  };
+
+  it('akzeptiert eine gültige Vorlage ohne Bild', () => {
+    expect(offerTemplateSchema.safeParse(validTemplate).success).toBe(true);
+  });
+
+  it('lehnt kurzen Namen, falsche Dauer und falsche Preise ab', () => {
+    expect(issuePaths(offerTemplateSchema.safeParse({ ...validTemplate, name: 'K' }))).toContain(
+      'name',
+    );
+    expect(
+      issuePaths(offerTemplateSchema.safeParse({ ...validTemplate, duration_minutes: 0 })),
+    ).toContain('duration_minutes');
+    expect(
+      issuePaths(offerTemplateSchema.safeParse({ ...validTemplate, duration_minutes: 129_601 })),
+    ).toContain('duration_minutes');
+    expect(
+      issuePaths(offerTemplateSchema.safeParse({ ...validTemplate, deal_price_cents: 4000 })),
+    ).toContain('deal_price_cents');
+    expect(
+      issuePaths(offerTemplateSchema.safeParse({ ...validTemplate, max_per_user: 11 })),
+    ).toContain('max_per_user');
+  });
+
+  it('prüft den Mindestrabatt', () => {
+    const schema = createOfferTemplateSchema({ minDiscountPercent: 20 });
+    expect(schema.safeParse({ ...validTemplate, deal_price_cents: 3200 }).success).toBe(true);
+    expect(issuePaths(schema.safeParse({ ...validTemplate, deal_price_cents: 3201 }))).toContain(
+      'deal_price_cents',
+    );
   });
 });
 

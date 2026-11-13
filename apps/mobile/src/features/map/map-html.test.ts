@@ -11,6 +11,7 @@ import {
   parseMapMessage,
   placesToGeoJson,
   selectPlaceScript,
+  setCenterScript,
   setPlacesScript,
   toScriptJson,
 } from './map-html';
@@ -92,6 +93,14 @@ describe('selectPlaceScript', () => {
     const script = selectPlaceScript('a', { top: 120, bottom: 200 });
     expect(script).toContain('window.selectPlace("a", {"top":120,"bottom":200})');
     expect(selectPlaceScript(null, { top: 0, bottom: 0 })).toContain('window.selectPlace(null');
+  });
+});
+
+describe('setCenterScript', () => {
+  it('springt mit [lng, lat] auf die Stadt', () => {
+    const script = setCenterScript(54.6872, 25.2797);
+    expect(script).toContain('window.setCenter([25.2797,54.6872])');
+    expect(script.trim().endsWith('true;')).toBe(true);
   });
 });
 

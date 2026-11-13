@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
 import { usePushSetup } from '@/features/push/use-push';
+import { hideDevToolsButton } from '@/lib/dev-tools';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
 
@@ -45,6 +46,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
+
+  // Das blaue Zahnrad von Expo (Tools-Button) verdeckt sonst oben die Stadt und die Suche.
+  useEffect(() => {
+    hideDevToolsButton();
+  }, []);
 
   // Kommt die App in den Vordergrund, lädt TanStack Query veraltete Daten neu (z. B. freie Plätze).
   useEffect(() => {
@@ -81,6 +87,7 @@ export default function RootLayout() {
                   options={{ headerShown: false, presentation: 'modal' }}
                 />
                 <Stack.Screen name="name" options={{ title: 'Dein Name', presentation: 'modal' }} />
+                <Stack.Screen name="favoriten" options={{ title: 'Favoriten' }} />
                 <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                 <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
               </Stack>

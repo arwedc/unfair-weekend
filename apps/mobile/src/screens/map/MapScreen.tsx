@@ -7,6 +7,7 @@ import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-re
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { MapSearchBar } from '@/components/map/MapSearchBar';
 import { MapOfferCarousel } from '@/components/map/MapOfferCarousel';
 import { FilterBar } from '@/components/offers/FilterBar';
 import {
@@ -23,13 +24,15 @@ import {
   MAP_PALETTE,
   parseMapMessage,
   selectPlaceScript,
+  setCenterScript,
   setPlacesScript,
   showUserScript,
 } from '@/features/map/map-html';
 import { firstIndexAtPlace, mapOffers } from '@/features/map/map-logic';
-import { groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
+import { getCity, offersInCity } from '@/features/offers/cities';
+import { filterOffers, groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { useFilteredOffers } from '@/features/offers/use-filtered-offers';
+import { useOffers } from '@/features/offers/queries';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
 import { openWebsite } from '@/lib/open-external';
@@ -61,8 +64,8 @@ export function MapScreen() {
   const webview = useRef<MapWebView>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
-  const { resetFilters } = useOfferFilters();
-  const { data, error, refetch, visible } = useFilteredOffers();
+  const { filters, resetFilters, cityId } = useOfferFilters();
+  const { data, error, refetch } = useOffers();
 
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
@@ -75,6 +78,9 @@ export function MapScreen() {
   const [topInset, setTopInset] = useState(0);
   const [bottomTop, setBottomTop] = useState(0);
 
+  const city = getCity(cityId);
+  const cityOffers = offersInCity(data ?? [], cityId);
+  const visible = filterOffers(cityOffers, filters);
   // Nur buchbare Angebote, von West nach Ost. Ausgebuchte erscheinen gar nicht.
   const offers = mapOffers(visible);
   const placesScript = setPlacesScript(groupByPlace(offers));
@@ -93,6 +99,12 @@ export function MapScreen() {
   useEffect(() => {
     if (mapReady) webview.current?.injectJavaScript(placesScript);
   }, [mapReady, placesScript]);
+
+  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel).
+  const centerScript = setCenterScript(city.center.lat, city.center.lng);
+  useEffect(() => {
+    if (mapReady) webview.current?.injectJavaScript(centerScript);
+  }, [mapReady, centerScript]);
 
   // Ausgewählte Nadel hervorheben und in den sichtbaren Bereich holen.
   useEffect(() => {
@@ -162,13 +174,15 @@ export function MapScreen() {
 
   const allSoldOut = visible.length > 0 && visible.every((offer) => offer.free_seats === 0);
   const emptyMessage =
-    visible.length === 0
-      ? 'Für diese Auswahl gibt es gerade kein Angebot.'
-      : offers.length === 0
-        ? allSoldOut
-          ? 'Für diese Auswahl ist gerade alles ausgebucht.'
-          : 'Für diese Angebote fehlt noch die genaue Adresse. Du findest sie unter „Entdecken“.'
-        : null;
+    cityOffers.length === 0
+      ? `In ${city.name} gibt es gerade noch keine Angebote.`
+      : visible.length === 0
+        ? 'Für diese Auswahl gibt es gerade kein Angebot.'
+        : offers.length === 0
+          ? allSoldOut
+            ? 'Für diese Auswahl ist gerade alles ausgebucht.'
+            : 'Für diese Angebote fehlt noch die genaue Adresse. Du findest sie unter „Entdecken“.'
+          : null;
 
   return (
     <View
@@ -201,7 +215,7 @@ export function MapScreen() {
           bounces={false}
           overScrollMode="never"
           setSupportMultipleWindows={false}
-          accessibilityLabel="Karte von Münster mit Angeboten"
+          accessibilityLabel={`Karte von ${city.name} mit Angeboten`}
         />
       )}
 
@@ -216,7 +230,9 @@ export function MapScreen() {
         pointerEvents="box-none"
         onLayout={(event) => setTopInset(event.nativeEvent.layout.height)}
       >
-        <FilterBar variant="floating" />
+        <MapSearchBar>
+          <FilterBar showCity />
+        </MapSearchBar>
         {error ? (
           <View style={styles.banner}>
             <Text variant="footnote" color="secondary">
@@ -228,15 +244,17 @@ export function MapScreen() {
             <Text variant="footnote" color="secondary">
               {emptyMessage}
             </Text>
-            <Text
-              variant="footnote"
-              color="accent"
-              accessibilityRole="button"
-              onPress={resetFilters}
-              suppressHighlighting
-            >
-              Filter zurücksetzen
-            </Text>
+            {visible.length === 0 && cityOffers.length > 0 ? (
+              <Text
+                variant="footnote"
+                color="accent"
+                accessibilityRole="button"
+                onPress={resetFilters}
+                suppressHighlighting
+              >
+                Filter zurücksetzen
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>

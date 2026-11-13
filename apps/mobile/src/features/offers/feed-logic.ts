@@ -9,6 +9,7 @@ import {
   formatDateRange,
   formatDay,
   formatDiscount,
+  formatPrice,
   formatTimeRange,
   isFewSeatsLeft,
   OFFER_CATEGORIES,
@@ -36,32 +37,12 @@ export interface OfferFilters {
   category: OfferCategory | null;
   time: TimeFilter;
   query: string;
-  /** Nur Angebote mit freien Plätzen. */
-  onlyAvailable: boolean;
-  /** Nur Angebote der eigenen Lieblingsorte (braucht Login). */
-  favoritesOnly: boolean;
 }
 
-export const EMPTY_FILTERS: OfferFilters = {
-  category: null,
-  time: 'alle',
-  query: '',
-  onlyAvailable: false,
-  favoritesOnly: false,
-};
-
-/** Anzahl gesetzter Filter ohne die Suche, z. B. für „Filter · 2“. */
-export function activeFilterCount(filters: OfferFilters): number {
-  return [
-    filters.category !== null,
-    filters.time !== 'alle',
-    filters.onlyAvailable,
-    filters.favoritesOnly,
-  ].filter(Boolean).length;
-}
+export const EMPTY_FILTERS: OfferFilters = { category: null, time: 'alle', query: '' };
 
 export function hasActiveFilters(filters: OfferFilters): boolean {
-  return activeFilterCount(filters) > 0 || filters.query.trim() !== '';
+  return filters.category !== null || filters.time !== 'alle' || filters.query.trim() !== '';
 }
 
 type Timing = Pick<Offer, 'type' | 'starts_at' | 'ends_at'>;
@@ -116,74 +97,181 @@ export function matchesSearch(offer: Searchable, query: string): boolean {
   return words.every((word) => haystack.includes(word));
 }
 
-/**
- * Wendet alle Filter an. `favoriteLocationIds` braucht es nur für „Lieblingsorte“;
- * fehlt die Liste (nicht angemeldet), passt bei diesem Filter kein Angebot.
- */
 export function filterOffers<T extends Offer>(
   offers: readonly T[],
   filters: OfferFilters,
   now: DateInput = new Date(),
-  favoriteLocationIds?: ReadonlySet<string>,
 ): T[] {
   return offers.filter(
     (offer) =>
       (filters.category === null || offer.category === filters.category) &&
-      (!filters.onlyAvailable || offer.free_seats > 0) &&
-      (!filters.favoritesOnly || (favoriteLocationIds?.has(offer.location_id) ?? false)) &&
       matchesTimeFilter(offer, filters.time, now) &&
       matchesSearch(offer, filters.query),
   );
 }
 
-/**
- * Kategorien als Vorschläge unter der Suche. Ohne Eingabe alle,
- * sonst die, deren Name zum Text passt („koch“ → Kochen & Essen).
- */
-export function categorySuggestions(query: string): OfferCategory[] {
-  const words = normalize(query).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [...OFFER_CATEGORIES];
-  return OFFER_CATEGORIES.filter((category) => {
-    const label = normalize(OFFER_CATEGORY_LABELS[category]);
-    return words.every((word) => label.includes(word));
-  });
+/** Anzahl Angebote je Kategorie, z. B. für die Kacheln im Filter-Sheet. */
+export function countByCategory(
+  offers: readonly Pick<Offer, 'category'>[],
+): Record<OfferCategory, number> {
+  const counts: Partial<Record<OfferCategory, number>> = {};
+  for (const offer of offers) counts[offer.category] = (counts[offer.category] ?? 0) + 1;
+  return Object.fromEntries(
+    OFFER_CATEGORIES.map((category) => [category, counts[category] ?? 0]),
+  ) as Record<OfferCategory, number>;
 }
 
-export interface FeedSections {
-  /** Heute machbar und noch Plätze frei. */
-  today: FeedOffer[];
-  /** Einzeltermine in den nächsten drei Tagen (ohne heute). */
-  startingSoon: FeedOffer[];
-  /** Zuletzt veröffentlicht. */
-  newest: FeedOffer[];
+/**
+ * Ähnliche Angebote für die Detailseite: gleiche Kategorie zuerst, dann der Rest.
+ * Ohne das Angebot selbst und ohne ausgebuchte. Die Liste ist schon auf die Stadt eingegrenzt.
+ */
+export function similarOffers<T extends Pick<Offer, 'id' | 'category' | 'free_seats'>>(
+  offers: readonly T[],
+  current: Pick<Offer, 'id' | 'category'>,
+  limit = 8,
+): T[] {
+  const candidates = offers.filter((offer) => offer.id !== current.id && offer.free_seats > 0);
+  const same = candidates.filter((offer) => offer.category === current.category);
+  const other = candidates.filter((offer) => offer.category !== current.category);
+  return [...same, ...other].slice(0, limit);
+}
+
+/**
+ * Kategorie oder Suche aktiv: Der Feed zeigt eine schlichte Trefferliste statt Abschnitten.
+ * Der Zeitfilter allein behält die Abschnitte (sie zeigen dann nur diesen Tag).
+ */
+export function isListMode(filters: OfferFilters): boolean {
+  return filters.category !== null || filters.query.trim() !== '';
+}
+
+/** Ein Karussell im Feed, z. B. „Heute in Münster“ oder „Kochen & Essen“. */
+export interface FeedSection {
+  key: string;
+  title: string;
+  offers: FeedOffer[];
+  /** Nur bei Kategorie-Abschnitten: „Alle“ filtert den Feed auf diese Kategorie. */
+  category?: OfferCategory;
 }
 
 const SECTION_LIMIT = 8;
 const STARTING_SOON_DAYS = 3;
+/** Ab dieser Stunde (Berliner Zeit) gilt ein Termin als „nach Feierabend“. */
+const EVENING_FROM_HOUR = 17;
+const BIG_DISCOUNT_PERCENT = 50;
+export const BUDGET_PRICE_CENTS = 1500;
+/** Themen-Abschnitte erscheinen erst ab so vielen Angeboten, damit der Feed nicht zerfasert. */
+const THEME_MIN_OFFERS = 2;
 
-/** Abschnitte für den Feed. Die Angebote kommen schon nach „als Nächstes relevant“ sortiert. */
+/** Kategorien mit eigenem Abschnitt. „Sonstiges“ steht nur in der Liste „Alle Angebote“. */
+type SectionCategory = Exclude<OfferCategory, 'sonstiges'>;
+
+interface SectionDraft {
+  section: FeedSection;
+  minOffers: number;
+}
+
+/**
+ * Abschnitte für den Feed, im Wechsel aus Zeit, Themen und Kategorien.
+ * Die Angebote kommen schon nach „als Nächstes relevant“ sortiert und sind bereits
+ * auf Stadt und Zeitfilter eingegrenzt. Leere Abschnitte fallen weg.
+ */
 export function buildSections(
   offers: readonly FeedOffer[],
-  now: DateInput = new Date(),
-): FeedSections {
-  const today = offers
-    .filter((offer) => offer.free_seats > 0 && matchesTimeFilter(offer, 'heute', now))
-    .slice(0, SECTION_LIMIT);
+  options: { cityName: string; now?: DateInput; favoriteIds?: readonly string[] },
+): FeedSection[] {
+  const now = options.now ?? new Date();
+  const available = offers.filter((offer) => offer.free_seats > 0);
 
-  const startingSoon = offers
-    .filter((offer) => {
-      if (offer.type !== 'einzeltermin' || offer.free_seats === 0) return false;
-      const days = calendarDaysBetween(now, offer.starts_at);
-      return days >= 1 && days <= STARTING_SOON_DAYS;
-    })
-    .slice(0, SECTION_LIMIT);
+  const time = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
+    section: { key, title, offers: items },
+    minOffers: 1,
+  });
+  const theme = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
+    section: { key, title, offers: items },
+    minOffers: THEME_MIN_OFFERS,
+  });
+  const category = (value: SectionCategory): SectionDraft => ({
+    section: {
+      key: `kategorie-${value}`,
+      title: OFFER_CATEGORY_LABELS[value],
+      offers: available.filter((offer) => offer.category === value),
+      category: value,
+    },
+    minOffers: 1,
+  });
 
-  const newest = offers
-    .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, SECTION_LIMIT);
+  // Favoriten in der gemerkten Reihenfolge (auch ausgebuchte, die will man ja im Blick behalten)
+  const byId = new Map(offers.map((offer) => [offer.id, offer]));
+  const favorites = (options.favoriteIds ?? []).flatMap((id) => {
+    const offer = byId.get(id);
+    return offer ? [offer] : [];
+  });
 
-  return { today, startingSoon, newest };
+  const drafts: SectionDraft[] = [
+    time('favoriten', 'Deine Favoriten', favorites),
+    time(
+      'heute',
+      `Heute in ${options.cityName}`,
+      available.filter((offer) => matchesTimeFilter(offer, 'heute', now)),
+    ),
+    time(
+      'bald',
+      'Startet bald',
+      available.filter((offer) => {
+        if (offer.type !== 'einzeltermin') return false;
+        const days = calendarDaysBetween(now, offer.starts_at);
+        return days >= 1 && days <= STARTING_SOON_DAYS;
+      }),
+    ),
+    time(
+      'knapp',
+      'Fast ausgebucht',
+      available.filter((offer) => isFewSeatsLeft(offer.free_seats)),
+    ),
+    theme(
+      'halber-preis',
+      'Zum halben Preis',
+      available
+        .filter((offer) => offer.discount_percent >= BIG_DISCOUNT_PERCENT)
+        .sort((a, b) => b.discount_percent - a.discount_percent),
+    ),
+    time(
+      'neu',
+      'Neu dabei',
+      offers
+        .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    ),
+    category('kochen_essen'),
+    category('sport_bewegung'),
+    theme(
+      'feierabend',
+      'Nach Feierabend',
+      available.filter(
+        (offer) =>
+          offer.type === 'einzeltermin' && berlinParts(offer.starts_at).hour >= EVENING_FROM_HOUR,
+      ),
+    ),
+    category('kreativ_workshops'),
+    theme(
+      'budget',
+      `Bis ${formatPrice(BUDGET_PRICE_CENTS, { omitZeroCents: true })}`,
+      available
+        .filter((offer) => offer.deal_price_cents <= BUDGET_PRICE_CENTS)
+        .sort((a, b) => a.deal_price_cents - b.deal_price_cents),
+    ),
+    category('wellness_beauty'),
+    category('kultur_events'),
+    theme(
+      'flexibel',
+      'Einlösen, wann du willst',
+      available.filter((offer) => offer.type === 'zeitraum'),
+    ),
+  ];
+
+  return drafts
+    .filter(({ section, minOffers }) => section.offers.length >= minOffers)
+    .map(({ section }) => ({ ...section, offers: section.offers.slice(0, SECTION_LIMIT) }));
 }
 
 export interface OfferBadge {
@@ -261,13 +349,27 @@ export interface OfferPlace {
 
 /**
  * Schlüssel des Orts (gerundete Koordinaten). Angebote an derselben Adresse teilen ihn.
- * `null`, wenn die Koordinaten fehlen (laut Typen number, in der DB aber optional).
+ * `null`, wenn die Koordinaten fehlen.
  */
 export function placeKeyOf(offer: Pick<Offer, 'lat' | 'lng'>): string | null {
+  // Die Typen sagen number, in der DB können die Koordinaten aber fehlen.
   const lat = offer.lat as number | null;
   const lng = offer.lng as number | null;
   if (lat === null || lng === null) return null;
   return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
+/**
+ * Kategorien als Vorschläge unter der Suche (Karte). Ohne Eingabe alle,
+ * sonst die, deren Name zum Text passt („koch“ → Kochen & Essen).
+ */
+export function categorySuggestions(query: string): OfferCategory[] {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...OFFER_CATEGORIES];
+  return OFFER_CATEGORIES.filter((category) => {
+    const label = normalize(OFFER_CATEGORY_LABELS[category]);
+    return words.every((word) => label.includes(word));
+  });
 }
 
 /** Fasst Angebote an derselben Adresse (gleiche Koordinaten) zu einem Pin zusammen. */
@@ -276,7 +378,8 @@ export function groupByPlace(offers: readonly Offer[]): OfferPlace[] {
   for (const offer of offers) {
     const key = placeKeyOf(offer);
     if (key === null) continue;
-    const { lat, lng } = offer;
+    const lat = offer.lat;
+    const lng = offer.lng;
     const place = places.get(key);
     if (place) {
       place.offers.push(offer);

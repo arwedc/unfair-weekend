@@ -40,9 +40,10 @@ export function useSettings() {
   });
 }
 
-export function useLocationOffers(locationId: string) {
+export function useLocationOffers(locationId: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: offerKeys.byLocation(locationId),
     queryFn: () => fetchLocationOffers(locationId),
+    enabled: (options.enabled ?? true) && locationId !== '',
   });
 }

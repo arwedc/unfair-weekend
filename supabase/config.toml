@@ -430,3 +430,8 @@ enabled = true
 [functions.geocode]
 # Nutzer-JWT wird von der Plattform geprüft; die Rolle prüft die Function selbst.
 verify_jwt = true
+
+[functions.send-push]
+# Aufruf nur durch pg_cron mit dem Secret Key im apikey-Header (kein JWT).
+# Die Function prüft den Key selbst über withSupabase({ auth: 'secret' }).
+verify_jwt = false

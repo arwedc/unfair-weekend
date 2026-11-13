@@ -10,7 +10,12 @@
  *   await supabase.rpc('create_offer', toRpcArgs(input));
  */
 import * as z from 'zod';
-import { OFFER_CATEGORIES, OFFER_LIMITS, OFFER_TYPES } from '../constants/offers';
+import {
+  OFFER_CATEGORIES,
+  OFFER_LIMITS,
+  OFFER_TEMPLATE_LIMITS,
+  OFFER_TYPES,
+} from '../constants/offers';
 import { Constants } from '../types';
 import { meetsMinDiscount } from '../utils/money';
 
@@ -144,7 +149,7 @@ const offerBaseSchema = z.object({
   category: z.enum(OFFER_CATEGORIES, { error: 'Bitte eine Kategorie wählen.' }),
   image_paths: z
     .array(z.string().trim().min(1).max(500))
-    .min(OFFER_LIMITS.imagesMin, { error: 'Bitte mindestens ein Bild hinzufügen.' })
+    .min(OFFER_LIMITS.imagesMin)
     .max(OFFER_LIMITS.imagesMax, { error: `Höchstens ${OFFER_LIMITS.imagesMax} Bilder.` }),
   original_price_cents: cents('Originalpreis')
     .min(1, { error: 'Der Originalpreis muss größer als 0 sein.' })
@@ -236,6 +241,70 @@ export function createOfferInputSchema(options: { minDiscountPercent: number; no
   });
 }
 
+/**
+ * Angebotsvorlage (create_offer_template, update_offer_template): wie ein Angebot,
+ * aber ohne Adresse und ohne Zeitpunkt. Statt Beginn und Ende nur die Dauer.
+ */
+export const offerTemplateSchema = offerBaseSchema
+  .pick({
+    title: true,
+    description: true,
+    category: true,
+    image_paths: true,
+    original_price_cents: true,
+    deal_price_cents: true,
+    capacity: true,
+    max_per_user: true,
+    type: true,
+  })
+  .extend({
+    name: text(OFFER_TEMPLATE_LIMITS.nameMin, OFFER_TEMPLATE_LIMITS.nameMax, 'Name der Vorlage'),
+    duration_minutes: z
+      .number({ error: 'Bitte die Dauer angeben.' })
+      .int({ error: 'Bitte die Dauer in ganzen Minuten angeben.' })
+      .min(OFFER_TEMPLATE_LIMITS.durationMinMinutes, { error: 'Bitte die Dauer angeben.' })
+      .max(OFFER_TEMPLATE_LIMITS.durationMaxMinutes, {
+        error: `Höchstens ${OFFER_LIMITS.maxDurationDays} Tage Dauer.`,
+      }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.deal_price_cents >= value.original_price_cents) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['deal_price_cents'],
+        message: 'Der Deal-Preis muss unter dem Originalpreis liegen.',
+      });
+    }
+    if (value.max_per_user > value.capacity) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['max_per_user'],
+        message: 'Plätze pro Person dürfen das Kontingent nicht übersteigen.',
+      });
+    }
+  });
+export type OfferTemplateInput = z.infer<typeof offerTemplateSchema>;
+
+/** Zusätzlich: Mindestrabatt (aus get_settings). */
+export function createOfferTemplateSchema(options: { minDiscountPercent: number }) {
+  return offerTemplateSchema.superRefine((value, ctx) => {
+    if (
+      value.deal_price_cents < value.original_price_cents &&
+      !meetsMinDiscount(
+        value.original_price_cents,
+        value.deal_price_cents,
+        options.minDiscountPercent,
+      )
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['deal_price_cents'],
+        message: `Der Rabatt muss mindestens ${options.minDiscountPercent} % betragen.`,
+      });
+    }
+  });
+}
+
 /** Absage bzw. Entfernen mit optionaler Begründung */
 export const offerReasonSchema = z.object({
   reason: optionalText(500, 'Begründung'),
@@ -291,3 +360,27 @@ export const pushTokenSchema = z.object({
   token: z.string().min(1).max(500),
   platform: z.enum(Constants.public.Enums.push_platform),
 });
+
+// ---------------------------------------------------------------------------
+// Zahlungen (Variante B)
+// ---------------------------------------------------------------------------
+
+/** start_paid_booking (über die Edge Function stripe-create-booking) */
+export const startPaidBookingSchema = claimVoucherSchema;
+export type StartPaidBookingInput = z.infer<typeof startPaidBookingSchema>;
+
+/** cancel_paid_booking (über die Edge Function stripe-cancel-booking) */
+export const cancelPaidBookingSchema = z.object({
+  booking_id: z.uuid(),
+});
+
+/** update_payment_settings: Provision in Basispunkten (1500 = 15 %), höchstens 50 % */
+export const paymentSettingsSchema = z.object({
+  payments_enabled: z.boolean(),
+  commission_bps: z
+    .number()
+    .int()
+    .min(0, { error: 'Die Provision kann nicht negativ sein.' })
+    .max(5000, { error: 'Die Provision darf höchstens 50 % betragen.' }),
+});
+export type PaymentSettingsInput = z.infer<typeof paymentSettingsSchema>;
