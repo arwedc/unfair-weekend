@@ -36,8 +36,8 @@ export function HighlightTitle({ children, variant = 'title3' }: HighlightTitleP
             style={[
               styles.marker,
               {
-                left: line.x - space[1],
-                width: line.width + space[1] + space[1.5],
+                left: line.x,
+                width: line.width,
                 top: line.y + line.height - space[0.5] - markerHeight,
                 height: markerHeight,
               },
