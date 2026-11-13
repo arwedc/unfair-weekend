@@ -27,16 +27,20 @@ export const DEFAULT_ZOOM = 12.2;
 export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
 
 export interface MapColors {
-  /** Nadel mit freien Plätzen (Markenfarbe). */
+  /** Nadel (Markenfarbe). */
   pin: string;
-  /** Nadel, wenn am Ort alles ausgebucht ist. */
-  pinMuted: string;
+  /** Nadel des gerade gezeigten Angebots. */
+  pinActive: string;
   /** Punkt in der Nadel. */
   pinDot: string;
-  cluster: string;
-  clusterText: string;
   user: string;
   background: string;
+}
+
+/** Freiraum am Kartenrand (Suchleiste oben, Kachel unten), damit die Nadel sichtbar mittig landet. */
+export interface MapPadding {
+  top: number;
+  bottom: number;
 }
 
 /** Nachrichten der Karte an die App. */
@@ -76,10 +80,10 @@ export function parseMapMessage(raw: string): MapMessage | null {
 interface PlaceFeature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: { key: string; count: number; soldOut: boolean };
+  properties: { key: string; count: number };
 }
 
-/** Standorte als GeoJSON für die Pins. Ausgebuchte Orte bekommen eine graue Nadel. */
+/** Standorte als GeoJSON für die Nadeln (eine Nadel pro Adresse, keine Gruppen). */
 export function placesToGeoJson(places: readonly OfferPlace[]): {
   type: 'FeatureCollection';
   features: PlaceFeature[];
@@ -89,11 +93,7 @@ export function placesToGeoJson(places: readonly OfferPlace[]): {
     features: places.map((place) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [place.lng, place.lat] },
-      properties: {
-        key: place.key,
-        count: place.offers.length,
-        soldOut: place.offers.every((offer) => offer.free_seats === 0),
-      },
+      properties: { key: place.key, count: place.offers.length },
     })),
   };
 }
@@ -109,6 +109,14 @@ export function toScriptJson(value: unknown): string {
 /** Befehl für die WebView: Pins ersetzen. */
 export function setPlacesScript(places: readonly OfferPlace[]): string {
   return `window.setPlaces && window.setPlaces(${toScriptJson(placesToGeoJson(places))}); true;`;
+}
+
+/**
+ * Befehl für die WebView: Nadel hervorheben und die Karte so verschieben, dass sie
+ * zwischen Suchleiste und Kachel sichtbar ist. `null` hebt die Auswahl auf.
+ */
+export function selectPlaceScript(key: string | null, padding: MapPadding): string {
+  return `window.selectPlace && window.selectPlace(${toScriptJson(key)}, ${toScriptJson(padding)}); true;`;
 }
 
 /** Befehl für die WebView: eigenen Standort zeigen und hinfliegen. */
@@ -182,10 +190,36 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   var pending = null;
   var loaded = false;
   var empty = { type: 'FeatureCollection', features: [] };
+  var current = empty;
+  var selectedKey = null;
+
+  // Ausgewählte Nadel: dunkler, etwas größer und immer obenauf.
+  function applySelection() {
+    if (!loaded) return;
+    var isSelected = ['==', ['get', 'key'], selectedKey || ''];
+    map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, 'unfair-pin-active', 'unfair-pin']);
+    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.2, 1]);
+    map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
+  }
 
   window.setPlaces = function (geojson) {
+    current = geojson;
     if (!loaded) { pending = geojson; return; }
     map.getSource('places').setData(geojson);
+  };
+
+  window.selectPlace = function (key, padding) {
+    selectedKey = key;
+    applySelection();
+    if (!key) return;
+    var feature = current.features.find(function (f) { return f.properties.key === key; });
+    if (!feature) return;
+    map.easeTo({
+      center: feature.geometry.coordinates,
+      zoom: Math.max(map.getZoom(), 13.5),
+      padding: { top: padding.top, bottom: padding.bottom, left: 24, right: 24 },
+      duration: 450
+    });
   };
 
   var userMarker = null;
@@ -228,45 +262,31 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
 
   map.on('load', function () {
     var pin = makePin(config.colors.pin);
-    var pinMuted = makePin(config.colors.pinMuted);
+    var pinActive = makePin(config.colors.pinActive);
     map.addImage('unfair-pin', pin.image, { pixelRatio: pin.ratio });
-    map.addImage('unfair-pin-muted', pinMuted.image, { pixelRatio: pinMuted.ratio });
+    map.addImage('unfair-pin-active', pinActive.image, { pixelRatio: pinActive.ratio });
 
-    map.addSource('places', { type: 'geojson', data: pending || empty, cluster: true, clusterRadius: 44, clusterMaxZoom: 15 });
+    // Jede Adresse bekommt eine eigene Nadel, auch wenn sie nah beieinanderliegen (keine Gruppen).
+    map.addSource('places', { type: 'geojson', data: pending || empty });
 
-    map.addLayer({ id: 'clusters', type: 'circle', source: 'places', filter: ['has', 'point_count'], paint: {
-      'circle-color': config.colors.cluster, 'circle-radius': ['step', ['get', 'point_count'], 20, 5, 24, 15, 28],
-      'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
-    map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'], layout: {
-      'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 14, 'text-allow-overlap': true },
-      paint: { 'text-color': config.colors.clusterText } });
+    // Nadelspitze sitzt genau auf der Adresse.
+    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', layout: {
+      'icon-image': 'unfair-pin', 'icon-anchor': 'bottom',
+      'icon-allow-overlap': true, 'icon-ignore-placement': true } });
 
-    // Nadelspitze sitzt genau auf der Adresse. Ausgebuchte Orte grau.
-    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], layout: {
-      'icon-image': ['case', ['get', 'soldOut'], 'unfair-pin-muted', 'unfair-pin'],
-      'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-      'symbol-sort-key': ['case', ['get', 'soldOut'], 0, 1] } });
-
-    map.on('click', 'clusters', function (event) {
-      var feature = event.features && event.features[0];
-      if (!feature) return;
-      map.getSource('places').getClusterExpansionZoom(feature.properties.cluster_id).then(function (zoom) {
-        map.easeTo({ center: feature.geometry.coordinates, zoom: zoom });
-      });
-    });
+    // Die Auswahl übernimmt die App (Kachel unten). Die Karte meldet nur den Tipp.
     map.on('click', 'pins', function (event) {
       var feature = event.features && event.features[0];
-      if (!feature) return;
-      map.easeTo({ center: feature.geometry.coordinates });
-      send({ type: 'place', key: feature.properties.key });
+      if (feature) send({ type: 'place', key: feature.properties.key });
     });
     map.on('click', function (event) {
-      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins', 'clusters'] });
+      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins'] });
       if (hits.length === 0) send({ type: 'dismiss' });
     });
 
     loaded = true;
     pending = null;
+    applySelection();
     send({ type: 'ready' });
   });
 })();

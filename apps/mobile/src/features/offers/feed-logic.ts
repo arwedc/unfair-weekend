@@ -259,15 +259,24 @@ export interface OfferPlace {
   maxDiscount: number;
 }
 
+/**
+ * Schlüssel des Orts (gerundete Koordinaten). Angebote an derselben Adresse teilen ihn.
+ * `null`, wenn die Koordinaten fehlen (laut Typen number, in der DB aber optional).
+ */
+export function placeKeyOf(offer: Pick<Offer, 'lat' | 'lng'>): string | null {
+  const lat = offer.lat as number | null;
+  const lng = offer.lng as number | null;
+  if (lat === null || lng === null) return null;
+  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
 /** Fasst Angebote an derselben Adresse (gleiche Koordinaten) zu einem Pin zusammen. */
 export function groupByPlace(offers: readonly Offer[]): OfferPlace[] {
   const places = new Map<string, OfferPlace>();
   for (const offer of offers) {
-    // Die Typen sagen number, in der DB können die Koordinaten aber fehlen.
-    const lat = offer.lat as number | null;
-    const lng = offer.lng as number | null;
-    if (lat === null || lng === null) continue;
-    const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    const key = placeKeyOf(offer);
+    if (key === null) continue;
+    const { lat, lng } = offer;
     const place = places.get(key);
     if (place) {
       place.offers.push(offer);

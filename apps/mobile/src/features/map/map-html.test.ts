@@ -8,16 +8,15 @@ import {
   MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
+  selectPlaceScript,
   setPlacesScript,
   toScriptJson,
 } from './map-html';
 
 const colors = {
   pin: '#111111',
-  pinMuted: '#999999',
+  pinActive: '#000000',
   pinDot: '#ffffff',
-  cluster: '#222222',
-  clusterText: '#ffffff',
   user: '#333333',
   background: '#ffffff',
 };
@@ -39,14 +38,11 @@ describe('placesToGeoJson', () => {
     expect(geojson.features[0]?.properties.key).toBe('51.96000,7.62000');
   });
 
-  it('markiert Orte als ausgebucht, wenn kein Angebot mehr Plätze hat', () => {
-    const offer = (free_seats: number) => ({ free_seats }) as OfferPlace['offers'][number];
-    const [voll, frei] = placesToGeoJson([
-      place({ offers: [offer(0), offer(0)] }),
-      place({ offers: [offer(0), offer(3)] }),
-    ]).features;
-    expect(voll?.properties.soldOut).toBe(true);
-    expect(frei?.properties.soldOut).toBe(false);
+  it('zählt die Angebote pro Ort', () => {
+    const offer = { free_seats: 3 } as OfferPlace['offers'][number];
+    expect(placesToGeoJson([place({ offers: [offer, offer] })]).features[0]?.properties.count).toBe(
+      2,
+    );
   });
 
   it('liefert ohne Standorte eine leere Sammlung', () => {
@@ -68,6 +64,14 @@ describe('setPlacesScript', () => {
   });
 });
 
+describe('selectPlaceScript', () => {
+  it('übergibt Schlüssel und Abstände', () => {
+    const script = selectPlaceScript('a', { top: 120, bottom: 200 });
+    expect(script).toContain('window.selectPlace("a", {"top":120,"bottom":200})');
+    expect(selectPlaceScript(null, { top: 0, bottom: 0 })).toContain('window.selectPlace(null');
+  });
+});
+
 describe('buildMapHtml', () => {
   const html = buildMapHtml({ styleUrl: 'https://tiles.openfreemap.org/styles/positron', colors });
 
@@ -80,6 +84,11 @@ describe('buildMapHtml', () => {
     expect(html).toContain("'icon-image'");
     expect(html).toContain("'icon-anchor': 'bottom'");
     expect(html).not.toContain('pin-labels');
+  });
+
+  it('fasst nah beieinanderliegende Nadeln nicht zusammen', () => {
+    expect(html).not.toContain('cluster: true');
+    expect(html).not.toContain("id: 'clusters'");
   });
 
   it('zeigt die Quellenangabe als feste Zeile statt der automatischen (doppelten)', () => {

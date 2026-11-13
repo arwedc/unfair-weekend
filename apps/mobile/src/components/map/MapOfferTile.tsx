@@ -1,0 +1,113 @@
+import { formatDiscount, formatPrice, isFewSeatsLeft, seatsLabel } from '@repo/shared';
+import { useRouter } from 'expo-router';
+import { MapPin } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { OfferImage } from '@/components/offers/OfferImage';
+import { PriceRow } from '@/components/offers/PriceRow';
+import { Badge, PressableScale, Text } from '@/components/ui';
+import { offerWhenText } from '@/features/offers/feed-logic';
+import type { Offer } from '@/features/offers/types';
+import { colors, radius, shadow, space } from '@/theme';
+
+export const MAP_TILE_HEIGHT = 128;
+
+export interface MapOfferTileProps {
+  offer: Offer;
+  width: number;
+  /** z. B. „2 von 7“ für Screenreader. */
+  position: string;
+}
+
+/** Kleine Angebotskachel über der Karte: Foto links, das Wichtigste rechts. Tippen öffnet das Angebot. */
+export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
+  const router = useRouter();
+  const when = offerWhenText(offer);
+  const fewSeats = isFewSeatsLeft(offer.free_seats);
+
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={[
+        offer.title,
+        offer.location_name,
+        when,
+        `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`,
+        seatsLabel(offer.free_seats),
+        position,
+      ].join(', ')}
+      accessibilityHint="Öffnet das Angebot. Zum nächsten Angebot nach links oder rechts wischen."
+      pressedScale={0.98}
+      onPress={() => router.push({ pathname: '/angebot/[id]', params: { id: offer.id } })}
+      style={[styles.tile, { width }]}
+    >
+      <View>
+        <OfferImage path={offer.cover_image_path} priority="high" style={styles.image} />
+        <Badge
+          label={formatDiscount(offer.discount_percent)}
+          variant="deal"
+          onImage
+          style={styles.badge}
+        />
+      </View>
+
+      <View style={styles.body}>
+        <Text variant="bodyStrong" numberOfLines={2}>
+          {offer.title}
+        </Text>
+        <View style={styles.metaRow}>
+          <MapPin size={13} color={colors.text.tertiary} />
+          <Text variant="caption" color="secondary" numberOfLines={1} style={styles.shrink}>
+            {offer.location_name}
+          </Text>
+        </View>
+        <Text variant="caption" color="secondary" numberOfLines={1}>
+          {when}
+        </Text>
+        <View style={styles.bottomRow}>
+          <PriceRow
+            originalPriceCents={offer.original_price_cents}
+            dealPriceCents={offer.deal_price_cents}
+          />
+          {fewSeats ? (
+            <Text variant="caption" color="accent" numberOfLines={1}>
+              {seatsLabel(offer.free_seats)}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </PressableScale>
+  );
+}
+
+const IMAGE_SIZE = MAP_TILE_HEIGHT - space[2] * 2;
+
+const styles = StyleSheet.create({
+  tile: {
+    height: MAP_TILE_HEIGHT,
+    flexDirection: 'row',
+    gap: space[3],
+    padding: space[2],
+    borderRadius: radius.card,
+    borderCurve: 'continuous',
+    backgroundColor: colors.surface.raised,
+    boxShadow: shadow.floating,
+  },
+  image: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: radius.image,
+    borderCurve: 'continuous',
+  },
+  badge: { position: 'absolute', top: space[1.5], left: space[1.5] },
+  body: { flex: 1, justifyContent: 'center', gap: space[0.5], paddingRight: space[1] },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
+  shrink: { flexShrink: 1 },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: space[2],
+    marginTop: space[1],
+  },
+});

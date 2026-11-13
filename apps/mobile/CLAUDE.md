@@ -29,7 +29,7 @@ src/
   features/         Daten und Logik ohne Oberfläche, nach Bereich:
     offers/           api.ts (RPC-Aufrufe), queries.ts (TanStack-Query-Hooks),
                       feed-logic.ts (Filter, Abschnitte, Badges; mit Tests), filters-context.tsx
-    map/              map-html.ts (Karte als Webseite für die WebView; mit Tests)
+    map/              map-html.ts (Karte als Webseite für die WebView), map-logic.ts (Nadeln, Reihenfolge der Kacheln); mit Tests
     push/             push.ts (Berechtigung, Token, An-/Abmelden), use-push.ts (Hooks),
                       push-logic.ts (Deep-Link-Ziel, Profilzeile; mit Tests)
   components/ui/    Komponentenbibliothek: Text, Button, IconButton, Card, Chip, Badge, Input,
@@ -47,7 +47,7 @@ src/
 - **Supabase nur über `@/lib/supabase`.** Daten über die RPCs aus [docs/BACKEND.md](../../docs/BACKEND.md). Fehler immer über `toApiError`/`errorMessage` aus `@/lib/api-error` anzeigen (nutzt `parseRpcError`), nie `error.message` direkt.
 - **Daten laden mit TanStack Query.** RPC-Aufrufe stehen in `features/<bereich>/api.ts`, Screens nutzen nur die Hooks aus `queries.ts`. Jeder Screen zeigt Laden (Skeleton), Fehler und Leerzustand (`EmptyState`).
 - **Logik ohne React gehört nach `features/`** und bekommt Tests (`*.test.ts` daneben). Zeiten dabei immer über die Berlin-Helfer aus `@repo/shared`.
-- **Karte:** MapLibre GL JS in einer WebView (`features/map/map-html.ts`), Kacheln von OpenFreeMap. Die Quellenangabe muss sichtbar bleiben (`compact: false`).
+- **Karte:** MapLibre GL JS 5 in einer WebView (`features/map/map-html.ts`), Kacheln von OpenFreeMap. Die Quellenangabe ist eine feste Zeile in der Karte und muss sichtbar bleiben. Eine Nadel pro Adresse, keine Gruppen. Nur buchbare Angebote (freie Plätze) passend zu den Filtern. Tipp auf eine Nadel zeigt unten Kacheln (`components/map/MapOfferCarousel`), sortiert von West nach Ost; Wischen wechselt das Angebot, die Karte folgt.
 - **Secrets:** In `apps/mobile/.env` stehen nur `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und optional `EXPO_PUBLIC_MAP_STYLE_URL`. Nie den Secret Key. Werte nie in Antworten ausgeben.
 - **Expo Go muss laufen**, bis es Development Builds gibt (SPEC-APP, Annahme 1). Vor einer neuen Bibliothek prüfen, ob sie nativen Code braucht, der nicht in Expo Go steckt.
 - **React Compiler ist an.** Shared Values von Reanimated mit `.get()`/`.set()` statt `.value`. Kein `setState` direkt im Effekt-Körper (Daten in einer Funktion laden und im `.then` setzen, mit Abbruch-Flag).
