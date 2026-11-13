@@ -78,22 +78,28 @@ Typ-Kurzformen aus `@repo/shared`: `Tables<'offers'>`, `Enums<'voucher_status'>`
 | `standort`              | ein Login pro Standort (Website) | Sign-up mit `options.data.account_type = 'standort'`                              |
 | `admin`                 | Betreiber (Website)              | nur per SQL oder Seed: `update public.profiles set role = 'admin' where id = '…'` |
 
-Ein Trigger legt für jedes neue Auth-Konto ein Profil an. Er übernimmt `first_name`/`last_name` aus den Metadaten (auch `given_name`/`family_name`/`full_name` von Apple und Google). Über Metadaten lässt sich niemand zum Admin machen. Rollen werden bei jedem RPC-Aufruf frisch aus der Tabelle gelesen, nicht aus dem JWT, deshalb wirken Änderungen sofort.
+Ein Trigger legt für jedes neue Auth-Konto ein Profil an. Er übernimmt `first_name`/`last_name` aus den Metadaten (auch `given_name`/`family_name`/`full_name` von Apple und Google) sowie optional `username`, `age` und `interests`. Nutzerkonten der App benötigen einen eindeutigen Nutzernamen; ältere OAuth- und Standortkonten dürfen ihn noch nicht haben. Über Metadaten lässt sich niemand zum Admin machen. Rollen werden bei jedem RPC-Aufruf frisch aus der Tabelle gelesen, nicht aus dem JWT, deshalb wirken Änderungen sofort.
 
 ### Abläufe
 
-**Nutzer (App), E-Mail-OTP:**
+**Nutzer (App), E-Mail und Passwort:**
 
 ```ts
-await supabase.auth.signInWithOtp({ email }); // Code per E-Mail
-await supabase.auth.verifyOtp({ email, token, type: 'email' });
+await supabase.auth.signUp({
+  email,
+  password,
+  options: { data: { username, age, interests }, emailRedirectTo },
+});
+await supabase.auth.signInWithPassword({ email, password });
 const { data: account } = await supabase.rpc('get_my_account');
 if (!account.profile_complete) {
   await supabase.rpc('update_my_profile', { p_first_name, p_last_name });
 }
 ```
 
-Apple und Google laufen über `signInWithIdToken` bzw. OAuth. Vor- und Nachname kommen beim ersten Login aus den Metadaten. Fehlen sie, fragt die App danach (`profile_complete = false`). Ohne vollständiges Profil liefert `claim_voucher` den Fehler `PROFIL_UNVOLLSTAENDIG`.
+`username` ist erforderlich (3–20 Kleinbuchstaben, Zahlen oder Unterstriche), `age` und `interests` sind optional. `interests` sind Werte aus `offer_category` und werden als `favorite_categories` gespeichert. `is_username_available(p_username)` prüft den Namen vorab; ein eindeutiger Index entscheidet bei parallelen Registrierungen. Das Bestätigen der Registrierungs-E-Mail setzt die App-Session über `auth/callback`. Vor- und Nachname können später ergänzt werden und sind erst für `claim_voucher` erforderlich (`PROFIL_UNVOLLSTAENDIG`).
+
+Google und Apple laufen weiterhin über OAuth bzw. `signInWithIdToken`. Für diese Konten sind Nutzername und Alter optional, sofern sie nicht über die E-Mail/Passwort-Registrierung angelegt werden.
 
 **Standort (Website), zweistufig:**
 
@@ -110,18 +116,18 @@ Mit `get_my_account()` entscheidet die Website, was sie anzeigt: `role`, `locati
 
 Diese Einstellungen sind Projekt-Konfiguration, kein Schema. Sie werden im Dashboard unter **Authentication** gesetzt und gehören zur jeweiligen Session.
 
-| Einstellung                 | Wert                                                                                                                                       | Zuständig                |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| Sign In / Providers → Email | aktiviert, „Confirm email“ an                                                                                                              | erledigt (Standard)      |
-| Email-OTP statt Magic Link  | Vorlage „Magic Link“ muss `{{ .Token }}` enthalten (6-stelliger Code)                                                                      | App-Session              |
-| Eigenes SMTP                | **nötig**, sonst lassen sich Vorlagen im Free-Plan nicht anpassen und es gibt nur sehr wenige E-Mails pro Stunde (z. B. Brevo oder Resend) | vor dem App-Test mit OTP |
-| Apple, Google               | Client-IDs und Secrets eintragen                                                                                                           | App-Session              |
-| URL Configuration           | Site URL der Website, Redirect-URLs: `http://localhost:3000/**`, später Live-Domain, App-Schema (z. B. `unfairweekend://**`)               | Web- bzw. App-Session    |
-| Passwort                    | min. 8 Zeichen (gleich wie `passwordSchema`)                                                                                               | Web-Session              |
+| Einstellung                 | Wert                                                                                                                            | Zuständig                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Sign In / Providers → Email | aktiviert, „Confirm email“ an                                                                                                   | erledigt (Standard)                  |
+| E-Mail-Bestätigung          | Bestätigungsvorlage verwendet `{{ .ConfirmationURL }}` und Redirect-URLs enthalten das App-Schema                               | App-Session                          |
+| Eigenes SMTP                | **nötig** für Registrierungsbestätigungen an beliebige Adressen; Standard-SMTP ist für Tests begrenzt (z. B. Brevo oder Resend) | vor öffentlichen App-Registrierungen |
+| Apple, Google               | Client-IDs und Secrets eintragen                                                                                                | App-Session                          |
+| URL Configuration           | Site URL der Website, Redirect-URLs: `http://localhost:3000/**`, später Live-Domain, App-Schema (z. B. `unfairweekend://**`)    | Web- bzw. App-Session                |
+| Passwort                    | min. 8 Zeichen, max. 72 Zeichen (gleich wie `passwordSchema`)                                                                   | App und Web                          |
 
 ### Testkonten mit Passwort in der App
 
-Die Seed-Nutzer haben ein Passwort, weil OTP-Mails an `example.com` nicht ankommen. In der App geht das nur über einen Dev-Login (`signInWithPassword`). Ob es den gibt, entscheidet die App-Session.
+Die Seed-Nutzer haben ein Passwort, weil E-Mails an `example.com` nicht ankommen. In Entwicklungs-Builds gibt es zusätzlich einen Dev-Login mit `signInWithPassword`.
 
 ## 4. Tabellen
 
@@ -129,7 +135,7 @@ Alle Tabellen liegen in `public`, alle mit RLS. „Schreiben“ heißt immer: ü
 
 | Tabelle               | Inhalt                                | Wichtige Spalten                                                                                                                                                                                                                                                                                                   | Schreiben über                                                                  |
 | --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `profiles`            | ein Profil pro Auth-Konto             | `role`, `first_name`, `last_name`, `no_show_count`, `blocked_until`                                                                                                                                                                                                                                                | Trigger, `update_my_profile`, `mark_no_show`                                    |
+| `profiles`            | ein Profil pro Auth-Konto             | `role`, `username` (optional bei Alt-/OAuth-Konten), `age` (optional), `first_name`, `last_name`, `no_show_count`, `blocked_until`                                                                                                                                                                                 | Trigger, `update_my_profile`, `mark_no_show`                                    |
 | `companies`           | Unternehmen                           | `name`, `description`, `logo_path`                                                                                                                                                                                                                                                                                 | `register_company`, `update_my_company`, `approve_location`                     |
 | `locations`           | Standort, 1 Login (`account_user_id`) | `company_id`, `name`, `street`, `postal_code`, `city`, `lat`/`lng` (optional), `phone`, `website`, `status`, `status_reason`                                                                                                                                                                                       | `register_company`, `update_my_location`, `approve_location`, `reject_location` |
 | `settings`            | genau eine Zeile                      | `min_discount_percent` (20), `cancel_deadline_hours` (3), `no_show_limit` (2), `block_days` (30), `reminder_hours_before` (2)                                                                                                                                                                                      | `update_settings`                                                               |
@@ -239,7 +245,8 @@ Rückgabe pro Zeile: `location_id, review_count, average_rating` (eine Nachkomma
 
 | RPC                     | Parameter                                                                                    | Rückgabe                                                                                                                                                                                                                                                                                                                                               | Fehlercodes                                                                                                                                                                                                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_my_account()`      | –                                                                                            | jsonb: `user_id, role, first_name, last_name, profile_complete, no_show_count, blocked_until, is_blocked, location` (`{id, name, status, status_reason, company_id, company_name}` oder null)                                                                                                                                                          | `KEIN_PROFIL`                                                                                                                                                                                                                    |
+| `get_my_account()`      | –                                                                                            | jsonb: `user_id, role, first_name, last_name, username, age, interests, profile_complete, no_show_count, blocked_until, is_blocked, location` (`{id, name, status, status_reason, company_id, company_name}` oder null)                                                                                                                                | `KEIN_PROFIL`                                                                                                                                                                                                                    |
+| `is_username_available` | `p_username`                                                                                 | boolean: frei und im gültigen Format                                                                                                                                                                                                                                                                                                                   | –                                                                                                                                                                                                                                |
 | `update_my_profile`     | `p_first_name, p_last_name` (je 1–50 Zeichen, getrimmt)                                      | `profiles`                                                                                                                                                                                                                                                                                                                                             | `UNGUELTIGE_EINGABE`                                                                                                                                                                                                             |
 | `claim_voucher`         | `p_offer_id, p_seats = 1`                                                                    | 1 Zeile: `id, offer_id, seats, token, short_code, status, claimed_at`                                                                                                                                                                                                                                                                                  | `NUR_NUTZER`, `PROFIL_UNVOLLSTAENDIG`, `GESPERRT`, `UNGUELTIGE_PLATZANZAHL`, `ANGEBOT_NICHT_GEFUNDEN`, `ANGEBOT_NICHT_AKTIV`, `ANGEBOT_BEGONNEN`, `ANGEBOT_ABGELAUFEN`, `ZU_VIELE_PLAETZE`, `BEREITS_AKTIVER_CODE`, `AUSGEBUCHT` |
 | `cancel_voucher`        | `p_voucher_id`                                                                               | 1 Zeile: `id, offer_id, seats, status, cancelled_at`                                                                                                                                                                                                                                                                                                   | `CODE_NICHT_GEFUNDEN`, `CODE_NICHT_AKTIV`, `FRIST_ABGELAUFEN`, `ANGEBOT_ABGELAUFEN`                                                                                                                                              |
@@ -277,6 +284,8 @@ Rückgabe pro Zeile: `location_id, review_count, average_rating` (eine Nachkomma
 | `get_my_review_summary`  | –                                                                                                                                                                                    | 1 Zeile: `review_count, average_rating` (null ohne Bewertung), `rating_1` … `rating_5`, `hidden_count`, `last_30_days`                      | `KEIN_STANDORTKONTO`                                                                                                                                                                                   |
 
 **Eigene Angebote und Codes lesen:** direkt, z. B. `supabase.from('offers').select('*').order('starts_at')` und `supabase.from('vouchers').select('*').eq('offer_id', id)`. RLS zeigt nur den eigenen Standort. Freie Plätze = `capacity − seats_taken`.
+
+**Bewertungen des eigenen Standorts:** `reviews` ist per RLS lesbar, die Namen der Verfasser aber nicht. `list_my_reviews` liefert Liste, Anzeigename und Angebot; `get_my_review_summary` die Übersicht. Ausgeblendete Bewertungen erscheinen mit `is_hidden = true`, zählen aber nicht in Durchschnitt oder Verteilung. Antworten auf Bewertungen gibt es noch nicht.
 
 **Regeln für Angebote:**
 
