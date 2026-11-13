@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { CloudOff, LocateFixed } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,7 +35,12 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
-import { quickPosition, type Coordinates } from '@/lib/location';
+import {
+  peekPosition,
+  quickPosition,
+  watchPositionWhileOpen,
+  type Coordinates,
+} from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -162,29 +168,44 @@ export function MapScreen() {
   // für Karte und „Entdecken“ gemeinsam, der Feed springt also mit.
   // Sofort springen (gemerkte oder letzte bekannte Position), die genaue Ortung setzt den
   // Punkt danach nur noch nach, ohne die Karte erneut zu bewegen.
-  const showMyLocation = async () => {
-    if (locating) return;
-    void Haptics.selectionAsync();
-    setLocating(true);
-    const result = await quickPosition();
-    setLocating(false);
-    if (result.status !== 'ok') {
-      setNotice(result.status);
-      noticeSheet.current?.present();
-      return;
-    }
-    const { lat, lng } = result.coords;
-    const nextCity = nearestCityId(result.coords);
-    if (nextCity !== cityId) {
+  // Solange die Karte sichtbar ist, die Position im Hintergrund frisch halten. Dann springt
+  // der Knopf sofort, statt erst auf die Ortung zu warten.
+  useFocusEffect(useCallback(() => watchPositionWhileOpen(), []));
+
+  const jumpToUser = (coords: Coordinates, move = true) => {
+    const nextCity = nearestCityId(coords);
+    if (move && nextCity !== cityId) {
       // Die Karte springt im Effekt oben direkt zum Standort (nicht erst zur Stadtmitte).
-      pendingUser.current = result.coords;
+      pendingUser.current = coords;
       setSelectedId(null);
       setCityId(nextCity);
     } else {
-      webview.current?.injectJavaScript(showUserScript(lat, lng));
+      webview.current?.injectJavaScript(showUserScript(coords.lat, coords.lng, move));
     }
+  };
+
+  const showMyLocation = async () => {
+    if (locating) return;
+    void Haptics.selectionAsync();
+
+    // Schnellster Weg: Position ist schon bekannt, sofort springen.
+    const known = peekPosition();
+    if (known) jumpToUser(known);
+
+    // Sonst (oder zum Nachschärfen) orten; bis dahin dreht sich das Symbol im Knopf.
+    setLocating(!known);
+    const result = await quickPosition();
+    setLocating(false);
+    if (result.status !== 'ok') {
+      if (!known) {
+        setNotice(result.status);
+        noticeSheet.current?.present();
+      }
+      return;
+    }
+    if (!known) jumpToUser(result.coords);
     void result.refined?.then((coords) => {
-      if (coords) webview.current?.injectJavaScript(showUserScript(coords.lat, coords.lng, false));
+      if (coords) jumpToUser(coords, false);
     });
   };
 
@@ -288,7 +309,7 @@ export function MapScreen() {
             <IconButton
               icon={LocateFixed}
               accessibilityLabel="Meinen Standort anzeigen"
-              active={locating}
+              loading={locating}
               onPress={() => void showMyLocation()}
               style={styles.locate}
             />

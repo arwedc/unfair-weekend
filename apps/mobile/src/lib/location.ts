@@ -59,6 +59,47 @@ export async function quickPosition(): Promise<
   }
 }
 
+/**
+ * Gemerkte Position sofort (ohne Warten), falls es eine aus dieser Sitzung gibt.
+ * Für den Standort-Knopf: Die Karte springt damit im selben Moment, in dem man tippt.
+ */
+export function peekPosition(): Coordinates | null {
+  return remembered && Date.now() - remembered.at < QUICK_MAX_AGE_MS ? remembered.coords : null;
+}
+
+/**
+ * Hält die Position frisch, solange z. B. die Karte offen ist. Fragt nie nach der Erlaubnis:
+ * Ist sie (noch) nicht erteilt, passiert nichts. Gibt eine Funktion zum Beenden zurück.
+ */
+export function watchPositionWhileOpen(): () => void {
+  let stopped = false;
+  let subscription: Location.LocationSubscription | null = null;
+
+  void (async () => {
+    try {
+      if (!(await Location.getForegroundPermissionsAsync()).granted || stopped) return;
+      // Letzte bekannte Position sofort merken, dann laufend aktualisieren.
+      const last = await Location.getLastKnownPositionAsync({ maxAge: QUICK_MAX_AGE_MS });
+      if (last && !stopped) remember(last);
+      const sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 50 },
+        (position) => {
+          remember(position);
+        },
+      );
+      if (stopped) sub.remove();
+      else subscription = sub;
+    } catch {
+      // Ohne Vorab-Ortung holt der Knopf die Position eben beim Tippen.
+    }
+  })();
+
+  return () => {
+    stopped = true;
+    subscription?.remove();
+  };
+}
+
 /** Standort ohne Nachlieferung, z. B. für die Stadtwahl beim App-Start. */
 export async function currentPosition(): Promise<PositionResult> {
   const result = await quickPosition();
