@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { emailSchema } from '@repo/shared';
+import { accountHome, type AccountRouting } from '@/lib/account-home';
 import { getT } from '@/lib/i18n/locale';
 import { NEXT_PARAM, safeNext } from '@/lib/safe-redirect';
 import { createClient } from '@/lib/supabase/server';
@@ -31,17 +32,18 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   }
 
   const { data: accountData, error: accountError } = await supabase.rpc('get_my_account');
-  const account = accountData as unknown as { role?: string; location?: unknown } | null;
-
-  if (!accountError && account?.role === 'admin') redirect('/admin/zahlungen');
+  const account = accountError ? null : (accountData as unknown as AccountRouting | null);
+  const home = accountHome(account);
 
   // Die Website ist für Standorte und Admins. Nutzerkonten werden wieder abgemeldet.
-  if (accountError || account?.role !== 'standort' || !account.location) {
+  if (!home) {
     await supabase.auth.signOut();
     return { error: t.common.login.noLocation, email };
   }
 
-  redirect(safeNext(formData.get(NEXT_PARAM)) ?? '/angebote');
+  // Rücksprung (z. B. gescannter QR-Link) nur für freigeschaltete Standorte.
+  if (home === '/angebote') redirect(safeNext(formData.get(NEXT_PARAM)) ?? home);
+  redirect(home);
 }
 
 export async function logout(): Promise<void> {
