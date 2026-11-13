@@ -3,8 +3,8 @@ import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FilterBar } from '@/components/offers/FilterBar';
-import { OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
-import { EmptyState, SectionHeader, Text } from '@/components/ui';
+import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
+import { Appear, EmptyState, SectionHeader, Text } from '@/components/ui';
 import { buildSections, filterOffers, hasActiveFilters } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
@@ -22,9 +22,13 @@ function Carousel({ title, offers }: { title: string; offers: FeedOffer[] }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.carousel}
         decelerationRate="fast"
+        snapToInterval={COMPACT_CARD_WIDTH + space[3]}
+        snapToAlignment="start"
       >
-        {offers.map((offer) => (
-          <OfferCard key={offer.id} offer={offer} variant="compact" />
+        {offers.map((offer, index) => (
+          <Appear key={offer.id} index={index}>
+            <OfferCard offer={offer} variant="compact" />
+          </Appear>
         ))}
       </ScrollView>
     </View>
@@ -119,7 +123,9 @@ export function FeedScreen() {
       data={isPending ? [] : visible}
       keyExtractor={(offer) => offer.id}
       renderItem={({ item, index }) => (
-        <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} style={styles.inset} />
+        <Appear index={index} style={styles.inset}>
+          <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
+        </Appear>
       )}
       ListHeaderComponent={header}
       ListEmptyComponent={empty ?? undefined}
