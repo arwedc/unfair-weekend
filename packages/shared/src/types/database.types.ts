@@ -369,7 +369,7 @@ export type Database = {
           description: string;
           ends_at: string;
           id?: string;
-          image_paths: string[];
+          image_paths?: string[];
           lat: number;
           lng: number;
           location_id: string;

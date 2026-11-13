@@ -90,8 +90,8 @@ describe('offerInputSchema', () => {
     ).toContain('ends_at');
   });
 
-  it('verlangt 1 bis 5 Bilder', () => {
-    expect(offerInputSchema.safeParse({ ...validOffer, image_paths: [] }).success).toBe(false);
+  it('erlaubt 0 bis 5 Bilder', () => {
+    expect(offerInputSchema.safeParse({ ...validOffer, image_paths: [] }).success).toBe(true);
     expect(
       offerInputSchema.safeParse({ ...validOffer, image_paths: Array(6).fill('x.jpg') }).success,
     ).toBe(false);
