@@ -162,9 +162,6 @@ export const BUDGET_PRICE_CENTS = 1500;
 /** Themen-Abschnitte erscheinen erst ab so vielen Angeboten, damit der Feed nicht zerfasert. */
 const THEME_MIN_OFFERS = 2;
 
-/** Kategorien mit eigenem Abschnitt. „Sonstiges“ steht nur in der Liste „Alle Angebote“. */
-type SectionCategory = Exclude<OfferCategory, 'sonstiges'>;
-
 interface SectionDraft {
   section: FeedSection;
   minOffers: number;
@@ -190,10 +187,14 @@ export function buildSections(
     section: { key, title, offers: items },
     minOffers: THEME_MIN_OFFERS,
   });
-  const category = (value: SectionCategory): SectionDraft => ({
+  // Jede Kategorie hat eine Reihe, so taucht jedes holbare Angebot mindestens einmal auf.
+  const category = (
+    value: OfferCategory,
+    title: string = OFFER_CATEGORY_LABELS[value],
+  ): SectionDraft => ({
     section: {
       key: `kategorie-${value}`,
-      title: OFFER_CATEGORY_LABELS[value],
+      title,
       offers: available.filter((offer) => offer.category === value),
       category: value,
     },
@@ -267,6 +268,7 @@ export function buildSections(
       'Einlösen, wann du willst',
       available.filter((offer) => offer.type === 'zeitraum'),
     ),
+    category('sonstiges', 'Noch mehr entdecken'),
   ];
 
   return drafts
