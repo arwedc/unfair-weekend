@@ -33,6 +33,11 @@ export const env = {
    */
   stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || null,
   /**
+   * Adresse der Partner-Website, ohne Slash am Ende. Der QR-Code enthält dann einen Link
+   * auf deren Einlöse-Seite. Leer = der QR-Code enthält nur den Token.
+   */
+  webUrl: (process.env.EXPO_PUBLIC_WEB_URL ?? '').trim().replace(/\/+$/, '') || null,
+  /**
    * E-Mail/Passwort ist immer verfügbar. Diese Schalter aktivieren optionale E-Mail-OTP-
    * oder OAuth-Methoden, sobald sie im Supabase-Projekt eingerichtet sind.
    */

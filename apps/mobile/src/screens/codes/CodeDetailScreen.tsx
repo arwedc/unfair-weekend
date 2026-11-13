@@ -37,10 +37,12 @@ import {
   cancelHint,
   pastSummary,
   seatsText,
+  voucherQrValue,
   voucherStatusInfo,
   voucherWhenText,
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { env } from '@/lib/env';
 import { useT } from '@/lib/i18n/context';
 import { openInMaps } from '@/lib/open-external';
 import { colors, layout, radius, shadow, soft, space, textStyle } from '@/theme';
@@ -205,7 +207,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
               style={styles.qr}
             >
               <QRCode
-                value={voucher.token}
+                value={voucherQrValue(voucher.token, env.webUrl)}
                 size={QR_SIZE}
                 color={colors.text.primary}
                 backgroundColor={colors.surface.default}

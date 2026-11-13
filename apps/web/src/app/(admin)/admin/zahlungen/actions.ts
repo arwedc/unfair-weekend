@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { PAYMENT_RULES, paymentSettingsSchema, parseRpcError, percentToBps } from '@repo/shared';
 import { requirePaymentAdmin } from '@/lib/zahlungen/auth';
+import { getT } from '@/lib/i18n/locale';
 
 export interface PaymentSettingsActionState {
   error?: string;
@@ -18,6 +19,8 @@ export async function savePaymentSettingsAction(
   _previous: PaymentSettingsActionState,
   formData: FormData,
 ): Promise<PaymentSettingsActionState> {
+  const { locale, t } = await getT();
+  const a = t.admin;
   const supabase = await requirePaymentAdmin();
   const paymentsEnabled = formData.get('payments_enabled') === 'on';
   const confirmEnable = formData.get('confirm_enable') === 'on';
@@ -32,20 +35,19 @@ export async function savePaymentSettingsAction(
   if (commissionBps === null) {
     return {
       values,
-      error: `Bitte eine Provision zwischen 0 und ${PAYMENT_RULES.maxCommissionBps / 100} % eingeben.`,
+      error: a.invalidCommission(PAYMENT_RULES.maxCommissionBps / 100),
     };
   }
   const parsed = paymentSettingsSchema.safeParse({
     payments_enabled: paymentsEnabled,
     commission_bps: commissionBps,
   });
-  if (!parsed.success)
-    return { values, error: parsed.error.issues[0]?.message ?? 'Eingabe ungültig.' };
+  if (!parsed.success) return { values, error: a.invalidInput };
 
   if (paymentsEnabled && !confirmEnable) {
     return {
       values,
-      error: 'Bitte bestätige zuerst, dass die Aktivierung mit Ben und @arwedc abgestimmt ist.',
+      error: a.confirmRequired,
     };
   }
 
@@ -54,7 +56,7 @@ export async function savePaymentSettingsAction(
     p_commission_bps: parsed.data.commission_bps,
   });
   if (error || !data?.[0]) {
-    return { values, error: parseRpcError(error)?.message ?? 'Speichern hat nicht geklappt.' };
+    return { values, error: parseRpcError(error, locale)?.message ?? a.saveFailed };
   }
 
   revalidatePath('/admin/zahlungen');

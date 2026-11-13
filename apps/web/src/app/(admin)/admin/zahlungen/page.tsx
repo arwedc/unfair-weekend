@@ -1,14 +1,16 @@
-import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { AdminDashboard } from '@/components/zahlungen/admin-dashboard';
+import { getT } from '@/lib/i18n/locale';
 
-export const metadata: Metadata = { title: 'Zahlungen verwalten' };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t.admin.title };
+}
 
-export default function AdminPaymentsPage() {
+export default async function AdminPaymentsPage() {
+  const { t } = await getT();
   return (
-    <Suspense
-      fallback={<p className="text-callout text-text-tertiary">Zahlungsübersicht wird geladen …</p>}
-    >
+    <Suspense fallback={<p className="text-callout text-text-tertiary">{t.common.loading}</p>}>
       <AdminDashboard />
     </Suspense>
   );
