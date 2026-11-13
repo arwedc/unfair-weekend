@@ -58,7 +58,7 @@ describe('CSS-Variablen', () => {
     expect(vars['--radius-card']).toBe('16px');
     expect(vars['--text-title1']).toBe('32px');
     expect(vars['--text-title1--line-height']).toBe('38px');
-    expect(vars['--color-glut-500']).toBe('#FF5A1F');
+    expect(vars['--color-glut-500']).toBe('#D9733A');
     expect(vars['--font-sans']).toContain('Inter');
   });
 
