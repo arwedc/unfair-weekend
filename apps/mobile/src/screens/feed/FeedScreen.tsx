@@ -7,7 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryCircles } from '@/components/feed/CategoryCircles';
 import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
-import { Appear, EmptyState, IconButton, Input, SectionHeader, Text } from '@/components/ui';
+import {
+  Appear,
+  EmptyState,
+  GlassSurface,
+  IconButton,
+  Input,
+  SectionHeader,
+  Text,
+} from '@/components/ui';
 import { getCity, offersInCity } from '@/features/offers/cities';
 import {
   buildSections,
@@ -24,7 +32,7 @@ import type { FeedOffer } from '@/features/offers/types';
 import { useLocationRatings } from '@/features/reviews/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
-import { colors, layout, radii, shadow, space } from '@/theme';
+import { colors, layout, radii, space } from '@/theme';
 
 function Carousel({
   section,
@@ -153,33 +161,37 @@ export function FeedScreen() {
     >
       <View style={styles.titleRow} pointerEvents="box-none">
         <CityMenu style={styles.cityMenu}>
-          <View
-            style={[styles.glass, styles.cityButton]}
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={m.cityAria(city.name)}
-            accessibilityHint={m.cityHint}
-          >
-            <MapPin size={18} strokeWidth={2.5} color={colors.accent.strong} />
-            <Text variant="headline" numberOfLines={1} style={styles.cityName}>
-              {city.name}
-            </Text>
-            <View style={styles.chevron}>
-              <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.strong} />
+          <GlassSurface style={styles.cityTile}>
+            <View
+              style={styles.cityButton}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={m.cityAria(city.name)}
+              accessibilityHint={m.cityHint}
+            >
+              <MapPin size={18} strokeWidth={2.5} color={colors.accent.strong} />
+              <Text variant="headline" numberOfLines={1} style={styles.cityName}>
+                {city.name}
+              </Text>
+              <View style={styles.chevron}>
+                <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.strong} />
+              </View>
             </View>
-          </View>
+          </GlassSurface>
         </CityMenu>
-        <IconButton
-          variant="plain"
-          icon={showSearch ? X : Search}
-          accessibilityLabel={showSearch ? m.closeSearch : m.search}
-          onPress={toggleSearch}
-          style={[styles.glass, styles.searchButton]}
-        />
+        <GlassSurface style={styles.searchButton}>
+          <IconButton
+            variant="plain"
+            icon={showSearch ? X : Search}
+            accessibilityLabel={showSearch ? m.closeSearch : m.search}
+            onPress={toggleSearch}
+            style={styles.searchButton}
+          />
+        </GlassSurface>
       </View>
 
       {showSearch ? (
-        <View style={[styles.glass, styles.searchField]}>
+        <GlassSurface style={styles.searchField}>
           <Input
             shape="pill"
             icon={Search}
@@ -192,7 +204,7 @@ export function FeedScreen() {
             autoFocus={searchOpen}
             clearButtonMode="while-editing"
           />
-        </View>
+        </GlassSurface>
       ) : null}
     </View>
   );
@@ -313,14 +325,8 @@ const styles = StyleSheet.create({
     paddingBottom: space[2],
   },
   // Leicht durchsichtige Kachel, wie die Tab-Leiste unten.
-  glass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(10, 10, 10, 0.08)',
-    borderRadius: radii.full,
-    borderCurve: 'continuous',
-    boxShadow: shadow.card,
-  },
+  // Glas wie die Tab-Leiste kommt aus GlassSurface; hier nur Größe und Platz.
+  cityTile: { alignSelf: 'flex-start' },
   searchButton: { width: 48, height: 48 },
   searchField: { padding: space[1] },
   titleRow: {

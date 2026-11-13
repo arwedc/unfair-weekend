@@ -6,6 +6,7 @@ export { Card, type CardProps } from './Card';
 export { Chip, type ChipProps } from './Chip';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { HighlightTitle, type HighlightTitleProps } from './HighlightTitle';
+export { GlassSurface, type GlassSurfaceProps } from './GlassSurface';
 export { IconButton, type IconButtonProps } from './IconButton';
 export { Input, type InputProps } from './Input';
 export { ListRow, type ListRowProps } from './ListRow';
