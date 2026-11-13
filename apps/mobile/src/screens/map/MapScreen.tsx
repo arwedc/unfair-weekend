@@ -20,9 +20,11 @@ import {
 import {
   buildMapHtml,
   parseMapMessage,
+  setCenterScript,
   setPlacesScript,
   showUserScript,
 } from '@/features/map/map-html';
+import { getCity, offersInCity } from '@/features/offers/cities';
 import { filterOffers, groupByPlace, type OfferPlace } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
@@ -55,7 +57,7 @@ export function MapScreen() {
   const previewSheet = useRef<SheetRef>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
-  const { filters, resetFilters } = useOfferFilters();
+  const { filters, resetFilters, cityId } = useOfferFilters();
   const { data, error, refetch } = useOffers();
 
   const [mapReady, setMapReady] = useState(false);
@@ -65,7 +67,9 @@ export function MapScreen() {
   const [locating, setLocating] = useState(false);
   const [notice, setNotice] = useState<LocationNotice>(null);
 
-  const visible = filterOffers(data ?? [], filters);
+  const city = getCity(cityId);
+  const cityOffers = offersInCity(data ?? [], cityId);
+  const visible = filterOffers(cityOffers, filters);
   const places = groupByPlace(visible);
   const placesScript = setPlacesScript(places);
 
@@ -73,6 +77,12 @@ export function MapScreen() {
   useEffect(() => {
     if (mapReady) webview.current?.injectJavaScript(placesScript);
   }, [mapReady, placesScript]);
+
+  // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel).
+  const centerScript = setCenterScript(city.center.lat, city.center.lng);
+  useEffect(() => {
+    if (mapReady) webview.current?.injectJavaScript(centerScript);
+  }, [mapReady, centerScript]);
 
   const handleMessage = (raw: string) => {
     const message = parseMapMessage(raw);
@@ -164,7 +174,7 @@ export function MapScreen() {
           bounces={false}
           overScrollMode="never"
           setSupportMultipleWindows={false}
-          accessibilityLabel="Karte von Münster mit Angeboten"
+          accessibilityLabel={`Karte von ${city.name} mit Angeboten`}
         />
       )}
 
@@ -175,7 +185,7 @@ export function MapScreen() {
       ) : null}
 
       <View style={[styles.top, { paddingTop: insets.top + space[2] }]} pointerEvents="box-none">
-        <FilterBar showSearch={false} />
+        <FilterBar showCity />
         {error ? (
           <View style={styles.banner}>
             <Text variant="footnote" color="secondary">
@@ -187,9 +197,11 @@ export function MapScreen() {
             <Text variant="footnote" color="secondary">
               {hiddenWithoutPin
                 ? 'Für diese Angebote fehlt noch die genaue Adresse. Du findest sie unter „Entdecken“.'
-                : 'Für diese Auswahl gibt es gerade kein Angebot.'}
+                : cityOffers.length === 0
+                  ? `In ${city.name} gibt es gerade noch keine Angebote.`
+                  : 'Für diese Auswahl gibt es gerade kein Angebot.'}
             </Text>
-            {offerCount === 0 ? (
+            {offerCount === 0 && cityOffers.length > 0 ? (
               <Text
                 variant="footnote"
                 color="accent"

@@ -6,6 +6,7 @@ import {
   filterOffers,
   groupByPlace,
   hasActiveFilters,
+  isListMode,
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
@@ -146,6 +147,13 @@ describe('filterOffers', () => {
 });
 
 describe('buildSections', () => {
+  const titles = (offers: FeedOffer[]) =>
+    buildSections(offers, { cityName: 'Münster', now: NOW }).map((section) => section.title);
+  const ids = (offers: FeedOffer[], key: string) =>
+    buildSections(offers, { cityName: 'Münster', now: NOW })
+      .find((section) => section.key === key)
+      ?.offers.map((o) => o.id);
+
   it('teilt in heute, startet bald und neu dabei', () => {
     const offers = [
       offer({ id: 'heute', starts_at: at(0, '19:00'), createdAt: '2026-11-08T10:00:00Z' }),
@@ -155,10 +163,53 @@ describe('buildSections', () => {
       offer({ id: 'in-4', starts_at: at(4) }),
       offer({ id: 'zeitraum', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
     ];
-    const sections = buildSections(offers, NOW);
-    expect(sections.today.map((o) => o.id)).toEqual(['heute', 'zeitraum']);
-    expect(sections.startingSoon.map((o) => o.id)).toEqual(['morgen', 'in-3']);
-    expect(sections.newest.map((o) => o.id)).toEqual(['morgen', 'heute']);
+    expect(ids(offers, 'heute')).toEqual(['heute', 'zeitraum']);
+    expect(ids(offers, 'bald')).toEqual(['morgen', 'in-3']);
+    expect(ids(offers, 'neu')).toEqual(['morgen', 'heute']);
+  });
+
+  it('nennt die Stadt im Abschnitt für heute', () => {
+    expect(titles([offer({ starts_at: at(0, '19:00') })])[0]).toBe('Heute in Münster');
+  });
+
+  it('macht aus Kategorien eigene Abschnitte, ohne ausgebuchte und ohne „Sonstiges“', () => {
+    const offers = [
+      offer({ id: 'pasta', category: 'kochen_essen' }),
+      offer({ id: 'yoga', category: 'sport_bewegung' }),
+      offer({ id: 'yoga-voll', category: 'sport_bewegung', free_seats: 0 }),
+      offer({ id: 'rad', category: 'sonstiges' }),
+    ];
+    const sections = buildSections(offers, { cityName: 'Münster', now: NOW });
+    const categories = sections.filter((section) => section.category);
+    expect(categories.map((s) => [s.category, s.title, s.offers.map((o) => o.id)])).toEqual([
+      ['kochen_essen', 'Kochen & Essen', ['pasta']],
+      ['sport_bewegung', 'Sport & Bewegung', ['yoga']],
+    ]);
+  });
+
+  it('zeigt Themen erst ab zwei Angeboten', () => {
+    const halb = offer({ id: 'halb', discount_percent: 50 });
+    expect(ids([halb], 'halber-preis')).toBeUndefined();
+    const halb2 = offer({ id: 'halb2', discount_percent: 66 });
+    expect(ids([halb, halb2], 'halber-preis')).toEqual(['halb2', 'halb']);
+  });
+
+  it('findet Feierabend-Termine, kleine Preise und flexible Zeiträume', () => {
+    const offers = [
+      offer({ id: 'abend', starts_at: at(1, '18:00'), deal_price_cents: 900 }),
+      offer({ id: 'spaet', starts_at: at(2, '19:30'), deal_price_cents: 2900 }),
+      offer({ id: 'mittag', starts_at: at(2, '12:00'), deal_price_cents: 500 }),
+      offer({ id: 'flex1', type: 'zeitraum', starts_at: at(-1), ends_at: at(6) }),
+      offer({ id: 'flex2', type: 'zeitraum', starts_at: at(0), ends_at: at(9) }),
+    ];
+    expect(ids(offers, 'feierabend')).toEqual(['abend', 'spaet']);
+    expect(ids(offers, 'budget')).toEqual(['mittag', 'abend']);
+    expect(titles(offers)).toContain('Bis 15\u00a0€');
+    expect(ids(offers, 'flexibel')).toEqual(['flex1', 'flex2']);
+  });
+
+  it('lässt leere Abschnitte weg', () => {
+    expect(buildSections([], { cityName: 'Vilnius', now: NOW })).toEqual([]);
   });
 
   it('begrenzt jeden Abschnitt auf 8 Angebote', () => {
@@ -169,9 +220,20 @@ describe('buildSections', () => {
         createdAt: `2026-11-0${(i % 9) + 1}T10:00:00Z`,
       }),
     );
-    const sections = buildSections(many, NOW);
-    expect(sections.today).toHaveLength(8);
-    expect(sections.newest).toHaveLength(8);
+    const sections = buildSections(many, { cityName: 'Münster', now: NOW });
+    expect(sections.every((section) => section.offers.length <= 8)).toBe(true);
+    expect(ids(many, 'heute')).toHaveLength(8);
+    expect(ids(many, 'neu')).toHaveLength(8);
+  });
+});
+
+describe('isListMode', () => {
+  it('zeigt eine Liste bei Kategorie oder Suche, nicht beim Zeitfilter', () => {
+    expect(isListMode(EMPTY_FILTERS)).toBe(false);
+    expect(isListMode({ ...EMPTY_FILTERS, time: 'heute' })).toBe(false);
+    expect(isListMode({ ...EMPTY_FILTERS, category: 'kochen_essen' })).toBe(true);
+    expect(isListMode({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
+    expect(isListMode({ ...EMPTY_FILTERS, query: '   ' })).toBe(false);
   });
 });
 
