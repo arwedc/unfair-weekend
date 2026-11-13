@@ -17,6 +17,12 @@ import { MAP_TILE_HEIGHT, MapOfferTile } from './MapOfferTile';
 /** So weit ragen die Nachbarkacheln links und rechts ins Bild (zeigt: hier kann man wischen). */
 const SIDE = space[6];
 const GAP = space[2];
+/**
+ * Luft über und unter der Kachel: Platz für ihren Schatten und Abstand zum Standort-Knopf darüber.
+ * Als Innenabstand der Liste, denn die Liste füllt die ganze Höhe und würde die Kachel sonst
+ * oben anlegen.
+ */
+const AIR = space[3];
 
 export interface MapOfferCarouselProps {
   offers: readonly Offer[];
@@ -100,7 +106,7 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
           offset: interval * position,
           index: position,
         })}
-        contentContainerStyle={{ paddingHorizontal: SIDE }}
+        contentContainerStyle={{ paddingHorizontal: SIDE, paddingVertical: AIR }}
         scrollEventThrottle={16}
         onScrollBeginDrag={() => {
           target.current = null;
@@ -133,6 +139,5 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
 }
 
 const styles = StyleSheet.create({
-  // Platz für den Schatten der Kachel, sonst wird er abgeschnitten.
-  wrap: { height: MAP_TILE_HEIGHT + space[6], justifyContent: 'center' },
+  wrap: { height: MAP_TILE_HEIGHT + AIR * 2 },
 });
