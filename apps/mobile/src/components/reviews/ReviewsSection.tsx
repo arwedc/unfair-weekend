@@ -2,7 +2,7 @@ import { MessageSquareText } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Skeleton, Text } from '@/components/ui';
+import { Button, HighlightTitle, Skeleton, Text } from '@/components/ui';
 import type { LocationReview } from '@/features/reviews/api';
 import { useLocationRating, useLocationReviews } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel, reviewDateLabel } from '@/features/reviews/review-logic';
@@ -68,9 +68,7 @@ export function ReviewsSection({ locationId, locationName }: ReviewsSectionProps
 
   return (
     <View style={styles.section}>
-      <Text variant="title3" accessibilityRole="header">
-        Bewertungen & Rezensionen
-      </Text>
+      <HighlightTitle>Bewertungen & Rezensionen</HighlightTitle>
 
       {rating.isPending || reviews.isPending ? (
         <View style={styles.loading}>
@@ -143,9 +141,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: soft.peach,
+    backgroundColor: soft.tint,
   },
-  avatarLetter: { color: colors.text.primary },
+  avatarLetter: { color: colors.accent.onSubtle },
   meta: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   empty: {
     flexDirection: 'row',
@@ -153,6 +151,6 @@ const styles = StyleSheet.create({
     gap: space[3],
     padding: space[4],
     borderRadius: radii.lg,
-    backgroundColor: soft.butter,
+    backgroundColor: soft.warm,
   },
 });

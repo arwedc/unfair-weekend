@@ -21,7 +21,7 @@ export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps
     styleUrl: env.mapStyleUrl,
     lat,
     lng,
-    pinColor: colors.background.inverse,
+    pinColor: colors.accent.solid,
     background: colors.background.muted,
   });
 

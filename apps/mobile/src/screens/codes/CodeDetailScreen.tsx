@@ -259,7 +259,6 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
               <Button
                 label="Jetzt bewerten"
                 icon={Star}
-                variant="dark"
                 fullWidth
                 onPress={() => reviewSheet.current?.present()}
               />
@@ -337,7 +336,7 @@ const styles = StyleSheet.create({
     gap: space[3],
     padding: space[4],
     borderRadius: radius.card,
-    backgroundColor: soft.peach,
+    backgroundColor: soft.tint,
   },
   screen: { flex: 1, backgroundColor: colors.background.default },
   content: {

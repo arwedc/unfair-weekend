@@ -3,7 +3,6 @@
  * Komponenten importieren Farben, Abstände und Schriften nur von hier, nie als Hex-Wert.
  */
 import {
-  amber,
   badge,
   duration,
   glut,
@@ -24,16 +23,16 @@ import type { TextStyle } from 'react-native';
 export const colors = themes.light;
 
 /**
- * Ruhige, flache Flächenfarben (wie Papier), z. B. für die Angebotsseite.
- * Darauf nur dunkler Text (`colors.text.primary`/`secondary`), kein Akzent-Orange.
+ * Zarte Akzent-Flächen aus der Glut-Palette, z. B. für Formen, Marker-Striche und Avatare.
+ * Darauf nur dunkler Text oder `colors.accent.onSubtle`.
  */
 export const soft = {
-  /** zarter Pfirsich für Deal-Flächen und Avatare */
-  peach: glut[100],
-  /** kräftigeres Pfirsich für kleine Flächen (Knopf-Hintergründe) */
-  peachStrong: glut[200],
-  /** helles Butter-Gelb für Kategorie-Pillen und Hinweise */
-  butter: amber[50],
+  /** fast weiß mit Wärme, für große Hintergründe */
+  warm: glut[50],
+  /** zartes Apricot für Formen, Marker und Avatare */
+  tint: glut[100],
+  /** kräftigeres Apricot für kleine Flächen */
+  tintStrong: glut[200],
 } as const;
 
 export { badge, duration, layout, radii, radius, shadow, space };
