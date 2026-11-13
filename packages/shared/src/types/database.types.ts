@@ -1640,6 +1640,13 @@ export type Database = {
           reservation_minutes: number;
         }[];
       };
+      get_pending_location_contacts: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          contact_email: string;
+          location_id: string;
+        }[];
+      };
       get_settings: {
         Args: Record<PropertyKey, never>;
         Returns: {

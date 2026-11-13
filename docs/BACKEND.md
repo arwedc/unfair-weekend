@@ -313,16 +313,18 @@ Rückgabe pro Zeile: `location_id, review_count, average_rating` (eine Nachkomma
 
 Admins lesen alle Tabellen direkt (z. B. `locations` mit `status = 'pending'` für die Freischalt-Liste).
 
-| RPC                 | Parameter                                                                                                                                       | Rückgabe                                                                        | Fehlercodes                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `approve_location`  | `p_location_id, p_merge_into_company_id?`                                                                                                       | `locations`                                                                     | `KEIN_ZUGRIFF`, `STANDORT_NICHT_GEFUNDEN`, `STATUS_UNGUELTIG`, `UNTERNEHMEN_NICHT_GEFUNDEN` |
-| `reject_location`   | `p_location_id, p_reason?`                                                                                                                      | jsonb `{location_id, status: 'rejected', cancelled_offers, cancelled_vouchers}` | `KEIN_ZUGRIFF`, `STANDORT_NICHT_GEFUNDEN`, `STATUS_UNGUELTIG`, `UNGUELTIGE_EINGABE`         |
-| `remove_offer`      | `p_offer_id, p_reason?`                                                                                                                         | jsonb `{offer_id, status: 'entfernt', cancelled_vouchers}`                      | `KEIN_ZUGRIFF`, `ANGEBOT_NICHT_GEFUNDEN`, `ANGEBOT_NICHT_AKTIV`, `UNGUELTIGE_EINGABE`       |
-| `update_settings`   | `p_min_discount_percent (0–100), p_cancel_deadline_hours (0–168), p_no_show_limit (1–20), p_block_days (1–365), p_reminder_hours_before (0–72)` | `settings`                                                                      | `KEIN_ZUGRIFF`, `UNGUELTIGE_EINGABE`                                                        |
-| `set_review_hidden` | `p_review_id, p_hidden, p_reason?` (max. 500 Zeichen)                                                                                           | 1 Zeile: `id, hidden_at, hidden_reason`                                         | `KEIN_ZUGRIFF`, `BEWERTUNG_NICHT_GEFUNDEN`, `UNGUELTIGE_EINGABE`                            |
-| `get_admin_metrics` | `p_from?, p_to?` (Datum, Berliner Kalendertage; Standard: letzte 12 Wochen, max. 2 Jahre)                                                       | jsonb, siehe unten                                                              | `KEIN_ZUGRIFF`, `UNGUELTIGE_EINGABE`                                                        |
+| RPC                             | Parameter                                                                                                                                       | Rückgabe                                                                        | Fehlercodes                                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `get_pending_location_contacts` | –                                                                                                                                               | Zeilen: `location_id, contact_email` für offene Anträge. Nur Admin.             | `KEIN_ZUGRIFF`                                                                              |
+| `approve_location`              | `p_location_id, p_merge_into_company_id?`                                                                                                       | `locations`                                                                     | `KEIN_ZUGRIFF`, `STANDORT_NICHT_GEFUNDEN`, `STATUS_UNGUELTIG`, `UNTERNEHMEN_NICHT_GEFUNDEN` |
+| `reject_location`               | `p_location_id, p_reason?`                                                                                                                      | jsonb `{location_id, status: 'rejected', cancelled_offers, cancelled_vouchers}` | `KEIN_ZUGRIFF`, `STANDORT_NICHT_GEFUNDEN`, `STATUS_UNGUELTIG`, `UNGUELTIGE_EINGABE`         |
+| `remove_offer`                  | `p_offer_id, p_reason?`                                                                                                                         | jsonb `{offer_id, status: 'entfernt', cancelled_vouchers}`                      | `KEIN_ZUGRIFF`, `ANGEBOT_NICHT_GEFUNDEN`, `ANGEBOT_NICHT_AKTIV`, `UNGUELTIGE_EINGABE`       |
+| `update_settings`               | `p_min_discount_percent (0–100), p_cancel_deadline_hours (0–168), p_no_show_limit (1–20), p_block_days (1–365), p_reminder_hours_before (0–72)` | `settings`                                                                      | `KEIN_ZUGRIFF`, `UNGUELTIGE_EINGABE`                                                        |
+| `set_review_hidden`             | `p_review_id, p_hidden, p_reason?` (max. 500 Zeichen)                                                                                           | 1 Zeile: `id, hidden_at, hidden_reason`                                         | `KEIN_ZUGRIFF`, `BEWERTUNG_NICHT_GEFUNDEN`, `UNGUELTIGE_EINGABE`                            |
+| `get_admin_metrics`             | `p_from?, p_to?` (Datum, Berliner Kalendertage; Standard: letzte 12 Wochen, max. 2 Jahre)                                                       | jsonb, siehe unten                                                              | `KEIN_ZUGRIFF`, `UNGUELTIGE_EINGABE`                                                        |
 
 - `approve_location` funktioniert für `pending` und `rejected`.
+- `get_pending_location_contacts` liest die Login-E-Mail aus `auth.users` nur für Admins und nur für offene Anträge. Die E-Mail wird nicht zusätzlich gespeichert.
 - `reject_location` funktioniert auch nach der Freischaltung, als Sperre. Aktive Angebote des Standorts werden dann abgesagt und die Inhaber benachrichtigt. Ein abgelehnter Standort kann keine Angebote mehr anlegen.
 - `set_review_hidden(…, true)` blendet eine Bewertung aus (Liste und Durchschnitt), `false` blendet sie wieder ein. Zum Moderieren liest der Admin `reviews` direkt.
 - `remove_offer` wirkt wie eine Absage: Codes werden storniert (`angebot_entfernt`) und die Inhaber benachrichtigt.
@@ -460,6 +462,28 @@ Verschickt fällige Einträge der `notification_outbox` über die Expo-Push-API 
   1. Migrationen `push_typ` und `push_versand` per `db push`.
   2. `pnpm db:push-secrets` legt die Vault-Secrets `project_url` und `push_worker_key` aus der Root-`.env` an. Ohne sie ruft der Cron-Job nichts auf.
   3. `pnpm supabase functions deploy send-push --use-api --no-verify-jwt`.
+- **Stand Dev-Projekt:** Die Vault-Secrets sind seit 13.11.2026 angelegt (auch für den Stripe-Worker).
+
+### Zahlungen: `stripe-*` (Variante B, hinter dem Flag)
+
+Alle Stripe-Aufrufe laufen nur hier, nie in App oder Website. Antwort bei Fehlern wie bei `geocode`: `{ error: { code, message } }`. Die Codes sind die RPC-Codes (z. B. `AUSGEBUCHT`, `FRIST_ABGELAUFEN`) bzw. `STRIPE_NICHT_ERREICHBAR`, `KEIN_STRIPE_KONTO` (`FUNCTION_ERROR_MESSAGES`).
+
+| Function                    | Wer         | Body                                                | Antwort                                                                             |
+| --------------------------- | ----------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `stripe-connect-onboarding` | Standort    | `{ action: 'onboarding', return_url, refresh_url }` | `{ url }`: Stripe-gehostetes Onboarding (Accounts v2, Express-Dashboard)            |
+|                             |             | `{ action: 'dashboard' }`                           | `{ url }`: Login-Link zum Express-Dashboard (erst nach dem Onboarding)              |
+|                             |             | `{ action: 'status' }`                              | `{ account }`: Stand bei Stripe abfragen, in `stripe_accounts` speichern            |
+| `stripe-create-booking`     | Nutzer      | `{ offer_id, seats }`                               | `{ booking_id, client_secret, amount_cents, currency, reserved_until, server_now }` |
+| `stripe-cancel-booking`     | Nutzer      | `{ booking_id }`                                    | `{ booking_id, status, refund_amount_cents, refund_status }`                        |
+| `stripe-webhook`            | nur Stripe  | Stripe-Event (Signatur Pflicht)                     | 200 bzw. 400/500                                                                    |
+| `stripe-worker`             | nur pg_cron | –                                                   | `{ done, retry, failed }`                                                           |
+
+- **Ob bezahlt wurde**, entscheidet nur der Webhook. Die App beobachtet ihre Zeile in `paid_bookings` per Realtime.
+- **`return_url`/`refresh_url`** müssen zu `PAYMENTS_RETURN_ORIGINS` gehören (Function-Secret, Standard `http://localhost:3000`).
+- **Secrets** (nur als Supabase-Secrets): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (Plattform-Events), `STRIPE_CONNECT_WEBHOOK_SECRET` (Konto-Events, Thin Events). Optional `STRIPE_PAYMENT_METHOD_TYPES` (Standard `card`).
+- **Cron:** `unfair-pay-worker` (jede Minute, nur wenn Jobs fällig sind) ruft `stripe-worker` auf, mit denselben Vault-Secrets wie `send-push`.
+- **Deploy** (nur nach Bestätigung): `pnpm supabase functions deploy <name> --use-api`, für `stripe-webhook` und `stripe-worker` zusätzlich `--no-verify-jwt`.
+- **Test gegen die Sandbox:** `pnpm pay:e2e` (echte Testzahlungen, Webhook und Worker, räumt danach auf). Das Flag wird dabei nicht eingeschaltet.
 
 ## 10. Cron und Benachrichtigungen (Outbox)
 
