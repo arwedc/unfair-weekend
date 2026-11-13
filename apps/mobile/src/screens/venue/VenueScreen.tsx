@@ -591,7 +591,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
               </Text>
             ) : null}
             {lat !== null && lng !== null ? (
-              <MiniMap lat={lat} lng={lng} label={locationName} onPress={openMaps} />
+              <MiniMap lat={lat} lng={lng} label={locationName} />
             ) : null}
             <View style={styles.actions}>
               <Button
@@ -599,6 +599,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                 icon={Navigation}
                 variant="secondary"
                 onPress={openMaps}
+                accessibilityHint="Öffnet den Standort in Apple Karten oder Google Maps"
                 style={styles.flex}
               />
               {phone.trim() ? (
