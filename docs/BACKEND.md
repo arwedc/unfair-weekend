@@ -345,11 +345,51 @@ Admins lesen alle Tabellen direkt (z. B. `locations` mit `status = 'pending'` f�
 
 Einlösequote = `redemptions / (claims − cancellations)`, auf 3 Stellen gerundet. Ohne Daten ist sie `null`.
 
+### Zahlungen (Variante B, hinter dem Flag `payments_enabled`)
+
+Seit 13.11.2026 im Dev-Projekt, **Flag steht auf aus**. Solange es aus ist, ändert sich für Variante A nichts. Regeln und Annahmen: [SPEC-PAYMENTS.md](SPEC-PAYMENTS.md). Die vollständige Beschreibung (Edge Functions, Webhooks, Testanleitung) folgt in `docs/PAYMENTS.md`. Clients sprechen Stripe nur über Edge Functions an, nie direkt.
+
+**Tabellen** (alle mit RLS, schreiben nur Funktionen bzw. service_role):
+
+| Tabelle                 | Inhalt                                                                                                                                                                                          | Lesen                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `payment_settings`      | eine Zeile: `payments_enabled` (false), `commission_bps` (1500 = 15 %), `reservation_minutes` (10), `payout_delay_hours` (24)                                                                   | alle (auch anon)                                                        |
+| `stripe_accounts`       | Stripe-Connect-Konto pro Standort, `is_ready` = Transfers und Auszahlungen aktiv                                                                                                                | eigener Standort, Admin                                                 |
+| `paid_bookings`         | Buchung: `status` (`reserviert`, `abgelaufen`, `bezahlt`, `storniert`, `erstattet`, `eingeloest`, `no_show`, `ausgezahlt`), Beträge, Provision, `reserved_until`, `voucher_id`, `payout_due_at` | eigene (Nutzer), Buchungen eigener Angebote (Standort), Admin. Realtime |
+| `payment_refunds`       | höchstens eine Vollerstattung pro Buchung                                                                                                                                                       | wie die Buchung                                                         |
+| `payment_transfers`     | Transfer an den Standort (`source_transaction` = Charge der Buchung)                                                                                                                            | eigener Standort, Admin                                                 |
+| `payment_disputes`      | Rückbuchungen                                                                                                                                                                                   | Admin                                                                   |
+| `stripe_webhook_events` | verarbeitete Event-IDs (Idempotenz)                                                                                                                                                             | Admin                                                                   |
+| `payment_jobs`          | Arbeitsliste des Stripe-Workers (`pi_abbrechen`, `erstatten`, `auszahlen`, `auszahlung_zurueckholen`)                                                                                           | Admin                                                                   |
+
+**RPCs für Clients:**
+
+| RPC                                                             | Wer             | Zweck                                                                                                                                                 |
+| --------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_payment_settings()`                                        | alle            | Flag und Provision. Auswertung in den Clients nur über `bookingMode()` aus `@repo/shared`                                                             |
+| `start_paid_booking(p_offer_id, p_seats)`                       | Nutzer          | Plätze reservieren (Row-Lock wie `claim_voucher`). Aufruf über die Edge Function `stripe-create-booking`, die den PaymentIntent anlegt                |
+| `cancel_paid_booking(p_booking_id)`                             | Nutzer          | Reservierung abbrechen bzw. bezahlte Buchung stornieren (Fristen wie `cancel_voucher`). Aufruf über `stripe-cancel-booking`, die sofort erstattet     |
+| `get_offer_participants_paid(p_offer_id)`                       | Standort        | wie `get_offer_participants`, dazu `is_paid`, `booking_id`, `booking_status`, `amount_cents`                                                          |
+| `mark_paid_no_show(p_voucher_id)`                               | Standort        | No-Show für bezahlte Codes, ohne Zähler und Sperre. `mark_no_show` lehnt bezahlte Codes ab (`NO_SHOW_BEZAHLT`)                                        |
+| `get_location_bookings(p_location_id?, p_limit, p_offset)`      | Standort, Admin | bezahlte Buchungen mit Brutto, Provision, Netto, Erstattungs- und Auszahlungsstatus                                                                   |
+| `update_payment_settings(p_payments_enabled, p_commission_bps)` | Admin           | Flag und Provision (0–5000 Basispunkte)                                                                                                               |
+| `get_admin_payment_metrics(p_from?, p_to?)`                     | Admin           | Umsatz, Erstattungen, Auszahlungen, Provision pro Woche und aktuelle Bestände (z. B. `offers_without_payout_account` als Warnung vor dem Einschalten) |
+
+Die übrigen neuen Funktionen (`attach_payment_intent`, `confirm_paid_booking`, `record_webhook_event`, `claim_payment_jobs` …) sind nur für `service_role` (Edge Functions).
+
+**Was sich bei Flag an ändert** (drei neue Trigger, die bestehenden Funktionen bleiben unverändert):
+
+- `claim_voucher` liefert `ZAHLUNG_ERFORDERLICH`. Codes entstehen nur noch aus bezahlten Buchungen und sind normale Codes in `vouchers` (QR, Kurzcode, Einlösen wie bisher).
+- `create_offer` liefert `AUSZAHLUNGEN_EINRICHTEN`, solange das Stripe-Konto des Standorts nicht bereit ist.
+- Wird ein bezahlter Code storniert (`cancel_voucher`, `cancel_offer`, `remove_offer`, `reject_location`, `delete_my_account` vor der Frist), wird die Vollerstattung automatisch vorgemerkt. Der Absage-Push kommt wie bisher über die Outbox.
+
+**Cron:** `unfair-pay-maintenance` (jede Minute) gibt abgelaufene Reservierungen frei und merkt fällige Auszahlungen vor.
+
 ## 7. Fehlercodes
 
 **Format:** Die RPCs werfen `SQLSTATE P0001`. In supabase-js kommt `error.message = '<CODE>'` und `error.details = '<genauer deutscher Text>'` an. `parseRpcError(error)` macht daraus `{ code, message }` und nimmt bevorzugt den genaueren Text vom Server (z. B. „Es sind nur noch 2 Plätze frei.“). Unbekannte Fehler werden zu `UNBEKANNT`.
 
-Die vollständige Liste mit Standardtexten steht in `packages/shared/src/constants/errors.ts` (`RPC_ERROR_MESSAGES`). Ein Test stellt sicher, dass SQL und `packages/shared` dieselben 43 Codes kennen.
+Die vollständige Liste mit Standardtexten steht in `packages/shared/src/constants/errors.ts` (`RPC_ERROR_MESSAGES`). Ein Test stellt sicher, dass SQL und `packages/shared` dieselben 52 Codes kennen.
 
 | Bereich            | Codes                                                                                                                                                                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -357,6 +397,7 @@ Die vollständige Liste mit Standardtexten steht in `packages/shared/src/constan
 | Angebote           | `ANGEBOT_NICHT_GEFUNDEN`, `ANGEBOT_NICHT_AKTIV`, `ANGEBOT_BEGONNEN`, `ANGEBOT_ABGELAUFEN`, `AUSGEBUCHT`, `ZU_VIELE_PLAETZE`, `UNGUELTIGE_PLATZANZAHL`, `BEREITS_AKTIVER_CODE`, `RABATT_ZU_GERING`, `PREIS_UNGUELTIG`, `ZEIT_UNGUELTIG`, `ZEIT_IN_VERGANGENHEIT`, `BILDER_UNGUELTIG`, `ADRESSE_UNGUELTIG`, `KONTINGENT_ZU_KLEIN`, `FELD_GESPERRT` |
 | Codes              | `CODE_NICHT_GEFUNDEN`, `CODE_NICHT_AKTIV`, `BEREITS_EINGELOEST`, `FALSCHER_STANDORT`, `EINLOESUNG_ZU_FRUEH`, `EINLOESUNG_ZU_SPAET`, `FRIST_ABGELAUFEN`, `NO_SHOW_NUR_EINZELTERMIN`, `NO_SHOW_ZU_FRUEH`, `NO_SHOW_ZU_SPAET`                                                                                                                       |
 | Bewertungen        | `BEWERTUNG_NICHT_MOEGLICH`, `BEREITS_BEWERTET`, `BEWERTUNG_NICHT_GEFUNDEN`                                                                                                                                                                                                                                                                       |
+| Zahlungen          | `ZAHLUNGEN_AUS`, `ZAHLUNG_ERFORDERLICH`, `ANBIETER_NICHT_BEREIT`, `AUSZAHLUNGEN_EINRICHTEN`, `BETRAG_ZU_GERING`, `BUCHUNG_NICHT_GEFUNDEN`, `BUCHUNG_NICHT_AKTIV`, `RESERVIERUNG_ABGELAUFEN`, `NO_SHOW_BEZAHLT`                                                                                                                                   |
 | Standorte, Admin   | `KEIN_STANDORTKONTO`, `STANDORT_NICHT_FREIGESCHALTET`, `STANDORT_EXISTIERT_BEREITS`, `STANDORT_NICHT_GEFUNDEN`, `UNTERNEHMEN_NICHT_GEFUNDEN`, `STATUS_UNGUELTIG`                                                                                                                                                                                 |
 | Allgemein          | `UNGUELTIGE_EINGABE`                                                                                                                                                                                                                                                                                                                             |
 | nur Edge Functions | `ADRESSE_NICHT_GEFUNDEN`, `GEOCODING_NICHT_VERFUEGBAR` (`FUNCTION_ERROR_MESSAGES`)                                                                                                                                                                                                                                                               |
