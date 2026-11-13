@@ -13,3 +13,15 @@ export async function getMyCompany(companyId: string): Promise<Company | null> {
   if (error) throw new Error(`Unternehmen konnte nicht geladen werden: ${error.message}`);
   return data;
 }
+
+/** Gespeicherte Bilder des eigenen Partner-Standorts. */
+export async function getMyLocationImages(locationId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('locations')
+    .select('image_paths')
+    .eq('id', locationId)
+    .single();
+  if (error) throw new Error(`Standortbilder konnten nicht geladen werden: ${error.message}`);
+  return data.image_paths;
+}

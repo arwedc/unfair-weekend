@@ -72,7 +72,6 @@ async function OfferFormView({
         <OfferForm
           mode="create"
           action={createOfferAction}
-          locationId={locationId}
           minDiscountPercent={minDiscountPercent}
           initialValues={{ ...address, type: 'einzeltermin' }}
         />
@@ -93,7 +92,6 @@ async function OfferFormView({
         key={template?.id ?? 'custom'}
         mode="create"
         action={createOfferAction}
-        locationId={locationId}
         minDiscountPercent={minDiscountPercent}
         initialValues={{
           ...address,
