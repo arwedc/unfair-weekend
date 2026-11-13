@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -14,19 +15,24 @@ const GAP = space[2];
 export interface MapOfferCarouselProps {
   offers: readonly Offer[];
   index: number;
-  /** Nach dem Wischen: welche Kachel jetzt in der Mitte steht. */
+  /** Beim Wischen: welche Kachel jetzt (überwiegend) in der Mitte steht. */
   onIndexChange: (index: number) => void;
 }
 
 /**
  * Kacheln unten auf der Karte. Eine Kachel pro Angebot, einrastend, die Nachbarn schauen an
  * den Rändern hervor. Wischen wechselt das Angebot, die Karte folgt (über `onIndexChange`).
+ *
+ * Der Wechsel passiert schon während des Wischens, sobald die nächste Kachel zur Hälfte im Bild
+ * ist, nicht erst nach dem Ausrollen. So springt die Nadel ohne spürbare Verzögerung mit.
  */
 export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarouselProps) {
   const { width } = useWindowDimensions();
   const list = useRef<FlatList<Offer>>(null);
   // Index, den die Liste gerade zeigt. Verhindert, dass ein Wischen sich selbst zurückscrollt.
   const shown = useRef(index);
+  // Ziel eines Scrollens von außen (Tipp auf eine Nadel). Bis es erreicht ist, keine Zwischenstände melden.
+  const target = useRef<number | null>(null);
 
   const tileWidth = width - SIDE * 2;
   const interval = tileWidth + GAP;
@@ -35,6 +41,7 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
   useEffect(() => {
     if (index === shown.current) return;
     shown.current = index;
+    target.current = index;
     list.current?.scrollToOffset({ offset: index * interval, animated: true });
   }, [index, interval]);
 
@@ -56,10 +63,19 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
           index: position,
         })}
         contentContainerStyle={{ paddingHorizontal: SIDE }}
-        onMomentumScrollEnd={(event) => {
+        scrollEventThrottle={16}
+        onScrollBeginDrag={() => {
+          target.current = null;
+        }}
+        onScroll={(event) => {
           const next = snappedIndex(event.nativeEvent.contentOffset.x, interval, offers.length);
+          if (target.current !== null) {
+            if (next === target.current) target.current = null;
+            return;
+          }
           if (next === shown.current) return;
           shown.current = next;
+          void Haptics.selectionAsync();
           onIndexChange(next);
         }}
         renderItem={({ item, index: position }) => (

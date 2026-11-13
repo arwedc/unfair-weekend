@@ -1,5 +1,5 @@
 import { X, type LucideIcon } from 'lucide-react-native';
-import { useState, type Ref } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -26,6 +26,8 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   elevated?: boolean;
   /** Zeigt ein „x“ zum Leeren, sobald etwas eingegeben ist. */
   onClear?: () => void;
+  /** Eigenes Element am Ende des Felds, z. B. ein Knopf zum Schließen der Suche. */
+  trailing?: ReactNode;
 }
 
 export function Input({
@@ -37,6 +39,7 @@ export function Input({
   shape = 'default',
   elevated = false,
   onClear,
+  trailing,
   onFocus,
   onBlur,
   ...rest
@@ -96,6 +99,7 @@ export function Input({
             <X size={14} color={colors.text.inverse} strokeWidth={3} />
           </Pressable>
         ) : null}
+        {trailing}
       </View>
       {error ? (
         <Text variant="footnote" style={{ color: colors.status.error.text }}>

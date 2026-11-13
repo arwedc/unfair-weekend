@@ -10,9 +10,17 @@ import {
   SlidersHorizontal,
   Sun,
   Users,
+  X,
 } from 'lucide-react-native';
 import { useRef, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, View, type TextInputInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 
 import { Button, Chip, Input, PressableScale, Sheet, Text, type SheetRef } from '@/components/ui';
@@ -54,6 +62,14 @@ export function FilterBar({ variant = 'inline' }: FilterBarProps) {
   const count = activeFilterCount(filters);
   const suggestions = searching ? categorySuggestions(filters.query) : [];
 
+  // Graues Kreuz: Suche schließen (Text weg, Tastatur zu, Filterleiste wieder da).
+  const closeSearch = () => {
+    setFilters({ query: '' });
+    input.current?.blur();
+    Keyboard.dismiss();
+    setSearching(false);
+  };
+
   const pickCategory = (category: OfferCategory) => {
     void Haptics.selectionAsync();
     // Kategorie ersetzt den getippten Text, sonst filtert beides gleichzeitig.
@@ -85,7 +101,19 @@ export function FilterBar({ variant = 'inline' }: FilterBarProps) {
           accessibilityLabel="Angebote durchsuchen"
           value={filters.query}
           onChangeText={(query) => setFilters({ query })}
-          onClear={() => setFilters({ query: '' })}
+          trailing={
+            searching || filters.query !== '' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Suche schließen"
+                onPress={closeSearch}
+                hitSlop={12}
+                style={styles.close}
+              >
+                <X size={22} color={colors.text.tertiary} strokeWidth={2.25} />
+              </Pressable>
+            ) : null
+          }
           onFocus={() => setSearching(true)}
           onBlur={() => setSearching(false)}
           returnKeyType="search"
@@ -129,62 +157,70 @@ export function FilterBar({ variant = 'inline' }: FilterBarProps) {
         ) : null}
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-        keyboardShouldPersistTaps="handled"
-        style={styles.rowScroller}
-      >
-        <Chip
-          label={count > 0 ? `Filter · ${count}` : 'Filter'}
-          icon={SlidersHorizontal}
-          trailingIcon={ChevronDown}
-          selected={count > 0}
-          elevated={floating}
-          accessibilityLabel={count > 0 ? `Filter, ${count} aktiv` : 'Filter'}
-          accessibilityHint="Öffnet alle Filter"
-          onPress={() => sheet.current?.present()}
-        />
-        <Chip
-          label="Heute"
-          icon={Sun}
-          selected={filters.time === 'heute'}
-          elevated={floating}
-          onPress={() => toggleTime('heute')}
-        />
-        <Chip
-          label="Wochenende"
-          icon={CalendarDays}
-          selected={filters.time === 'wochenende'}
-          elevated={floating}
-          onPress={() => toggleTime('wochenende')}
-        />
-        <Chip
-          label={filters.category ? OFFER_CATEGORY_LABELS[filters.category] : 'Kategorie'}
-          icon={filters.category ? CATEGORY_ICONS[filters.category] : LayoutGrid}
-          trailingIcon={ChevronDown}
-          selected={filters.category !== null}
-          elevated={floating}
-          accessibilityHint="Kategorien vorschlagen"
-          onPress={() => input.current?.focus()}
-        />
-        <Chip
-          label="Freie Plätze"
-          icon={Users}
-          selected={filters.onlyAvailable}
-          elevated={floating}
-          onPress={() => setFilters({ onlyAvailable: !filters.onlyAvailable })}
-        />
-        <Chip
-          label="Lieblingsorte"
-          icon={Heart}
-          selected={filters.favoritesOnly}
-          elevated={floating}
-          accessibilityHint={userId ? undefined : 'Dafür meldest du dich an'}
-          onPress={toggleFavorites}
-        />
-      </ScrollView>
+      {/* Während der Suche nur Suchfeld und Vorschläge, die Filterleiste macht Platz. */}
+      {!searching ? (
+        <Animated.View
+          entering={FadeIn.duration(duration.fast).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOut.duration(duration.fast).reduceMotion(ReduceMotion.System)}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.row}
+            keyboardShouldPersistTaps="handled"
+            style={styles.rowScroller}
+          >
+            <Chip
+              label={count > 0 ? `Filter · ${count}` : 'Filter'}
+              icon={SlidersHorizontal}
+              trailingIcon={ChevronDown}
+              selected={count > 0}
+              elevated={floating}
+              accessibilityLabel={count > 0 ? `Filter, ${count} aktiv` : 'Filter'}
+              accessibilityHint="Öffnet alle Filter"
+              onPress={() => sheet.current?.present()}
+            />
+            <Chip
+              label="Heute"
+              icon={Sun}
+              selected={filters.time === 'heute'}
+              elevated={floating}
+              onPress={() => toggleTime('heute')}
+            />
+            <Chip
+              label="Wochenende"
+              icon={CalendarDays}
+              selected={filters.time === 'wochenende'}
+              elevated={floating}
+              onPress={() => toggleTime('wochenende')}
+            />
+            <Chip
+              label={filters.category ? OFFER_CATEGORY_LABELS[filters.category] : 'Kategorie'}
+              icon={filters.category ? CATEGORY_ICONS[filters.category] : LayoutGrid}
+              trailingIcon={ChevronDown}
+              selected={filters.category !== null}
+              elevated={floating}
+              accessibilityHint="Kategorien vorschlagen"
+              onPress={() => input.current?.focus()}
+            />
+            <Chip
+              label="Freie Plätze"
+              icon={Users}
+              selected={filters.onlyAvailable}
+              elevated={floating}
+              onPress={() => setFilters({ onlyAvailable: !filters.onlyAvailable })}
+            />
+            <Chip
+              label="Lieblingsorte"
+              icon={Heart}
+              selected={filters.favoritesOnly}
+              elevated={floating}
+              accessibilityHint={userId ? undefined : 'Dafür meldest du dich an'}
+              onPress={toggleFavorites}
+            />
+          </ScrollView>
+        </Animated.View>
+      ) : null}
 
       <Sheet ref={sheet} title="Filter">
         <View style={styles.group}>
@@ -278,6 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.raised,
     boxShadow: shadow.floating,
   },
+  close: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   suggestionsTitle: { paddingHorizontal: space[4], paddingVertical: space[1] },
   suggestion: {
     minHeight: layout.minTouchTarget + 4,

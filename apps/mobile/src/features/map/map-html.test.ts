@@ -5,6 +5,7 @@ import type { OfferPlace } from '@/features/offers/feed-logic';
 import {
   buildMapHtml,
   MAP_ATTRIBUTION,
+  MAP_PALETTE,
   MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
@@ -78,6 +79,13 @@ describe('buildMapHtml', () => {
   it('enthält die Stil-URL und die Pflicht-Quellenangabe', () => {
     expect(html).toContain('https://tiles.openfreemap.org/styles/positron');
     expect(html).toContain(MAP_ATTRIBUTION);
+  });
+
+  it('färbt Parks grün und Wasser blau ein', () => {
+    expect(html).toContain('colorize()');
+    expect(html).toContain(MAP_PALETTE.park);
+    expect(html).toContain(MAP_PALETTE.water);
+    expect(html).toContain("paint('water', 'fill-color', p.water)");
   });
 
   it('zeichnet Nadeln statt Kreisen mit Rabatt', () => {

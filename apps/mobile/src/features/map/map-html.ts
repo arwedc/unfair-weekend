@@ -119,6 +119,33 @@ export function selectPlaceScript(key: string | null, padding: MapPadding): stri
   return `window.selectPlace && window.selectPlace(${toScriptJson(key)}, ${toScriptJson(padding)}); true;`;
 }
 
+/**
+ * Farben für die Karte (Grün für Parks, Blau für Wasser …), angelehnt an die Klarheit von
+ * Karten-Apps, aber mit eigenen Tönen. Bewusst hier und nicht in @repo/shared: Sie gelten nur
+ * für den Kartenstil, nicht für Komponenten. Wird auf den OpenFreeMap-Stil „Positron“
+ * angewendet; fehlt eine Ebene (anderer Stil), wird sie einfach übersprungen.
+ */
+export const MAP_PALETTE = {
+  land: '#F6F4EF',
+  residential: '#F1EFE9',
+  building: '#E9E6E0',
+  buildingOutline: '#DDD9D2',
+  park: '#CFE8C3',
+  wood: '#BFDFB0',
+  grass: '#D9EECF',
+  cemetery: '#D4E4CB',
+  sport: '#C8E6BC',
+  hospital: '#F8EAEB',
+  education: '#F3EAD5',
+  water: '#A8D4F2',
+  waterLabel: '#2F6EA6',
+  roadMajor: '#FFFFFF',
+  roadMajorCasing: '#E3DED5',
+  motorway: '#FBE3A0',
+  motorwayCasing: '#E9C46A',
+  rail: '#C9CCD2',
+} as const;
+
 /** Befehl für die WebView: eigenen Standort zeigen und hinfliegen. */
 export function showUserScript(lat: number, lng: number): string {
   return `window.showUser && window.showUser(${toScriptJson([lng, lat])}); true;`;
@@ -130,6 +157,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     center: [MUENSTER_CENTER.lng, MUENSTER_CENTER.lat],
     zoom: DEFAULT_ZOOM,
     colors: options.colors,
+    palette: MAP_PALETTE,
   });
   const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
@@ -218,7 +246,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
       center: feature.geometry.coordinates,
       zoom: Math.max(map.getZoom(), 13.5),
       padding: { top: padding.top, bottom: padding.bottom, left: 24, right: 24 },
-      duration: 450
+      duration: 280
     });
   };
 
@@ -260,7 +288,49 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
+  // Farben statt Grautönen: Parks grün, Wasser blau, große Straßen gelblich.
+  // Jede Änderung einzeln abgesichert, damit ein anderer Stil die Karte nicht zerbricht.
+  function paint(id, prop, value) {
+    if (!map.getLayer(id)) return;
+    try { map.setPaintProperty(id, prop, value); } catch (e) {}
+  }
+  function addFill(id, sourceLayer, classes, color, minzoom) {
+    if (map.getLayer(id) || !map.getSource('openmaptiles')) return;
+    try {
+      map.addLayer({
+        id: id, type: 'fill', source: 'openmaptiles', 'source-layer': sourceLayer, minzoom: minzoom,
+        filter: ['match', ['get', 'class'], classes, true, false],
+        paint: { 'fill-color': color, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], minzoom, 0, minzoom + 1, 1] }
+      }, map.getLayer('park') ? 'park' : undefined);
+    } catch (e) {}
+  }
+  function colorize() {
+    var p = config.palette;
+    paint('background', 'background-color', p.land);
+    paint('landuse_residential', 'fill-color', p.residential);
+    addFill('unfair-grass', 'landcover', ['grass', 'farmland', 'wetland'], p.grass, 10);
+    addFill('unfair-cemetery', 'landuse', ['cemetery'], p.cemetery, 11);
+    addFill('unfair-sport', 'landuse', ['stadium', 'pitch', 'playground'], p.sport, 12);
+    addFill('unfair-hospital', 'landuse', ['hospital'], p.hospital, 12);
+    addFill('unfair-education', 'landuse', ['school', 'university', 'college', 'kindergarten'], p.education, 12);
+    paint('park', 'fill-color', p.park);
+    paint('landcover_wood', 'fill-color', p.wood);
+    paint('water', 'fill-color', p.water);
+    paint('waterway', 'line-color', p.water);
+    paint('building', 'fill-color', p.building);
+    paint('building', 'fill-outline-color', p.buildingOutline);
+    paint('road_area_pier', 'fill-color', p.land);
+    paint('road_pier', 'line-color', p.land);
+    paint('highway_major_casing', 'line-color', p.roadMajorCasing);
+    paint('highway_major_inner', 'line-color', p.roadMajor);
+    ['highway_motorway_casing', 'highway_motorway_bridge_casing'].forEach(function (id) { paint(id, 'line-color', p.motorwayCasing); });
+    ['highway_motorway_inner', 'highway_motorway_bridge_inner'].forEach(function (id) { paint(id, 'line-color', p.motorway); });
+    ['railway', 'railway_transit', 'railway_service'].forEach(function (id) { paint(id, 'line-color', p.rail); });
+    ['water_name_point_label', 'water_name_line_label', 'waterway_line_label'].forEach(function (id) { paint(id, 'text-color', p.waterLabel); });
+  }
+
   map.on('load', function () {
+    colorize();
     var pin = makePin(config.colors.pin);
     var pinActive = makePin(config.colors.pinActive);
     map.addImage('unfair-pin', pin.image, { pixelRatio: pin.ratio });
