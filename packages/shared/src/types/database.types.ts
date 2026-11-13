@@ -1532,6 +1532,20 @@ export type Database = {
         }[];
       };
       get_my_account: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_my_review_summary: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          average_rating: number;
+          hidden_count: number;
+          last_30_days: number;
+          rating_1: number;
+          rating_2: number;
+          rating_3: number;
+          rating_4: number;
+          rating_5: number;
+          review_count: number;
+        }[];
+      };
       get_my_vouchers: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -1673,6 +1687,19 @@ export type Database = {
           comment: string;
           created_at: string;
           id: string;
+          offer_title: string;
+          rating: number;
+        }[];
+      };
+      list_my_reviews: {
+        Args: { p_limit?: number; p_offset?: number; p_rating?: number };
+        Returns: {
+          author_name: string;
+          comment: string;
+          created_at: string;
+          id: string;
+          is_hidden: boolean;
+          offer_id: string;
           offer_title: string;
           rating: number;
         }[];
