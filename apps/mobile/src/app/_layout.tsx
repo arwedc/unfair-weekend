@@ -15,7 +15,9 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { OnboardingExperience } from '@/components/onboarding/OnboardingExperience';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { OnboardingProvider } from '@/features/onboarding/onboarding-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
 import { usePushSetup } from '@/features/push/use-push';
 import { hideDevToolsButton } from '@/lib/dev-tools';
@@ -67,32 +69,38 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <OfferFiltersProvider>
-            <BottomSheetModalProvider>
-              <StatusBar style="dark" />
-              <Stack
-                screenOptions={{
-                  contentStyle: { backgroundColor: colors.background.default },
-                  headerTintColor: colors.text.primary,
-                  headerBackButtonDisplayMode: 'minimal',
-                  headerShadowVisible: false,
-                  headerStyle: { backgroundColor: colors.background.default },
-                }}
-              >
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="code/[id]" options={{ title: 'Dein Code' }} />
-                <Stack.Screen
-                  name="anmelden"
-                  options={{ headerShown: false, presentation: 'modal' }}
-                />
-                <Stack.Screen name="name" options={{ title: 'Dein Name', presentation: 'modal' }} />
-                <Stack.Screen name="favoriten" options={{ title: 'Favoriten' }} />
-                <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
-                <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-              </Stack>
-              <PushBridge />
-            </BottomSheetModalProvider>
+            <OnboardingProvider>
+              <BottomSheetModalProvider>
+                <StatusBar style="dark" />
+                <Stack
+                  screenOptions={{
+                    contentStyle: { backgroundColor: colors.background.default },
+                    headerTintColor: colors.text.primary,
+                    headerBackButtonDisplayMode: 'minimal',
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: colors.background.default },
+                  }}
+                >
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="code/[id]" options={{ title: 'Dein Code' }} />
+                  <Stack.Screen
+                    name="anmelden"
+                    options={{ headerShown: false, presentation: 'modal' }}
+                  />
+                  <Stack.Screen
+                    name="name"
+                    options={{ title: 'Dein Name', presentation: 'modal' }}
+                  />
+                  <Stack.Screen name="favoriten" options={{ title: 'Favoriten' }} />
+                  <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
+                  <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+                </Stack>
+                <OnboardingExperience />
+                <PushBridge />
+              </BottomSheetModalProvider>
+            </OnboardingProvider>
           </OfferFiltersProvider>
         </AuthProvider>
       </QueryClientProvider>

@@ -2,20 +2,29 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import type { UserSignUpInput } from '@repo/shared';
 
 import { forgetDevice, unregisterDevice } from '@/features/push/push';
 import { ApiError, toApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
 
-import { parseAccount, sessionTokensFromUrl, type Account } from './account';
+import { authCodeFromUrl, parseAccount, sessionTokensFromUrl, type Account } from './account';
 
 /** Der Nutzer hat den Login selbst abgebrochen. Dafür zeigen wir keinen Fehler. */
 export const CANCELLED = 'ABGEBROCHEN';
 
 const AUTH_MESSAGES: Record<string, string> = {
   invalid_credentials: 'E-Mail oder Passwort stimmt nicht.',
+  email_not_confirmed:
+    'Bitte bestätige zuerst deine E-Mail-Adresse. Öffne dafür den Link in der E-Mail.',
+  weak_password: 'Das Passwort ist zu schwach. Verwende mindestens 8 Zeichen.',
+  user_already_exists:
+    'Für diese E-Mail-Adresse gibt es bereits ein Konto. Melde dich stattdessen an.',
+  over_email_send_rate_limit:
+    'Zu viele Bestätigungs-E-Mails. Warte kurz und probier es dann nochmal.',
+  email_address_not_authorized:
+    'Der aktuelle E-Mail-Versand erlaubt nur Projekt-Teammitglieder. Für andere Adressen muss eigenes SMTP eingerichtet werden.',
   otp_expired: 'Der Code ist abgelaufen oder falsch. Fordere einen neuen an.',
-  over_email_send_rate_limit: 'Zu viele Versuche. Warte kurz und probier es dann nochmal.',
   over_request_rate_limit: 'Zu viele Versuche. Warte kurz und probier es dann nochmal.',
   email_address_invalid: 'Diese E-Mail-Adresse können wir nicht nutzen.',
   provider_disabled: 'Diese Anmeldung ist noch nicht eingerichtet.',
@@ -63,10 +72,47 @@ export async function verifyEmailCode(email: string, token: string): Promise<voi
   if (error) throw toAuthError(error);
 }
 
-/** Nur für Entwicklung: Seed-Konten mit E-Mail und Passwort. */
+/** Anmeldung mit E-Mail und Passwort (auch für die Seed-Konten in der Entwicklung). */
 export async function signInWithPassword(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw toAuthError(error);
+}
+
+/** Registriert einen Nutzer per E-Mail und Passwort. Gibt zurück, ob direkt eine Session besteht. */
+export async function signUpWithEmail(input: UserSignUpInput): Promise<boolean> {
+  const { data: available, error: availabilityError } = await supabase.rpc(
+    'is_username_available',
+    { p_username: input.username },
+  );
+  if (availabilityError) throw toApiError(availabilityError);
+  if (!available) {
+    throw new ApiError('NUTZERNAME_VERGEBEN', 'Dieser Nutzername ist schon vergeben.');
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: {
+      data: {
+        username: input.username,
+        ...(input.age !== undefined ? { age: input.age } : {}),
+        interests: input.interests,
+      },
+      emailRedirectTo: authRedirectUrl(),
+    },
+  });
+  if (error) {
+    // Der Unique-Index fängt parallele Registrierungen ab; zeige dann den passenden Hinweis.
+    const { data: stillAvailable, error: checkError } = await supabase.rpc(
+      'is_username_available',
+      { p_username: input.username },
+    );
+    if (!checkError && !stillAvailable) {
+      throw new ApiError('NUTZERNAME_VERGEBEN', 'Dieser Nutzername ist schon vergeben.');
+    }
+    throw toAuthError(error);
+  }
+  return data.session !== null;
 }
 
 export async function isAppleSignInAvailable(): Promise<boolean> {
@@ -130,10 +176,17 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 /**
- * Schließt den Browser-Login ab: liest die Tokens aus der Rücksprung-URL und setzt die Session.
- * Wird auch von der Route /auth/callback genutzt, falls die URL als Deep Link ankommt (Android).
+ * Schließt OAuth oder E-Mail-Bestätigung ab und setzt die Session aus der Rücksprung-URL.
+ * Wird auch von der Route /auth/callback genutzt, falls die URL als Deep Link ankommt.
  */
 export async function completeSignInFromUrl(url: string): Promise<void> {
+  const code = authCodeFromUrl(url);
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw toAuthError(error);
+    return;
+  }
+
   const tokens = sessionTokensFromUrl(url);
   if (!tokens || 'error' in tokens) {
     throw new ApiError('GOOGLE', 'Die Anmeldung mit Google hat nicht geklappt.');

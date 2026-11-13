@@ -10,7 +10,6 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
-  BadgePercent,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -40,7 +39,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
-import { OfferFavoriteButton } from '@/components/favorites/OfferFavoriteButton';
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { MiniMap } from '@/components/offers/MiniMap';
 import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
@@ -78,9 +76,7 @@ import { errorMessage, isOffline } from '@/lib/api-error';
 import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
 import { colors, fonts, layout, radii, shadow, soft, space } from '@/theme';
 
-/** Ab dieser Länge wird die Beschreibung erst gekürzt gezeigt („Mehr lesen“). */
-const DESCRIPTION_PREVIEW_CHARS = 240;
-/** So hoch bleibt das Foto oben stehen, wenn man ganz nach unten scrollt (ohne Statusleiste). */
+/** Mindesthöhe des Fotos, bevor es beim Scrollen ganz aus dem Bild läuft. */
 const HERO_COLLAPSED = space[20] + space[10];
 
 /** Warum man gerade keinen Code holen kann (oder null, wenn es geht). */
@@ -213,7 +209,7 @@ export interface VenueScreenProps {
 
 /**
  * Seite eines Unternehmensstandorts mit allen Angeboten dort.
- * Oben ein großes Foto, das beim Scrollen zu einem schmalen Streifen schrumpft (bleibt sichtbar).
+ * Oben ein großes Foto, das beim Scrollen zu einem schmalen Streifen schrumpft und dann verschwindet.
  * Darunter die Deal-Karte des ausgewählten Angebots mit „Code holen“, die übrigen Angebote zum
  * Umschalten, Infos und Karte zum Ort, Bewertungen und Ähnliches in der Nähe.
  */
@@ -225,7 +221,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const claimSheet = useRef<SheetRef>(null);
   const cardY = useRef(0);
   const [selectedId, setSelectedId] = useState<string | null>(offerId ?? null);
-  const [expanded, setExpanded] = useState(false);
 
   // Über ein Angebot kommen wir zum Standort; direkt über den Standort zum ersten Angebot.
   const entry = useOffer(offerId ?? '', { enabled: Boolean(offerId) && !locationId });
@@ -245,9 +240,10 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     if (activeId) void logOfferView(activeId);
   }, [activeId]);
 
-  // Foto: groß, schrumpft beim Scrollen auf HERO_COLLAPSED, wächst beim Ziehen nach unten.
+  // Foto: groß, schrumpft beim Scrollen und läuft nach einem kurzen Moment ganz nach oben heraus.
   const heroHeight = Math.round(width * 0.85);
   const heroMin = insets.top + HERO_COLLAPSED;
+  const heroCollapseAt = heroHeight - heroMin;
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((event) => {
     scrollY.set(event.contentOffset.y);
@@ -259,6 +255,16 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       [heroHeight * 2, heroHeight, heroMin],
       Extrapolation.CLAMP,
     ),
+    transform: [
+      {
+        translateY: interpolate(
+          scrollY.get(),
+          [0, heroCollapseAt, heroCollapseAt + heroMin],
+          [0, 0, -heroMin],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
   }));
 
   const buttonTop = insets.top + space[2];
@@ -343,12 +349,10 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     : [];
   const reason = offer ? unavailableReason(offer) : null;
   const description = offer?.description.trim() ?? '';
-  const longDescription = description.length > DESCRIPTION_PREVIEW_CHARS;
 
   const openMaps = () => void openInMaps({ label: locationName, address, lat, lng });
   const choose = (id: string) => {
     setSelectedId(id);
-    setExpanded(false);
     scrollRef.current?.scrollTo({
       y: Math.max(0, cardY.current - heroMin - space[4]),
       animated: true,
@@ -416,6 +420,10 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           ) : null}
         </View>
 
+        <View style={styles.offerHeading}>
+          <HighlightTitle>{`Angebote bei ${name}`}</HighlightTitle>
+        </View>
+
         {/* Deal-Karte des ausgewählten Angebots */}
         <View
           style={styles.cardOuter}
@@ -425,32 +433,27 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         >
           {offer ? (
             <View style={styles.card}>
-              <View style={styles.cardStrip}>
-                <View style={styles.cardStripIcon}>
-                  <BadgePercent size={24} strokeWidth={2.25} color={colors.accent.onSolid} />
-                </View>
-                <View style={styles.flexText}>
-                  <Text variant="title3" style={styles.stripTitle}>
-                    {formatDiscount(offer.discount_percent)} mit deinem Code
-                  </Text>
-                  <Text variant="footnote" style={styles.stripText}>
-                    Du sparst {formatPrice(offer.original_price_cents - offer.deal_price_cents)}
-                  </Text>
-                </View>
-                <OfferFavoriteButton offerId={offer.id} title={offer.title} />
-              </View>
-
               <View style={styles.cardBody}>
-                <Text variant="title2">{offer.title}</Text>
+                <View style={styles.offerTitleText}>
+                  <Text variant="caption" color="accent" style={styles.semibold}>
+                    {formatDiscount(offer.discount_percent)} Rabatt
+                  </Text>
+                  <Text variant="title2">{offer.title}</Text>
+                  {description ? (
+                    <View style={styles.descriptionPreview}>
+                      <Text variant="subhead" color="secondary">
+                        Was erwartet dich
+                      </Text>
+                      <Text variant="footnote" color="secondary" numberOfLines={2}>
+                        {description}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
 
                 <View>
                   <InfoRow icon={Clock}>
                     <Text variant="body">{offerWhenText(offer)}</Text>
-                    <Text variant="footnote" color="secondary">
-                      {offer.type === 'einzeltermin'
-                        ? 'Fester Termin'
-                        : 'Du löst den Code in diesem Zeitraum vor Ort ein.'}
-                    </Text>
                   </InfoRow>
                   <InfoRow
                     icon={MapPin}
@@ -472,7 +475,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                       </Text>
                     </View>
                     <Text variant="footnote" color="secondary">
-                      Du zahlst vor Ort, nicht in der App
+                      Zahlung vor Ort
                     </Text>
                   </InfoRow>
                   <InfoRow icon={Users} last>
@@ -484,6 +487,12 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                     </Text>
                   </InfoRow>
                 </View>
+
+                {!myVoucher && !reason ? (
+                  <Text variant="caption" color="tertiary" align="center">
+                    {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
+                  </Text>
+                ) : null}
 
                 {myVoucher ? (
                   <Button
@@ -519,30 +528,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                     }}
                   />
                 )}
-                <Text variant="caption" color="tertiary" align="center">
-                  {cancelPolicyText(offer.type, settings?.cancel_deadline_hours)}
-                </Text>
-
-                {description ? (
-                  <View style={styles.section}>
-                    <Text variant="headline">Das erwartet dich</Text>
-                    <Text variant="body" color="secondary" numberOfLines={expanded ? undefined : 5}>
-                      {description}
-                    </Text>
-                    {longDescription ? (
-                      <PressableScale
-                        accessibilityRole="button"
-                        onPress={() => setExpanded((value) => !value)}
-                        hitSlop={space[3]}
-                        style={styles.readMore}
-                      >
-                        <Text variant="subhead" color="accent" style={styles.semibold}>
-                          {expanded ? 'Weniger anzeigen' : 'Mehr lesen'}
-                        </Text>
-                      </PressableScale>
-                    ) : null}
-                  </View>
-                ) : null}
               </View>
             </View>
           ) : selected.isPending && activeId !== '' ? (
@@ -666,7 +651,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         ) : null}
       </Animated.ScrollView>
 
-      {/* Foto oben: schrumpft beim Scrollen, bleibt als Streifen sichtbar */}
+      {/* Foto oben: schrumpft beim Scrollen und verschwindet danach aus dem Viewport */}
       <Animated.View style={[styles.hero, heroStyle]} pointerEvents="none">
         <OfferImage
           path={heroPath}
@@ -674,7 +659,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           priority="high"
           accessibilityLabel={offer?.title ?? name}
         />
-        <View style={[styles.heroScrim, { height: insets.top + space[16] }]} />
       </Animated.View>
 
       <BackButton top={buttonTop} />
@@ -715,14 +699,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.background.muted,
   },
-  heroScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.surface.overlay,
-    opacity: 0.45,
-  },
   back: { position: 'absolute', left: layout.screenPaddingX },
   topRight: {
     position: 'absolute',
@@ -742,6 +718,7 @@ const styles = StyleSheet.create({
     paddingBottom: space[5],
     gap: space[2],
   },
+  offerHeading: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[3] },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingTop: space[1] },
   pill: {
     flexDirection: 'row',
@@ -762,26 +739,9 @@ const styles = StyleSheet.create({
     boxShadow: shadow.card,
     overflow: 'hidden',
   },
-  cardStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    padding: space[4],
-    backgroundColor: soft.tint,
-    borderBottomWidth: space[0.5],
-    borderBottomColor: colors.accent.solid,
-  },
-  cardStripIcon: {
-    width: layout.minTouchTarget + space[1],
-    height: layout.minTouchTarget + space[1],
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accent.solid,
-  },
-  stripTitle: { color: colors.accent.onSubtle },
-  stripText: { color: colors.accent.onSubtle },
-  cardBody: { padding: space[4], gap: space[4] },
+  offerTitleText: { flex: 1, gap: space[1] },
+  descriptionPreview: { gap: space[0.5], paddingTop: space[1] },
+  cardBody: { padding: space[4], gap: space[3] },
   infoRow: {
     minHeight: layout.minTouchTarget + space[3],
     flexDirection: 'row',
@@ -794,8 +754,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border.default,
   },
   reason: { padding: space[3], borderRadius: radii.lg, backgroundColor: colors.background.subtle },
-  readMore: { alignSelf: 'flex-start' },
-
   body: { paddingHorizontal: layout.screenPaddingX, paddingTop: space[10], gap: space[10] },
   section: { gap: space[3] },
   choices: { gap: space[2] },

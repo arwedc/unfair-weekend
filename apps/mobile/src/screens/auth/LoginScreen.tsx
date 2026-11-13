@@ -1,4 +1,10 @@
-import { otpRequestSchema, otpVerifySchema } from '@repo/shared';
+import {
+  emailSchema,
+  OFFER_CATEGORIES,
+  OFFER_CATEGORY_LABELS,
+  userSignUpSchema,
+  type OfferCategory,
+} from '@repo/shared';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { Mail, X } from 'lucide-react-native';
@@ -7,25 +13,25 @@ import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NameForm } from '@/components/auth/NameForm';
-import { Button, EmptyState, IconButton, Input, Text } from '@/components/ui';
+import { Button, Chip, EmptyState, IconButton, Input, Text } from '@/components/ui';
 import { splitName } from '@/features/auth/account';
 import {
   CANCELLED,
   isAppleSignInAvailable,
-  requestEmailCode,
   signInWithApple,
   signInWithGoogle,
   signInWithPassword,
   signOut,
+  signUpWithEmail,
   updateProfile,
-  verifyEmailCode,
 } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
 import { colors, layout, radius, space } from '@/theme';
 
-type Busy = 'apple' | 'google' | 'email' | 'code' | 'dev' | null;
+type Busy = 'apple' | 'google' | 'password' | 'register' | 'dev' | null;
+type Mode = 'login' | 'register';
 
 /** Erstes Test-Konto aus den Seed-Daten. Das Passwort tippt man selbst ein (steht in der .env). */
 const DEV_EMAIL = 'seed-mia@example.com';
@@ -34,10 +40,7 @@ function firstIssue(error: { issues: { message: string }[] }): string {
   return error.issues[0]?.message ?? 'Bitte prüf deine Eingabe.';
 }
 
-/**
- * Anmelden mit Apple, Google oder E-Mail-Code. Danach, falls nötig, Vor- und Nachname.
- * Schließt sich von selbst, sobald das Konto vollständig ist.
- */
+/** Anmeldung per E-Mail/Passwort; bei der Registrierung sind Alter und Interessen freiwillig. */
 export function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -45,9 +48,13 @@ export function LoginScreen() {
     useAuth();
 
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const [step, setStep] = useState<'start' | 'code'>('start');
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [age, setAge] = useState('');
+  const [interests, setInterests] = useState<OfferCategory[]>([]);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const [devEmail, setDevEmail] = useState(DEV_EMAIL);
   const [devPassword, setDevPassword] = useState('');
   const [busy, setBusy] = useState<Busy>(null);
@@ -57,7 +64,7 @@ export function LoginScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const done = userId !== null && account?.profileComplete === true;
   const showApple = env.auth.apple && appleAvailable;
-  const anyMethod = showApple || env.auth.google || env.auth.emailOtp;
+  const showSocialLogin = mode === 'login' && (showApple || env.auth.google);
 
   useEffect(() => {
     let active = true;
@@ -101,27 +108,35 @@ export function LoginScreen() {
       }
     });
 
-  const sendCode = () => {
-    const parsed = otpRequestSchema.safeParse({ email: email.trim() });
-    if (!parsed.success) {
-      setError(firstIssue(parsed.error));
+  const login = () => {
+    const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
+    if (!parsedEmail.success) {
+      setError(firstIssue(parsedEmail.error));
       return;
     }
-    void run('email', async () => {
-      await requestEmailCode(parsed.data.email);
-      setEmail(parsed.data.email);
-      setCode('');
-      setStep('code');
-    });
+    if (!password) {
+      setError('Bitte gib dein Passwort ein.');
+      return;
+    }
+    void run('password', () => signInWithPassword(parsedEmail.data, password));
   };
 
-  const checkCode = () => {
-    const parsed = otpVerifySchema.safeParse({ email, token: code });
+  const register = () => {
+    const parsed = userSignUpSchema.safeParse({
+      email: email.trim().toLowerCase(),
+      password,
+      username,
+      ...(age.trim() ? { age: Number(age.trim()) } : {}),
+      interests,
+    });
     if (!parsed.success) {
       setError(firstIssue(parsed.error));
       return;
     }
-    void run('code', () => verifyEmailCode(parsed.data.email, parsed.data.token));
+    void run('register', async () => {
+      const hasSession = await signUpWithEmail(parsed.data);
+      if (!hasSession) setConfirmationSent(true);
+    });
   };
 
   const devLogin = () => {
@@ -130,6 +145,14 @@ export function LoginScreen() {
       return;
     }
     void run('dev', () => signInWithPassword(devEmail.trim(), devPassword));
+  };
+
+  const toggleInterest = (category: OfferCategory) => {
+    setInterests((current) =>
+      current.includes(category)
+        ? current.filter((value) => value !== category)
+        : [...current, category],
+    );
   };
 
   let body;
@@ -159,60 +182,39 @@ export function LoginScreen() {
             Wie heißt du?
           </Text>
           <Text variant="body" color="secondary">
-            Dein Name steht auf der Teilnehmerliste, damit der Anbieter dich vor Ort findet.
+            Dein Name ist für die Registrierung nicht nötig. Wenn du einen Code holst, steht er auf
+            der Teilnehmerliste. Du kannst ihn jetzt oder später im Profil ergänzen.
           </Text>
         </View>
         <NameForm
           initialFirstName={account.firstName || appleName.firstName || suggestion.firstName}
           initialLastName={account.lastName || appleName.lastName || suggestion.lastName}
-          submitLabel="Fertig"
+          submitLabel="Speichern"
           onSaved={() => undefined}
         />
+        <Button label="Später im Profil ergänzen" variant="ghost" onPress={close} />
         <Button label="Abmelden" variant="ghost" onPress={() => void signOut()} />
       </View>
     );
-  } else if (step === 'code') {
+  } else if (confirmationSent) {
     body = (
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Code eingeben
+            Bestätige deine E-Mail
           </Text>
           <Text variant="body" color="secondary">
-            Wir haben dir einen Code an {email} geschickt. Schau auch im Spam-Ordner nach.
+            Wir haben dir einen Bestätigungslink an {email} geschickt. Öffne ihn auf diesem Gerät,
+            um deine Registrierung abzuschließen. Schau auch im Spam-Ordner nach.
           </Text>
         </View>
-        <Input
-          label="Code aus der E-Mail"
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          maxLength={8}
-          autoFocus
-          onSubmitEditing={checkCode}
-        />
         <Button
-          label="Anmelden"
-          size="lg"
-          fullWidth
-          loading={busy === 'code'}
-          disabled={busy !== null && busy !== 'code'}
-          onPress={checkCode}
-        />
-        <Button
-          label="Code nochmal schicken"
-          variant="ghost"
-          loading={busy === 'email'}
-          onPress={sendCode}
-        />
-        <Button
-          label="Andere E-Mail-Adresse"
+          label="Zur Anmeldung"
           variant="ghost"
           onPress={() => {
-            setError(null);
-            setStep('start');
+            setConfirmationSent(false);
+            setMode('login');
+            setPassword('');
           }}
         />
       </View>
@@ -222,21 +224,16 @@ export function LoginScreen() {
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            Anmelden
+            {mode === 'register' ? 'Konto erstellen' : 'Anmelden'}
           </Text>
           <Text variant="body" color="secondary">
-            Mit einem Konto holst du dir Codes und findest sie jederzeit wieder. Kostenlos und ohne
-            Zahlungsdaten.
+            {mode === 'register'
+              ? 'E-Mail, Passwort und Nutzername reichen. Alter und Interessen sind freiwillig.'
+              : 'Melde dich an, um deine Codes und Favoriten wiederzufinden.'}
           </Text>
         </View>
 
-        {!anyMethod && !__DEV__ ? (
-          <Text variant="callout" color="secondary">
-            Die Anmeldung ist in dieser Testversion noch nicht freigeschaltet. Bald geht's los!
-          </Text>
-        ) : null}
-
-        {showApple || env.auth.google ? (
+        {showSocialLogin ? (
           <View style={styles.providers}>
             {showApple ? (
               <AppleAuthentication.AppleAuthenticationButton
@@ -249,7 +246,7 @@ export function LoginScreen() {
             ) : null}
             {env.auth.google ? (
               <Button
-                label="Weiter mit Google"
+                label="Mit Google anmelden"
                 variant="outline"
                 size="lg"
                 fullWidth
@@ -261,9 +258,9 @@ export function LoginScreen() {
           </View>
         ) : null}
 
-        {env.auth.emailOtp ? (
+        {mode === 'login' ? (
           <>
-            {showApple || env.auth.google ? (
+            {showSocialLogin ? (
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <Text variant="footnote" color="tertiary">
@@ -284,19 +281,115 @@ export function LoginScreen() {
               autoCorrect={false}
               autoComplete="email"
               textContentType="emailAddress"
-              returnKeyType="send"
-              onSubmitEditing={sendCode}
+              returnKeyType="next"
+            />
+            <Input
+              label="Passwort"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={login}
             />
             <Button
-              label="Code per E-Mail schicken"
+              label="Anmelden"
               size="lg"
               fullWidth
-              loading={busy === 'email'}
-              disabled={busy !== null && busy !== 'email'}
-              onPress={sendCode}
+              loading={busy === 'password'}
+              disabled={busy !== null && busy !== 'password'}
+              onPress={login}
+            />
+            <Button
+              label="Noch kein Konto? Registrieren"
+              variant="ghost"
+              onPress={() => {
+                setError(null);
+                setMode('register');
+              }}
             />
           </>
-        ) : null}
+        ) : (
+          <>
+            <Input
+              label="Nutzername"
+              value={username}
+              onChangeText={setUsername}
+              placeholder="z. B. mia_muenster"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="username"
+              textContentType="username"
+              maxLength={20}
+              hint="3–20 Zeichen: Kleinbuchstaben, Zahlen oder Unterstriche."
+            />
+            <Input
+              label="E-Mail-Adresse"
+              icon={Mail}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="du@beispiel.de"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+            />
+            <Input
+              label="Passwort"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              hint="Mindestens 8 Zeichen."
+            />
+            <Input
+              label="Alter (optional)"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="number-pad"
+              maxLength={3}
+              autoComplete="off"
+            />
+            <View style={styles.interests}>
+              <Text variant="subhead" color="secondary">
+                Interessen (optional)
+              </Text>
+              <View style={styles.chips}>
+                {OFFER_CATEGORIES.map((category) => (
+                  <Chip
+                    key={category}
+                    label={OFFER_CATEGORY_LABELS[category]}
+                    selected={interests.includes(category)}
+                    onPress={() => toggleInterest(category)}
+                  />
+                ))}
+              </View>
+            </View>
+            <Button
+              label="Konto erstellen"
+              size="lg"
+              fullWidth
+              loading={busy === 'register'}
+              disabled={busy !== null && busy !== 'register'}
+              onPress={register}
+            />
+            <Button
+              label="Du hast schon ein Konto? Anmelden"
+              variant="ghost"
+              onPress={() => {
+                setError(null);
+                setMode('login');
+              }}
+            />
+          </>
+        )}
 
         {__DEV__ ? (
           <View style={styles.dev}>
@@ -315,7 +408,7 @@ export function LoginScreen() {
               autoCorrect={false}
             />
             <Input
-              label="Passwort"
+              label="Test-Passwort"
               value={devPassword}
               onChangeText={setDevPassword}
               secureTextEntry
@@ -386,6 +479,8 @@ const styles = StyleSheet.create({
   appleButton: { height: 56, alignSelf: 'stretch' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginVertical: space[1] },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border.strong },
+  interests: { gap: space[2] },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   dev: {
     gap: space[3],
     marginTop: space[6],
