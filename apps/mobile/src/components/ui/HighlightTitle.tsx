@@ -13,6 +13,8 @@ export interface HighlightTitleProps {
 
 interface MarkerLine {
   height: number;
+  width: number;
+  x: number;
   y: number;
 }
 
@@ -34,6 +36,8 @@ export function HighlightTitle({ children, variant = 'title3' }: HighlightTitleP
             style={[
               styles.marker,
               {
+                left: line.x - space[1],
+                width: line.width + space[1] + space[1.5],
                 top: line.y + line.height - space[0.5] - markerHeight,
                 height: markerHeight,
               },
@@ -45,7 +49,9 @@ export function HighlightTitle({ children, variant = 'title3' }: HighlightTitleP
         variant={variant}
         accessibilityRole="header"
         onTextLayout={({ nativeEvent }) => {
-          const nextLines = nativeEvent.lines.map(({ height, y }) => ({ height, y }));
+          const nextLines = nativeEvent.lines
+            .filter(({ width }) => width > 0)
+            .map(({ height, width, x, y }) => ({ height, width, x, y }));
 
           setLines((currentLines) => {
             const unchanged =
@@ -53,7 +59,11 @@ export function HighlightTitle({ children, variant = 'title3' }: HighlightTitleP
               currentLines.every((line, index) => {
                 const nextLine = nextLines[index];
                 return (
-                  nextLine !== undefined && line.height === nextLine.height && line.y === nextLine.y
+                  nextLine !== undefined &&
+                  line.height === nextLine.height &&
+                  line.width === nextLine.width &&
+                  line.x === nextLine.x &&
+                  line.y === nextLine.y
                 );
               });
 
@@ -71,8 +81,6 @@ const styles = StyleSheet.create({
   wrap: { alignSelf: 'flex-start', flexShrink: 1 },
   marker: {
     position: 'absolute',
-    left: -space[1],
-    right: -space[1.5],
     borderRadius: radii.xs,
     backgroundColor: soft.tint,
     transform: [{ rotate: '-1deg' }],
