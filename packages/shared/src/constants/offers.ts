@@ -42,7 +42,7 @@ export const OFFER_LIMITS = {
   titleMax: 80,
   descriptionMin: 10,
   descriptionMax: 2000,
-  imagesMin: 1,
+  imagesMin: 0,
   imagesMax: 5,
   capacityMax: 1000,
   maxPerUserMax: 20,

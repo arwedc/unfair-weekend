@@ -144,7 +144,7 @@ const offerBaseSchema = z.object({
   category: z.enum(OFFER_CATEGORIES, { error: 'Bitte eine Kategorie wählen.' }),
   image_paths: z
     .array(z.string().trim().min(1).max(500))
-    .min(OFFER_LIMITS.imagesMin, { error: 'Bitte mindestens ein Bild hinzufügen.' })
+    .min(OFFER_LIMITS.imagesMin)
     .max(OFFER_LIMITS.imagesMax, { error: `Höchstens ${OFFER_LIMITS.imagesMax} Bilder.` }),
   original_price_cents: cents('Originalpreis')
     .min(1, { error: 'Der Originalpreis muss größer als 0 sein.' })

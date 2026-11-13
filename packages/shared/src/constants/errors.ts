@@ -30,7 +30,7 @@ export const RPC_ERROR_MESSAGES = {
   PREIS_UNGUELTIG: 'Der Deal-Preis muss unter dem Originalpreis liegen.',
   ZEIT_UNGUELTIG: 'Bitte prüfe Beginn und Ende.',
   ZEIT_IN_VERGANGENHEIT: 'Der Zeitpunkt liegt in der Vergangenheit.',
-  BILDER_UNGUELTIG: 'Bitte füge 1 bis 5 Bilder hinzu.',
+  BILDER_UNGUELTIG: 'Bitte höchstens 5 Bilder hinzufügen.',
   ADRESSE_UNGUELTIG: 'Bitte gib eine Adresse mit Koordinaten an.',
   KONTINGENT_ZU_KLEIN: 'Das Kontingent kann nicht unter die vergebenen Plätze sinken.',
   FELD_GESPERRT: 'Es gibt schon Codes. Zeit, Adresse und Preise sind deshalb gesperrt.',
