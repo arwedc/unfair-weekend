@@ -64,8 +64,8 @@ function CategoryTile({
         <Icon
           size={TILE_ICON_SIZE}
           strokeWidth={1.5}
-          color={selected ? colors.accent.vivid : colors.accent.solid}
-          fill={selected ? colors.accent.solid : soft.tint}
+          color={colors.accent.strong}
+          fill={selected ? colors.accent.solidPressed : soft.tint}
         />
       </View>
       <View style={styles.tileText}>

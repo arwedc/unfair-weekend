@@ -98,7 +98,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
                   <View style={[styles.suggestionIcon, active && styles.suggestionIconActive]}>
                     <Icon
                       size={18}
-                      color={active ? colors.accent.onSolid : colors.accent.solid}
+                      color={active ? colors.accent.onSolid : colors.accent.strong}
                       strokeWidth={2.25}
                     />
                   </View>

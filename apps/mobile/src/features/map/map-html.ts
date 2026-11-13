@@ -178,9 +178,9 @@ export const MAP_PALETTE = {
   motorway: '#FBE3A0',
   motorwayCasing: '#E9C46A',
   rail: '#C9CCD2',
-  /** Gewählte Nadel: sanftes Koralle, heller als die normale Nadel, aber nicht grell. */
-  pinSelected: '#F57C64',
-  /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den orangen Nadeln. */
+  /** Gewählte Nadel: dunkleres Gold (gold[600] aus @/theme), hebt sich von den gelben Nadeln ab. */
+  pinSelected: '#B87E14',
+  /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den gelben Nadeln. */
   userLocation: '#2F7FF0',
 } as const;
 

@@ -36,7 +36,7 @@ export default function AuthCallbackRoute() {
         backgroundColor: colors.background.default,
       }}
     >
-      <ActivityIndicator color={colors.accent.solid} />
+      <ActivityIndicator color={colors.accent.strong} />
     </View>
   );
 }

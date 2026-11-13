@@ -1,6 +1,7 @@
 /**
  * Kontraste der Farbpaare, die nur die App so kombiniert.
- * Die Grundpaare (Text auf Weiß, Badges, Status) prüft schon packages/shared (tokens.test.ts).
+ * Die neutralen Grundpaare prüft packages/shared (tokens.test.ts); den Gold-Akzent gibt es nur
+ * in der App, deshalb stehen seine Grundpaare hier.
  */
 import { contrastRatio } from '@repo/shared/tokens';
 import { describe, expect, it } from 'vitest';
@@ -43,18 +44,24 @@ const textPairs: Pair[] = [
   ['Karte: Cluster-Zahl (invers auf invers)', colors.text.inverse, colors.background.inverse],
   ['Karte: Rabatt im Pin (auf Akzent)', colors.accent.onSolid, colors.accent.solid],
   ['Gefahr-Button (Konto löschen)', colors.status.error.onSolid, colors.status.error.solid],
-  ['Kategorie-Pille und Avatar (dunkles Akzent auf Apricot)', colors.accent.onSubtle, soft.tint],
+  ['Kategorie-Pille und Avatar (dunkles Akzent auf Hellgold)', colors.accent.onSubtle, soft.tint],
   ['„Du sparst“ (dunkles Akzent auf warmem Weiß)', colors.accent.onSubtle, soft.warm],
-  ['Rabatt-Sticker (weiß auf Akzent)', colors.accent.onSolid, colors.accent.solid],
+  ['Rabatt-Sticker (schwarz auf Gold)', colors.accent.onSolid, colors.accent.solid],
   ['Location-Karte: Text sekundär auf warmem Weiß', colors.text.secondary, soft.warm],
   ['Location-Karte: Akzent-Overline auf warmem Weiß', colors.text.accent, soft.warm],
   ['Fehlertext unter Eingabefeld', colors.status.error.text, colors.surface.default],
+  ['Akzent-Text und Links auf Weiß', colors.text.accent, colors.background.default],
+  ['Haupt-Button (schwarz auf Gold)', colors.accent.onSolid, colors.accent.solid],
+  ['Haupt-Button gedrückt', colors.accent.onSolid, colors.accent.solidPressed],
+  ['Text auf Akzentfläche', colors.text.onAccent, colors.accent.solid],
+  ['Deal-Badge', colors.badge.deal.foreground, colors.badge.deal.background],
 ];
 
 const graphicPairs: Pair[] = [
   ['Leerzustand-Icon neutral', colors.accent.onSubtle, colors.accent.subtle],
   ['Leerzustand-Icon Fehler', colors.status.error.text, colors.status.error.subtle],
-  ['Aktives Herz / aktiver Tab', colors.accent.solid, colors.surface.raised],
+  ['Aktives Herz / aktiver Tab', colors.accent.strong, colors.surface.raised],
+  ['Icon auf zarter Akzentfläche (Filter-Kachel, Suche)', colors.accent.strong, soft.tint],
   ['Rahmen des Eingabefelds im Fokus', colors.border.focus, colors.surface.default],
 ];
 

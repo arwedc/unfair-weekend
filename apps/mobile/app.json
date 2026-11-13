@@ -16,7 +16,7 @@
     "android": {
       "package": "de.unfairweekend.app",
       "adaptiveIcon": {
-        "backgroundColor": "#D63A0A",
+        "backgroundColor": "#FCC753",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -40,7 +40,7 @@
       [
         "expo-notifications",
         {
-          "color": "#D63A0A",
+          "color": "#FCC753",
           "defaultChannel": "default"
         }
       ],
