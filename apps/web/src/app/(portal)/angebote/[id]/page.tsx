@@ -39,6 +39,12 @@ async function OfferDetail({ params, searchParams }: PageProps) {
       <p className="mt-1 text-subhead text-text-secondary">
         {offer.seats_taken} von {offer.capacity} Plätzen vergeben
       </p>
+      <Link
+        href={`/vorlagen/neu?angebot=${offer.id}`}
+        className="mt-2 inline-block text-subhead text-text-link hover:underline"
+      >
+        Als Vorlage speichern
+      </Link>
     </div>
   );
 

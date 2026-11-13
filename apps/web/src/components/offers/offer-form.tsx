@@ -10,16 +10,10 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import {
-  OFFER_CATEGORIES,
-  OFFER_CATEGORY_LABELS,
-  OFFER_LIMITS,
-  OFFER_TYPE_LABELS,
-  OFFER_TYPES,
-  type Enums,
-} from '@repo/shared';
+import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_LIMITS } from '@repo/shared';
 import { discountPercent, formatDiscount, formatPrice } from '@repo/shared/utils';
 import { Button, buttonClass, Card, Field, inputClass } from '@/components/ui';
+import { Notice, TypePicker, type OfferType } from '@/components/offers/form-parts';
 import { ImagePicker } from '@/components/offers/image-picker';
 import { StepProgress } from '@/components/offers/step-progress';
 import {
@@ -37,13 +31,7 @@ import {
   type OfferStepId,
   type StepErrors,
 } from '@/lib/offers/steps';
-
-type OfferType = Enums<'offer_type'>;
-
-const TYPE_HINTS: Record<OfferType, string> = {
-  einzeltermin: 'Ein fester Termin, z. B. ein Kochkurs am Freitagabend.',
-  zeitraum: 'Einlösbar in einem Zeitraum, z. B. eine Massage bis Sonntag.',
-};
+import { addMinutesToBerlinInput, formatDuration } from '@/lib/templates/form';
 
 const LAST_STEP = OFFER_STEPS.length - 1;
 
@@ -66,21 +54,6 @@ function ArrowIcon({ direction }: { direction: 'left' | 'right' }) {
   );
 }
 
-function Notice({ tone, children }: { tone: 'error' | 'success'; children: ReactNode }) {
-  return (
-    <p
-      role={tone === 'error' ? 'alert' : 'status'}
-      className={`rounded-card px-4 py-3 text-subhead ${
-        tone === 'error'
-          ? 'bg-status-error-subtle text-status-error-on-subtle'
-          : 'bg-status-success-subtle text-status-success-on-subtle'
-      }`}
-    >
-      {children}
-    </p>
-  );
-}
-
 export interface OfferFormProps {
   action: (prev: OfferFormState, formData: FormData) => Promise<OfferFormState>;
   mode: 'create' | 'edit';
@@ -91,11 +64,23 @@ export interface OfferFormProps {
   hasCodes?: boolean;
   /** Vergebene Plätze, das Kontingent kann nicht darunter sinken. */
   seatsTaken?: number;
+  /**
+   * Angebot aus einer Vorlage: Alles ist vorausgefüllt, es fehlt nur der Beginn.
+   * Statt des Assistenten steht dann alles auf einer Seite, „Wann?“ zuerst.
+   */
+  template?: { name: string; durationMinutes: number };
 }
+
+/** Reihenfolge der Abschnitte, wenn das Angebot aus einer Vorlage kommt: die Zeit zuerst. */
+const TEMPLATE_STEP_ORDER = [
+  ...OFFER_STEPS.filter((s) => s.id === 'wann'),
+  ...OFFER_STEPS.filter((s) => s.id !== 'wann'),
+];
 
 /**
  * Formular für Angebote. Beim Anlegen ein Assistent in vier Schritten
- * (Worum geht es? → Wann? → Preis und Plätze → Wo?), beim Bearbeiten alles auf einer Seite.
+ * (Worum geht es? → Wann? → Preis und Plätze → Wo?), beim Bearbeiten und beim Anlegen
+ * aus einer Vorlage alles auf einer Seite.
  * Alle Felder bleiben im DOM (versteckte Schritte nur ausgeblendet), damit sie mitgeschickt werden.
  */
 export function OfferForm({
@@ -106,13 +91,15 @@ export function OfferForm({
   minDiscountPercent,
   hasCodes = false,
   seatsTaken = 0,
+  template,
 }: OfferFormProps) {
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
     values: initialValues,
   });
   const values = state.values ?? initialValues;
-  const wizard = mode === 'create';
+  const wizard = mode === 'create' && !template;
+  const fromTemplate = mode === 'create' && template !== undefined;
 
   const formRef = useRef<HTMLFormElement>(null);
   const headingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
@@ -128,6 +115,14 @@ export function OfferForm({
   );
   const [originalPrice, setOriginalPrice] = useState(values.original_price ?? '');
   const [dealPrice, setDealPrice] = useState(values.deal_price ?? '');
+  const [endsAt, setEndsAt] = useState(values.ends_at ?? '');
+
+  /** Aus Vorlage: Das Ende folgt dem Beginn (Beginn + Dauer), bleibt aber änderbar. */
+  function handleStartChange(value: string) {
+    if (!template) return;
+    const end = addMinutesToBerlinInput(value, template.durationMinutes);
+    if (end) setEndsAt(end);
+  }
 
   // Neue Antwort vom Server: Fehler übernehmen und zum ersten Schritt mit Fehler springen.
   const [seenState, setSeenState] = useState(state);
@@ -202,6 +197,17 @@ export function OfferForm({
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    if (fromTemplate) {
+      // Alles steht auf einer Seite: alle Abschnitte prüfen, erstes fehlerhaftes Feld fokussieren.
+      const ok = OFFER_STEPS.map((_, i) => checkStep(i)).every(Boolean);
+      if (!ok) {
+        e.preventDefault();
+        requestAnimationFrame(() => {
+          formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        });
+      }
+      return;
+    }
     if (!wizard) return;
     // Alle Schritte prüfen, falls jemand über die Fortschrittsleiste zurückgesprungen ist.
     for (let i = 0; i <= LAST_STEP; i++) {
@@ -287,46 +293,7 @@ export function OfferForm({
     ),
     wann: (
       <>
-        <fieldset className="sm:col-span-2" disabled={locked('type')}>
-          <legend className="mb-1.5 text-subhead text-text-primary">Art des Angebots</legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {OFFER_TYPES.map((t) => (
-              <label
-                key={t}
-                className={`relative rounded-input border p-4 transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-border-focus ${
-                  type === t
-                    ? 'border-accent-vivid bg-accent-subtle'
-                    : 'border-border-default bg-surface-default hover:border-border-strong'
-                } ${locked('type') ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-              >
-                <input
-                  type="radio"
-                  name="type"
-                  value={t}
-                  checked={type === t}
-                  onChange={() => setType(t)}
-                  className="sr-only"
-                />
-                <span
-                  aria-hidden
-                  className={`absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
-                    type === t ? 'border-accent-solid' : 'border-border-strong'
-                  }`}
-                >
-                  {type === t ? (
-                    <span className="h-2.5 w-2.5 rounded-full bg-accent-solid" />
-                  ) : null}
-                </span>
-                <span className="block pr-8 text-body-strong text-text-primary">
-                  {OFFER_TYPE_LABELS[t]}
-                </span>
-                <span className="mt-0.5 block pr-8 text-footnote text-text-secondary">
-                  {TYPE_HINTS[t]}
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <TypePicker value={type} onChange={setType} disabled={locked('type')} />
         <Field
           id="starts_at"
           label={type === 'einzeltermin' ? 'Beginn' : 'Einlösbar ab'}
@@ -337,7 +304,9 @@ export function OfferForm({
             name="starts_at"
             type="datetime-local"
             defaultValue={val('starts_at')}
+            onChange={(e) => handleStartChange(e.target.value)}
             disabled={locked('starts_at')}
+            autoFocus={fromTemplate}
             className={inputClass}
             {...aria('starts_at')}
           />
@@ -345,14 +314,19 @@ export function OfferForm({
         <Field
           id="ends_at"
           label={type === 'einzeltermin' ? 'Ende' : 'Einlösbar bis'}
-          hint={`Uhrzeiten in deutscher Zeit, höchstens ${OFFER_LIMITS.maxDurationDays} Tage.`}
+          hint={
+            template
+              ? `Aus der Vorlage: ${formatDuration(template.durationMinutes)} nach dem Beginn. Du kannst es anpassen.`
+              : `Uhrzeiten in deutscher Zeit, höchstens ${OFFER_LIMITS.maxDurationDays} Tage.`
+          }
           error={err('ends_at')}
         >
           <input
             id="ends_at"
             name="ends_at"
             type="datetime-local"
-            defaultValue={val('ends_at')}
+            value={endsAt}
+            onChange={(e) => setEndsAt(e.target.value)}
             disabled={locked('ends_at')}
             className={inputClass}
             {...aria('ends_at')}
@@ -501,7 +475,19 @@ export function OfferForm({
 
   if (!wizard) {
     return (
-      <form ref={formRef} action={formAction} className="space-y-5" noValidate>
+      <form
+        ref={formRef}
+        action={formAction}
+        onSubmit={handleSubmit}
+        className="space-y-5"
+        noValidate
+      >
+        {template ? (
+          <p className="rounded-card bg-accent-subtle px-4 py-3 text-subhead text-accent-on-subtle">
+            Vorlage „{template.name}“: Alles ist vorausgefüllt. Wähle nur noch den Beginn, dann ist
+            das Angebot sofort in der App sichtbar.
+          </p>
+        ) : null}
         {hasCodes ? (
           <p className="rounded-card bg-accent-subtle px-4 py-3 text-subhead text-accent-on-subtle">
             Es haben sich schon Leute Codes geholt. Zeit, Adresse und Preise sind deshalb gesperrt.
@@ -509,7 +495,7 @@ export function OfferForm({
           </p>
         ) : null}
 
-        {OFFER_STEPS.map((s) => (
+        {(fromTemplate ? TEMPLATE_STEP_ORDER : OFFER_STEPS).map((s) => (
           <section key={s.id} aria-labelledby={`step-${s.id}`}>
             <Card className="p-5 sm:p-6">
               <h2 id={`step-${s.id}`} className="mb-4 text-headline text-text-primary">
@@ -523,11 +509,28 @@ export function OfferForm({
         {state.formError ? <Notice tone="error">{state.formError}</Notice> : null}
         {state.saved ? <Notice tone="success">Änderungen gespeichert.</Notice> : null}
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Wird gespeichert …' : 'Änderungen speichern'}
-          </Button>
-        </div>
+        {fromTemplate ? (
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/vorlagen"
+              className={buttonClass(
+                'ghost',
+                'border border-border-default hover:border-border-strong',
+              )}
+            >
+              Abbrechen
+            </Link>
+            <Button type="submit" disabled={pending} className="min-w-44">
+              {pending ? 'Wird veröffentlicht …' : 'Angebot veröffentlichen'}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Wird gespeichert …' : 'Änderungen speichern'}
+            </Button>
+          </div>
+        )}
       </form>
     );
   }
