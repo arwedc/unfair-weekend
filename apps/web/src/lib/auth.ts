@@ -18,7 +18,7 @@ export interface PortalAccount {
   location: PortalLocation;
 }
 
-interface MyAccountJson {
+export interface MyAccountJson {
   user_id: string;
   role: Enums<'app_role'>;
   location: PortalLocation | null;
@@ -28,15 +28,19 @@ interface MyAccountJson {
  * Angemeldeter Standort-Account oder `null`.
  * Nutzer- und Admin-Konten ohne Standort zählen hier nicht als angemeldet.
  */
-export async function getAccount(): Promise<PortalAccount | null> {
+export async function getMyAccount(): Promise<MyAccountJson | null> {
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return null;
 
   const { data, error } = await supabase.rpc('get_my_account');
   if (error || !data) return null;
-  const account = data as unknown as MyAccountJson;
-  if (!account.location) return null;
+  return data as unknown as MyAccountJson;
+}
+
+export async function getAccount(): Promise<PortalAccount | null> {
+  const account = await getMyAccount();
+  if (!account?.location) return null;
   return { userId: account.user_id, location: account.location };
 }
 
@@ -45,4 +49,9 @@ export async function requireAccount(): Promise<PortalAccount> {
   const account = await getAccount();
   if (!account) redirect('/login?grund=kein-standort');
   return account;
+}
+
+export async function requireAdmin(): Promise<void> {
+  const account = await getMyAccount();
+  if (account?.role !== 'admin') redirect('/login?grund=kein-admin');
 }
