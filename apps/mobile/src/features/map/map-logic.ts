@@ -4,6 +4,7 @@
  */
 // Relativ statt '@/…': Vitest kennt den Pfad-Alias nicht, reine Logik soll ohne Extra-Konfiguration testbar bleiben.
 import { placeKeyOf } from '../offers/feed-logic';
+import { CITIES, cityOfOffer, type CityId } from '../offers/cities';
 import type { Offer } from '../offers/types';
 
 /**
@@ -31,4 +32,69 @@ export function countAtPlace(offers: readonly Offer[], placeKey: string): number
 export function snappedIndex(offsetX: number, interval: number, count: number): number {
   if (count === 0 || interval <= 0) return 0;
   return Math.min(count - 1, Math.max(0, Math.round(offsetX / interval)));
+}
+
+/**
+ * Endlos wischen: Die Kacheln liegen dreimal hintereinander (Kopie 0, 1, 2), angezeigt wird
+ * die mittlere. Eine Position in der Liste heißt hier „virtuell“, das Angebot dahinter „echt“.
+ */
+export const LOOP_COPIES = 3;
+
+/** Echter Index zu einer virtuellen Position. */
+export function realIndex(virtual: number, count: number): number {
+  if (count <= 0) return 0;
+  return ((virtual % count) + count) % count;
+}
+
+/**
+ * Virtuelle Position für ein Angebot, möglichst nah an der aktuellen. So scrollt die Liste
+ * beim Tipp auf eine Nadel den kurzen Weg (auch über das Ende hinweg).
+ */
+export function nearestLoopPosition(real: number, currentVirtual: number, count: number): number {
+  const candidates = Array.from({ length: LOOP_COPIES }, (_, copy) => copy * count + real);
+  return candidates.reduce((best, value) =>
+    Math.abs(value - currentVirtual) < Math.abs(best - currentVirtual) ? value : best,
+  );
+}
+
+/**
+ * Nach dem Ausrollen zurück in die mittlere Kopie (ohne Animation, unsichtbar), damit man in
+ * beide Richtungen weiterwischen kann. `null`, wenn man schon in der Mitte ist.
+ */
+export function recenteredPosition(virtual: number, count: number): number | null {
+  if (count <= 1) return null;
+  if (virtual >= count && virtual < count * 2) return null;
+  return count + realIndex(virtual, count);
+}
+
+/** Ein Sammelpunkt pro Stadt für die weite Ansicht (Europa): Stadtmitte und Anzahl. */
+export interface CitySummary {
+  id: CityId;
+  name: string;
+  lat: number;
+  lng: number;
+  count: number;
+}
+
+/** Fasst die Kartenangebote je Stadt zusammen. Städte ohne Angebot fehlen. */
+export function citySummaries(offers: readonly Offer[]): CitySummary[] {
+  const counts = new Map<CityId, number>();
+  for (const offer of offers) {
+    const id = cityOfOffer(offer);
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return CITIES.filter((city) => counts.has(city.id)).map((city) => ({
+    id: city.id,
+    name: city.name,
+    lat: city.center.lat,
+    lng: city.center.lng,
+    count: counts.get(city.id) ?? 0,
+  }));
+}
+
+/** Die Angebote, durch die man unten wischt: alle aus der Stadt des gezeigten Angebots. */
+export function sameCityOffers<T extends Offer>(offers: readonly T[], offer: T | undefined): T[] {
+  if (!offer) return [];
+  const city = cityOfOffer(offer);
+  return offers.filter((other) => cityOfOffer(other) === city);
 }

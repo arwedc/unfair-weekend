@@ -1,8 +1,13 @@
-import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { snappedIndex } from '@/features/map/map-logic';
+import {
+  LOOP_COPIES,
+  nearestLoopPosition,
+  realIndex,
+  recenteredPosition,
+  snappedIndex,
+} from '@/features/map/map-logic';
 import type { Offer } from '@/features/offers/types';
 import { space } from '@/theme';
 
@@ -19,44 +24,75 @@ export interface MapOfferCarouselProps {
   onIndexChange: (index: number) => void;
 }
 
+interface Slot {
+  key: string;
+  offer: Offer;
+}
+
 /**
  * Kacheln unten auf der Karte. Eine Kachel pro Angebot, einrastend, die Nachbarn schauen an
  * den Rändern hervor. Wischen wechselt das Angebot, die Karte folgt (über `onIndexChange`).
+ *
+ * Endlos: Nach dem letzten Angebot kommt wieder das erste (und umgekehrt). Dafür liegen die
+ * Kacheln dreimal hintereinander; nach dem Ausrollen springt die Liste unsichtbar zurück in
+ * die mittlere Kopie.
  *
  * Der Wechsel passiert schon während des Wischens, sobald die nächste Kachel zur Hälfte im Bild
  * ist, nicht erst nach dem Ausrollen. So springt die Nadel ohne spürbare Verzögerung mit.
  */
 export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarouselProps) {
   const { width } = useWindowDimensions();
-  const list = useRef<FlatList<Offer>>(null);
-  // Index, den die Liste gerade zeigt. Verhindert, dass ein Wischen sich selbst zurückscrollt.
-  const shown = useRef(index);
+  const list = useRef<FlatList<Slot>>(null);
+  const count = offers.length;
+  // Mit nur einem Angebot gibt es nichts zu wischen, also auch keine Schleife.
+  const loop = count > 1;
+  const copies = loop ? LOOP_COPIES : 1;
+  const middle = loop ? count : 0;
+
+  // Virtuelle Position, die die Liste gerade zeigt.
+  const shown = useRef(middle + index);
   // Ziel eines Scrollens von außen (Tipp auf eine Nadel). Bis es erreicht ist, keine Zwischenstände melden.
   const target = useRef<number | null>(null);
 
   const tileWidth = width - SIDE * 2;
   const interval = tileWidth + GAP;
 
-  // Auswahl kam von außen (Tipp auf eine Nadel): zur passenden Kachel scrollen.
+  const slots: Slot[] = [];
+  for (let copy = 0; copy < copies; copy += 1) {
+    for (const offer of offers) slots.push({ key: `${copy}-${offer.id}`, offer });
+  }
+
+  // Auswahl kam von außen (Tipp auf eine Nadel): den kurzen Weg zur passenden Kachel scrollen.
   useEffect(() => {
-    if (index === shown.current) return;
-    shown.current = index;
-    target.current = index;
-    list.current?.scrollToOffset({ offset: index * interval, animated: true });
-  }, [index, interval]);
+    if (realIndex(shown.current, count) === index) return;
+    const next = loop ? nearestLoopPosition(index, shown.current, count) : index;
+    shown.current = next;
+    target.current = next;
+    list.current?.scrollToOffset({ offset: next * interval, animated: true });
+  }, [index, interval, count, loop]);
+
+  // Nach dem Ausrollen zurück in die Mitte, damit man in beide Richtungen weiterwischen kann.
+  const recenter = (offsetX: number) => {
+    if (!loop) return;
+    const position = snappedIndex(offsetX, interval, slots.length);
+    const centered = recenteredPosition(position, count);
+    if (centered === null) return;
+    shown.current = centered;
+    list.current?.scrollToOffset({ offset: centered * interval, animated: false });
+  };
 
   return (
     <View style={styles.wrap}>
       <FlatList
         ref={list}
-        data={offers}
-        keyExtractor={(offer) => offer.id}
+        data={slots}
+        keyExtractor={(slot) => slot.key}
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={interval}
         decelerationRate="fast"
         disableIntervalMomentum
-        initialScrollIndex={index}
+        initialScrollIndex={middle + index}
         getItemLayout={(_, position) => ({
           length: interval,
           offset: interval * position,
@@ -68,22 +104,24 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
           target.current = null;
         }}
         onScroll={(event) => {
-          const next = snappedIndex(event.nativeEvent.contentOffset.x, interval, offers.length);
+          const next = snappedIndex(event.nativeEvent.contentOffset.x, interval, slots.length);
           if (target.current !== null) {
             if (next === target.current) target.current = null;
             return;
           }
           if (next === shown.current) return;
+          const changed = realIndex(next, count) !== realIndex(shown.current, count);
           shown.current = next;
-          void Haptics.selectionAsync();
-          onIndexChange(next);
+          if (!changed) return;
+          onIndexChange(realIndex(next, count));
         }}
+        onMomentumScrollEnd={(event) => recenter(event.nativeEvent.contentOffset.x)}
         renderItem={({ item, index: position }) => (
           <View style={{ width: interval }}>
             <MapOfferTile
-              offer={item}
+              offer={item.offer}
               width={tileWidth}
-              position={`Angebot ${position + 1} von ${offers.length}`}
+              position={`Angebot ${realIndex(position, count) + 1} von ${count}`}
             />
           </View>
         )}

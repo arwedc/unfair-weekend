@@ -34,15 +34,30 @@ export const TIME_FILTER_LABELS = {
 } as const satisfies Record<TimeFilter, string>;
 
 export interface OfferFilters {
-  category: OfferCategory | null;
+  /** Gewählte Kategorien. Leer = alle. Mehrere = Angebote aus irgendeiner davon. */
+  categories: OfferCategory[];
   time: TimeFilter;
   query: string;
 }
 
-export const EMPTY_FILTERS: OfferFilters = { category: null, time: 'alle', query: '' };
+export const EMPTY_FILTERS: OfferFilters = { categories: [], time: 'alle', query: '' };
+
+/**
+ * Kategorie an- oder abwählen. Die Reihenfolge folgt immer OFFER_CATEGORIES,
+ * damit Pillen und Abschnitte im Feed stabil stehen.
+ */
+export function toggleCategory(
+  selected: readonly OfferCategory[],
+  category: OfferCategory,
+): OfferCategory[] {
+  const next = selected.includes(category)
+    ? selected.filter((value) => value !== category)
+    : [...selected, category];
+  return OFFER_CATEGORIES.filter((value) => next.includes(value));
+}
 
 export function hasActiveFilters(filters: OfferFilters): boolean {
-  return filters.category !== null || filters.time !== 'alle' || filters.query.trim() !== '';
+  return filters.categories.length > 0 || filters.time !== 'alle' || filters.query.trim() !== '';
 }
 
 type Timing = Pick<Offer, 'type' | 'starts_at' | 'ends_at'>;
@@ -104,7 +119,7 @@ export function filterOffers<T extends Offer>(
 ): T[] {
   return offers.filter(
     (offer) =>
-      (filters.category === null || offer.category === filters.category) &&
+      (filters.categories.length === 0 || filters.categories.includes(offer.category)) &&
       matchesTimeFilter(offer, filters.time, now) &&
       matchesSearch(offer, filters.query),
   );
@@ -141,7 +156,23 @@ export function similarOffers<T extends Pick<Offer, 'id' | 'category' | 'free_se
  * Der Zeitfilter allein behält die Abschnitte (sie zeigen dann nur diesen Tag).
  */
 export function isListMode(filters: OfferFilters): boolean {
-  return filters.category !== null || filters.query.trim() !== '';
+  return filters.categories.length > 0 || filters.query.trim() !== '';
+}
+
+/**
+ * Mehrere Kategorien gewählt: Der Feed zeigt je Kategorie einen Abschnitt (untereinander),
+ * die Angebote darin als Karussell. Kategorien ohne Treffer fallen weg.
+ */
+export function sectionsByCategory<T extends Pick<Offer, 'category'>>(
+  offers: readonly T[],
+  categories: readonly OfferCategory[],
+): { category: OfferCategory; offers: T[] }[] {
+  return categories
+    .map((category) => ({
+      category,
+      offers: offers.filter((offer) => offer.category === category),
+    }))
+    .filter((section) => section.offers.length > 0);
 }
 
 /** Ein Karussell im Feed, z. B. „Heute in Münster“ oder „Kochen & Essen“. */

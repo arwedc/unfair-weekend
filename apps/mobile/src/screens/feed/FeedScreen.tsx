@@ -14,6 +14,7 @@ import {
   filterOffers,
   hasActiveFilters,
   isListMode,
+  sectionsByCategory,
   type FeedSection,
 } from '@/features/offers/feed-logic';
 import { useFavoriteOfferIds } from '@/features/favorites/queries';
@@ -96,11 +97,23 @@ export function FeedScreen() {
   const listMode = isListMode(filters);
   const filtering = hasActiveFilters(filters);
   const visible = filterOffers(cityOffers, filters);
+  // Mehrere Kategorien (ohne Suche): je Kategorie eine Reihe zum Wischen, untereinander.
+  const byCategory = filters.categories.length > 1 && filters.query.trim() === '';
   // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.
-  const sections =
-    listMode || isPending
-      ? []
-      : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
+  const sections: FeedSection[] = isPending
+    ? []
+    : byCategory
+      ? sectionsByCategory(visible, filters.categories).map(({ category, offers }) => ({
+          key: `kategorie-${category}`,
+          title: OFFER_CATEGORY_LABELS[category],
+          offers,
+        }))
+      : listMode
+        ? []
+        : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
+  // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
+  // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
+  const listItems = isPending || byCategory || !listMode ? [] : visible;
   const showSearch = searchOpen || filters.query !== '';
 
   const toggleSearch = () => {
@@ -114,13 +127,13 @@ export function FeedScreen() {
   };
 
   const showCategory = (category: OfferCategory) => {
-    setFilters({ category });
+    setFilters({ categories: [category] });
     list.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
   const listTitle =
-    filters.category && filters.query.trim() === ''
-      ? OFFER_CATEGORY_LABELS[filters.category]
+    filters.categories.length === 1 && filters.categories[0] && filters.query.trim() === ''
+      ? OFFER_CATEGORY_LABELS[filters.categories[0]]
       : 'Passt zu dir';
 
   const top = (
@@ -179,7 +192,7 @@ export function FeedScreen() {
         <Carousel key={section.key} section={section} onShowAll={showCategory} />
       ))}
 
-      {!isPending && listMode && visible.length > 0 ? (
+      {listItems.length > 0 ? (
         <SectionHeader
           title={listTitle}
           detail={`${visible.length} ${visible.length === 1 ? 'Angebot' : 'Angebote'}`}
@@ -232,7 +245,7 @@ export function FeedScreen() {
       <FlatList
         ref={list}
         // Ohne Kategorie und Suche zeigt der Feed nur die Reihen, keine Liste darunter.
-        data={isPending || !listMode ? [] : visible}
+        data={listItems}
         keyExtractor={(offer) => offer.id}
         renderItem={({ item, index }) => (
           <Appear index={index} style={styles.inset}>
@@ -240,7 +253,9 @@ export function FeedScreen() {
           </Appear>
         )}
         ListHeaderComponent={header}
-        ListEmptyComponent={listMode || sections.length === 0 ? (empty ?? undefined) : undefined}
+        ListEmptyComponent={
+          (listMode && !byCategory) || sections.length === 0 ? (empty ?? undefined) : undefined
+        }
         ItemSeparatorComponent={Separator}
         style={styles.list}
         contentContainerStyle={styles.content}

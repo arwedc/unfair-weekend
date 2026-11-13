@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated
 
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { Input, PressableScale, Text } from '@/components/ui';
-import { categorySuggestions } from '@/features/offers/feed-logic';
+import { categorySuggestions, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -41,10 +41,9 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
 
   const pickCategory = (category: OfferCategory) => {
     void Haptics.selectionAsync();
-    // Kategorie ersetzt den getippten Text, sonst filtert beides gleichzeitig.
-    setFilters({ category, query: '' });
-    input.current?.blur();
-    Keyboard.dismiss();
+    // Kategorie an- oder abwählen; der getippte Text weicht, sonst filtert beides gleichzeitig.
+    // Die Vorschläge bleiben offen, damit man mehrere Kategorien wählen kann.
+    setFilters({ categories: toggleCategory(filters.categories, category), query: '' });
   };
 
   return (
@@ -85,7 +84,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
             </Text>
             {suggestions.map((category) => {
               const Icon = CATEGORY_ICONS[category];
-              const active = filters.category === category;
+              const active = filters.categories.includes(category);
               return (
                 <PressableScale
                   key={category}

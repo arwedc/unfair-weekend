@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Button, PressableScale, Sheet, Text, type SheetRef } from '@/components/ui';
 import { offersInCity } from '@/features/offers/cities';
-import { countByCategory, filterOffers } from '@/features/offers/feed-logic';
+import { countByCategory, filterOffers, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { colors, layout, radii, soft, space } from '@/theme';
@@ -99,24 +99,29 @@ export function FilterSheet({ sheetRef }: FilterSheetProps) {
 
   const cityOffers = offersInCity(data ?? [], cityId);
   // Die Zahlen folgen dem gewählten Tag (und der Suche), nicht der Kategorie.
-  const forCounts = filterOffers(cityOffers, { ...filters, category: null });
+  const forCounts = filterOffers(cityOffers, { ...filters, categories: [] });
   const counts = countByCategory(forCounts);
   const resultCount = filterOffers(cityOffers, filters).length;
 
+  // Mehrere Kategorien gleichzeitig: Jede Kachel schaltet ihre Kategorie an oder aus,
+  // „Alles zeigen“ leert die Auswahl.
   const choose = (category: OfferCategory | null) =>
     setFilters({
-      category: category !== null && filters.category === category ? null : category,
+      categories: category === null ? [] : toggleCategory(filters.categories, category),
     });
 
   return (
     <Sheet ref={sheetRef} title="Worauf hast du Lust?">
+      <Text variant="footnote" color="secondary">
+        Du kannst mehrere Kategorien wählen.
+      </Text>
       <View style={styles.grid}>
         <CategoryTile
           wide
           label="Alles zeigen"
           detail={countLabel(forCounts.length)}
           icon={LayoutGrid}
-          selected={filters.category === null}
+          selected={filters.categories.length === 0}
           muted={false}
           onPress={() => choose(null)}
         />
@@ -126,7 +131,7 @@ export function FilterSheet({ sheetRef }: FilterSheetProps) {
             label={OFFER_CATEGORY_LABELS[category]}
             detail={countLabel(counts[category])}
             icon={CATEGORY_ICONS[category]}
-            selected={filters.category === category}
+            selected={filters.categories.includes(category)}
             muted={counts[category] === 0}
             onPress={() => choose(category)}
           />

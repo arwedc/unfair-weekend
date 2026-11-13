@@ -5,12 +5,14 @@ import type { OfferPlace } from '@/features/offers/feed-logic';
 
 import {
   buildMapHtml,
+  CITY_PIN_MAX_ZOOM,
   MAP_ATTRIBUTION,
   MAP_PALETTE,
   MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
   selectPlaceScript,
+  setCitiesScript,
   setCenterScript,
   setPlacesScript,
   showUserScript,
@@ -168,5 +170,27 @@ describe('parseMapMessage', () => {
     expect(parseMapMessage('{"type":"place"}')).toBeNull();
     expect(parseMapMessage('{"type":"boom"}')).toBeNull();
     expect(parseMapMessage('kein json')).toBeNull();
+  });
+});
+
+describe('setCitiesScript', () => {
+  it('übergibt eine Nadel pro Stadt, ohne Zahl', () => {
+    const script = setCitiesScript([
+      { id: 'muenster', name: 'Münster', lat: 51.96, lng: 7.62, count: 6 },
+    ]);
+    expect(script).toContain('window.setCities(');
+    expect(script).toContain('"coordinates":[7.62,51.96]');
+    expect(script).not.toContain('count');
+    expect(buildMapHtml({ styleUrl: 'https://example.org/style', colors })).not.toContain(
+      "['get', 'count']",
+    );
+  });
+
+  it('zeigt Städte nur in der weiten Ansicht, einzelne Angebote erst darunter', () => {
+    const html = buildMapHtml({ styleUrl: 'https://example.org/style', colors });
+    expect(html).toContain("id: 'city-pins'");
+    expect(html).toContain('maxzoom: config.cityPinMaxZoom');
+    expect(html).toContain("source: 'places', minzoom: config.cityPinMaxZoom");
+    expect(CITY_PIN_MAX_ZOOM).toBeGreaterThan(3);
   });
 });
