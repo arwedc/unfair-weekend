@@ -51,7 +51,6 @@ async function NewTemplateForm({ searchParams }: PageProps) {
       <TemplateForm
         mode="create"
         action={createTemplateAction}
-        locationId={location.id}
         minDiscountPercent={minDiscountPercent}
         initialValues={initialValues}
       />

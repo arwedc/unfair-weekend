@@ -23,7 +23,7 @@ interface PageProps {
 }
 
 async function OfferDetail({ params, searchParams }: PageProps) {
-  const [{ location }, { id }, { abgesagt }, { locale, t }] = await Promise.all([
+  const [, { id }, { abgesagt }, { locale, t }] = await Promise.all([
     requireAccount(),
     params,
     searchParams,
@@ -91,7 +91,6 @@ async function OfferDetail({ params, searchParams }: PageProps) {
       <OfferForm
         mode="edit"
         action={updateOfferAction.bind(null, offer.id)}
-        locationId={location.id}
         initialValues={offerToFormValues(offer)}
         minDiscountPercent={minDiscountPercent}
         hasCodes={hasCodes}

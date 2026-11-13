@@ -22,7 +22,7 @@ interface PageProps {
 }
 
 async function TemplateDetail({ params }: PageProps) {
-  const [{ location }, { id }, { t }] = await Promise.all([requireAccount(), params, getT()]);
+  const [, { id }, { t }] = await Promise.all([requireAccount(), params, getT()]);
   const [template, minDiscountPercent] = await Promise.all([
     getMyTemplate(id),
     getMinDiscountPercent(),
@@ -43,7 +43,6 @@ async function TemplateDetail({ params }: PageProps) {
       <TemplateForm
         mode="edit"
         action={updateTemplateAction.bind(null, template.id)}
-        locationId={location.id}
         minDiscountPercent={minDiscountPercent}
         initialValues={templateToFormValues(template)}
       />

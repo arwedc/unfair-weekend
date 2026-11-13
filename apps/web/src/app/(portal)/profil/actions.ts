@@ -14,6 +14,58 @@ import {
 import { getMyCompany } from '@/lib/company/queries';
 import { createClient } from '@/lib/supabase/server';
 
+export interface LocationImagesState {
+  paths: string[];
+  saved?: boolean;
+  error?: string;
+}
+
+export async function updateLocationImagesAction(
+  _prev: LocationImagesState,
+  formData: FormData,
+): Promise<LocationImagesState> {
+  const [{ location }, { locale, t }] = await Promise.all([requireAccount(), getT()]);
+  const paths = formData
+    .getAll('image_paths')
+    .map((path) => String(path).trim())
+    .filter(Boolean);
+
+  if (
+    paths.length > 5 ||
+    new Set(paths).size !== paths.length ||
+    paths.some((path) => !path.startsWith(`${location.id}/`) || path.includes('..'))
+  ) {
+    return { paths, error: t.profile.locationImages.saveFailed };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: readError } = await supabase
+    .from('locations')
+    .select('image_paths')
+    .eq('id', location.id)
+    .single();
+  if (readError) return { paths, error: t.profile.locationImages.saveFailed };
+
+  const { data, error } = await supabase.rpc('update_my_location_images', {
+    p_image_paths: paths,
+  });
+  if (error || !data) {
+    const rpc = parseRpcError(error, locale);
+    return { paths, error: rpc?.message ?? t.profile.locationImages.saveFailed };
+  }
+
+  const removedPaths = existing.image_paths.filter(
+    (path) => !data.includes(path) && path.startsWith(`${location.id}/`),
+  );
+  if (removedPaths.length > 0) {
+    await supabase.storage.from(STORAGE_BUCKETS.offerImages).remove(removedPaths);
+  }
+
+  revalidatePath('/profil');
+  revalidatePath('/angebote');
+  return { paths: data, saved: true };
+}
+
 function readValues(formData: FormData): CompanyFormValues {
   const values: CompanyFormValues = {};
   for (const field of COMPANY_FORM_FIELDS) values[field] = String(formData.get(field) ?? '').trim();
