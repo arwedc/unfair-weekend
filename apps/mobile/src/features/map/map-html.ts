@@ -239,7 +239,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     if (!loaded) return;
     var isSelected = ['==', ['get', 'key'], selectedKey || ''];
     map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, ['concat', pinImage, '-active'], pinImage]);
-    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.2, 1]);
+    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.15, 1]);
     map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
   }
 
@@ -282,7 +282,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   // Kartennadel (Tropfenform mit weißem Rand) mit dem Symbol der Kategorie im Kopf,
   // gezeichnet statt als Bilddatei. Maße in Punkten, dreifache Auflösung für scharfe Kanten.
   function makePin(fill, iconPaths) {
-    var ratio = 3, w = 38, h = 50, cx = 19, cy = 18, r = 15, tip = 46, icon = 17;
+    var ratio = 3, w = 32, h = 42, cx = 16, cy = 15, r = 12.5, tip = 39, icon = 14;
     var canvas = document.createElement('canvas');
     canvas.width = w * ratio; canvas.height = h * ratio;
     var ctx = canvas.getContext('2d');

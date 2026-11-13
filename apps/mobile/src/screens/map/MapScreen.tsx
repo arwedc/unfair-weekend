@@ -38,8 +38,9 @@ const MAP_HTML = buildMapHtml({
   styleUrl: env.mapStyleUrl,
   colors: {
     pin: colors.accent.solid,
-    // Gewählte Nadel: leuchtender Markenton statt Schwarz, hebt sich sanft ab (und ist größer).
-    pinActive: colors.accent.vivid,
+    // Gewählte Nadel: tieferer Ton derselben Farbfamilie (und etwas größer).
+    // Bewusst nicht `vivid`, das ist der Punkt für den eigenen Standort.
+    pinActive: colors.accent.onSubtle,
     pinDot: colors.accent.onSolid,
     user: colors.accent.vivid,
     background: colors.background.muted,
