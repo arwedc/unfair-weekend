@@ -8,7 +8,7 @@ import { offerBadges, offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
-import { badge, colors, fonts, radii, radius, space } from '@/theme';
+import { badge, colors, fonts, fun, radii, radius, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
 
@@ -61,11 +61,30 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
       style={[compact && { width: COMPACT_CARD_WIDTH }, style]}
     >
       <View>
-        <OfferImage
-          path={offer.cover_image_path}
-          priority={priority}
-          style={[styles.image, soldOut && styles.imageSoldOut]}
-        />
+        {offer.cover_image_path ? (
+          <OfferImage
+            path={offer.cover_image_path}
+            priority={priority}
+            style={[styles.image, soldOut && styles.imageSoldOut]}
+          />
+        ) : (
+          // Kein Foto hinterlegt: bunte Fläche in der Farbe der Kategorie mit großem Emoji.
+          <View
+            style={[
+              styles.image,
+              styles.noPhoto,
+              { backgroundColor: fun[CATEGORY_EMOJIS[offer.category].tint].bg },
+              soldOut && styles.imageSoldOut,
+            ]}
+          >
+            <Text
+              style={compact ? styles.noPhotoEmojiSmall : styles.noPhotoEmoji}
+              maxFontSizeMultiplier={1}
+            >
+              {CATEGORY_EMOJIS[offer.category].emoji}
+            </Text>
+          </View>
+        )}
         <View style={styles.badges}>
           {badges.map((item) => (
             <Badge key={item.label} label={item.label} variant={item.variant} onImage />
@@ -132,6 +151,9 @@ export function OfferCardSkeleton({ variant = 'large' }: { variant?: 'large' | '
 }
 
 const styles = StyleSheet.create({
+  noPhoto: { alignItems: 'center', justifyContent: 'center' },
+  noPhotoEmoji: { fontSize: 64, lineHeight: 76 },
+  noPhotoEmojiSmall: { fontSize: 48, lineHeight: 58 },
   image: {
     width: '100%',
     aspectRatio: 4 / 3,

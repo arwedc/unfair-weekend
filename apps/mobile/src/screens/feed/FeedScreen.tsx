@@ -24,7 +24,7 @@ import type { FeedOffer } from '@/features/offers/types';
 import { useLocationRatings } from '@/features/reviews/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
-import { colors, layout, radii, space } from '@/theme';
+import { colors, layout, radii, shadow, space } from '@/theme';
 
 function Carousel({
   section,
@@ -93,6 +93,8 @@ export function FeedScreen() {
   const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Höhe des schwebenden Kopfs, damit der Feed darunter beginnt.
+  const [topHeight, setTopHeight] = useState(0);
   // Beim App-Start die Stadt des eigenen Standorts wählen (danach von Hand änderbar).
   useCityFromLocation();
 
@@ -142,18 +144,24 @@ export function FeedScreen() {
       ? labels.offerCategory[filters.categories[0]]
       : m.forYou;
 
+  // Kopf schwebt über dem Feed: zwei leicht durchsichtige Kacheln wie die Tab-Leiste.
   const top = (
-    <View style={[styles.top, { paddingTop: insets.top + space[1] }]}>
-      <View style={styles.titleRow}>
+    <View
+      style={[styles.top, { paddingTop: insets.top + space[1] }]}
+      onLayout={(event) => setTopHeight(event.nativeEvent.layout.height)}
+      pointerEvents="box-none"
+    >
+      <View style={styles.titleRow} pointerEvents="box-none">
         <CityMenu style={styles.cityMenu}>
           <View
-            style={styles.cityButton}
+            style={[styles.glass, styles.cityButton]}
             accessible
             accessibilityRole="button"
             accessibilityLabel={m.cityAria(city.name)}
             accessibilityHint={m.cityHint}
           >
-            <Text variant="title2" numberOfLines={1} style={styles.cityName}>
+            <MapPin size={18} strokeWidth={2.5} color={colors.accent.strong} />
+            <Text variant="headline" numberOfLines={1} style={styles.cityName}>
               {city.name}
             </Text>
             <View style={styles.chevron}>
@@ -166,11 +174,12 @@ export function FeedScreen() {
           icon={showSearch ? X : Search}
           accessibilityLabel={showSearch ? m.closeSearch : m.search}
           onPress={toggleSearch}
+          style={[styles.glass, styles.searchButton]}
         />
       </View>
 
       {showSearch ? (
-        <View style={styles.inset}>
+        <View style={[styles.glass, styles.searchField]}>
           <Input
             shape="pill"
             icon={Search}
@@ -251,8 +260,6 @@ export function FeedScreen() {
 
   return (
     <View style={styles.screen}>
-      {top}
-
       <FlatList
         ref={list}
         // Ohne Kategorie und Suche zeigt der Feed nur die Reihen, keine Liste darunter.
@@ -269,8 +276,9 @@ export function FeedScreen() {
         }
         ItemSeparatorComponent={Separator}
         style={styles.list}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[styles.content, { paddingTop: topHeight + space[4] }]}
+        scrollIndicatorInsets={{ top: topHeight }}
+        contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
@@ -280,9 +288,11 @@ export function FeedScreen() {
             onRefresh={() => void refetch()}
             tintColor={colors.accent.strong}
             colors={[colors.accent.strong]}
+            progressViewOffset={topHeight}
           />
         }
       />
+      {top}
     </View>
   );
 }
@@ -294,12 +304,25 @@ function Separator() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
   top: {
-    gap: space[1],
-    paddingBottom: space[1],
-    backgroundColor: colors.background.default,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    gap: space[2],
+    paddingHorizontal: layout.screenPaddingX,
+    paddingBottom: space[2],
   },
+  // Leicht durchsichtige Kachel, wie die Tab-Leiste unten.
+  glass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(10, 10, 10, 0.08)',
+    borderRadius: radii.full,
+    borderCurve: 'continuous',
+    boxShadow: shadow.card,
+  },
+  searchButton: { width: 48, height: 48 },
+  searchField: { padding: space[1] },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,7 +333,10 @@ const styles = StyleSheet.create({
   },
   cityMenu: { flexShrink: 1 },
   cityButton: {
-    minHeight: layout.minTouchTarget,
+    minHeight: 48,
+    paddingLeft: space[3],
+    paddingRight: space[2],
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[1],
@@ -325,7 +351,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.subtle,
   },
   list: { flex: 1, backgroundColor: colors.background.default },
-  content: { paddingTop: space[5], paddingBottom: space[12] },
+  content: { paddingBottom: space[12] },
   header: { gap: space[6], paddingBottom: space[4] },
   intro: { gap: space[3] },
   inset: { paddingHorizontal: layout.screenPaddingX },
