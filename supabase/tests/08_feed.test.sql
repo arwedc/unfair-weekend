@@ -12,6 +12,8 @@ select tests.set_id('e_morgen', tests.create_offer(tests.id('loc'), 'einzeltermi
 select tests.set_id('z_ende_2', tests.create_offer(tests.id('loc'), 'zeitraum', now() - interval '3 days', now() + interval '2 days'));
 select tests.set_id('e_in_3', tests.create_offer(tests.id('loc2'), 'einzeltermin', now() + interval '3 days', now() + interval '3 days 2 hours'));
 select tests.set_id('z_ende_12h', tests.create_offer(tests.id('loc2'), 'zeitraum', now() - interval '1 day', now() + interval '12 hours'));
+update public.locations set image_paths = array['standort/hauptbild.jpg', 'standort/zweites-bild.jpg']
+where id = tests.id('loc');
 update public.offers set category = 'sport_bewegung' where id = tests.id('e_in_3');
 
 -- Nicht im Feed
@@ -51,7 +53,7 @@ select is(
 select ok(not (tests.id('voll') = any (pg_temp.feed_ids(null, null, true))), 'only_available blendet Ausgebuchtes aus');
 select is((select free_seats from public.list_offers() where id = tests.id('voll')), 0, 'Ausgebucht: 0 freie Plätze');
 select is((select discount_percent from public.list_offers() where id = tests.id('e_morgen')), 40, 'Rabatt in Prozent (abgerundet)');
-select is((select cover_image_path from public.list_offers() where id = tests.id('e_morgen')), 'test/bild-1.jpg', 'Titelbild = erstes Bild');
+select is((select cover_image_path from public.list_offers() where id = tests.id('e_morgen')), 'standort/hauptbild.jpg', 'Hauptbild kommt vom Standort');
 select is((select location_name from public.list_offers() where id = tests.id('e_morgen')), 'TEST AUTOTEST Standort', 'Standortinfo');
 select is((select count(*)::int from public.list_offers(null, null, false, 1, 0)), 1, 'Limit');
 select ok((select count(*) from public.list_offers(null, null, false, 100000, 0)) <= 100, 'Limit höchstens 100');

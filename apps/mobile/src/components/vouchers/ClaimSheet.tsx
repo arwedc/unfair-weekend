@@ -1,7 +1,7 @@
 import { claimVoucherSchema } from '@repo/shared';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { Ticket } from 'lucide-react-native';
+import { CreditCard, Ticket } from 'lucide-react-native';
 import { useState, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import { blockedNotice } from '@/features/auth/account';
 import { useAuth } from '@/features/auth/auth-context';
 import { cancelPolicyText } from '@/features/offers/feed-logic';
 import { useSettings } from '@/features/offers/queries';
+import { useBookingMode } from '@/features/payments/queries';
 import type { OfferDetail } from '@/features/offers/types';
 import { askForPushAfterClaim } from '@/features/push/push';
 import { useClaimVoucher } from '@/features/vouchers/queries';
@@ -23,7 +24,10 @@ export interface ClaimSheetProps {
   offer: OfferDetail;
 }
 
-/** Platzwahl und „Code holen“. Ob es klappt, entscheidet der Server (`claim_voucher`). */
+/**
+ * Platzwahl und „Code holen“. Ob es klappt, entscheidet der Server (`claim_voucher`).
+ * Mit Zahlungen (Flag `payments_enabled`) geht es stattdessen weiter zum Checkout.
+ */
 export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -31,6 +35,7 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
   const { account } = useAuth();
   const { data: settings } = useSettings();
   const claim = useClaimVoucher();
+  const paid = useBookingMode() === 'bezahlung';
   const [wanted, setWanted] = useState(1);
 
   const max = maxSelectableSeats(offer);
@@ -40,6 +45,14 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
   const submit = () => {
     const parsed = claimVoucherSchema.safeParse({ offer_id: offer.id, seats });
     if (!parsed.success) return;
+    if (paid) {
+      ref.current?.dismiss();
+      router.push({
+        pathname: '/bezahlen/[id]',
+        params: { id: parsed.data.offer_id, plaetze: String(parsed.data.seats) },
+      });
+      return;
+    }
     claim.mutate(
       { offerId: parsed.data.offer_id, seats: parsed.data.seats },
       {
@@ -79,7 +92,8 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
 
       <View style={styles.notes}>
         <Text variant="footnote" color="secondary" align="center">
-          {m.payOnSite} {cancelPolicyText(offer.type, settings?.cancel_deadline_hours, locale)}
+          {paid ? m.payInApp : m.payOnSite}{' '}
+          {cancelPolicyText(offer.type, settings?.cancel_deadline_hours, locale)}
         </Text>
         {claim.error ? (
           <Text
@@ -94,8 +108,16 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
       </View>
 
       <Button
-        label={seats === 1 ? m.getCode : m.getCodeFor(seatsText(seats, locale))}
-        icon={Ticket}
+        label={
+          paid
+            ? seats === 1
+              ? m.toCheckout
+              : m.toCheckoutFor(seatsText(seats, locale))
+            : seats === 1
+              ? m.getCode
+              : m.getCodeFor(seatsText(seats, locale))
+        }
+        icon={paid ? CreditCard : Ticket}
         size="lg"
         fullWidth
         haptic

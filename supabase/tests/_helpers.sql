@@ -9,6 +9,9 @@
 create schema tests;
 grant usage on schema tests to anon, authenticated;
 
+-- Tests beginnen unabhängig vom veränderlichen Dev-Schalter im kostenlosen Modus.
+update public.payment_settings set payments_enabled = false;
+
 -- Ablage für IDs innerhalb einer Testdatei: tests.set_id('nutzer', …), tests.id('nutzer')
 create table tests.ids (k text primary key, v uuid);
 grant select, insert on tests.ids to anon, authenticated;

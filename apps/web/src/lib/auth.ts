@@ -1,6 +1,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import type { Enums } from '@repo/shared';
+import { loginUrl } from '@/lib/safe-redirect';
 import { createClient } from '@/lib/supabase/server';
 
 /** Standort aus `get_my_account().location` (siehe docs/BACKEND.md). */
@@ -40,9 +41,12 @@ export async function getAccount(): Promise<PortalAccount | null> {
   return { userId: account.user_id, location: account.location };
 }
 
-/** Für Seiten im Portal: ohne Standort-Account zurück zum Login. */
-export async function requireAccount(): Promise<PortalAccount> {
+/**
+ * Für Seiten im Portal: ohne Standort-Account zurück zum Login.
+ * `next` ist die Seite, auf die es nach dem Login zurückgeht (z. B. ein gescannter QR-Link).
+ */
+export async function requireAccount(next?: string): Promise<PortalAccount> {
   const account = await getAccount();
-  if (!account) redirect('/login?grund=kein-standort');
+  if (!account) redirect(loginUrl(next, 'kein-standort'));
   return account;
 }

@@ -60,6 +60,9 @@ export const screensDe = {
     discount: (discount: string) => `${discount} Rabatt`,
     whatToExpect: 'Was erwartet dich',
     payOnSiteShort: 'Zahlung vor Ort',
+    payInAppShort: 'Bezahlung in der App',
+    book: 'Platz buchen',
+    bookHint: 'Reserviert deinen Platz, dann bezahlst du in der App',
     openInMaps: (address: string) => `${address}, in der Karten-App öffnen`,
     routeHint: 'Öffnet den Standort in Apple Karten oder Google Maps',
     payOnSite: 'Du zahlst vor Ort, nicht in der App',
@@ -115,6 +118,9 @@ export const screensDe = {
     cancelText: (seats: string, title: string, one: boolean) =>
       `${seats} für „${title}“ ${one ? 'wird' : 'werden'} wieder frei. Das lässt sich nicht rückgängig machen.`,
     confirmCancel: 'Ja, stornieren',
+    paid: (amount: string) => `Bezahlt: ${amount}`,
+    refundText: (amount: string) => `Du bekommst ${amount} automatisch zurück.`,
+    refunded: (amount: string) => `${amount} erstattet`,
     keep: 'Behalten',
   },
 };
@@ -170,6 +176,9 @@ export const screensEn: Widen<typeof screensDe> = {
     discount: (discount) => `${discount} off`,
     whatToExpect: 'What to expect',
     payOnSiteShort: 'Pay on site',
+    payInAppShort: 'Pay in the app',
+    book: 'Book a spot',
+    bookHint: 'Holds your spot, then you pay in the app',
     openInMaps: (address) => `${address}, open in maps`,
     routeHint: 'Opens the location in Apple Maps or Google Maps',
     payOnSite: 'You pay on site, not in the app',
@@ -224,6 +233,9 @@ export const screensEn: Widen<typeof screensDe> = {
     cancelText: (seats, title, one) =>
       `${seats} for “${title}” ${one ? 'becomes' : 'become'} available again. This can't be undone.`,
     confirmCancel: 'Yes, cancel',
+    paid: (amount) => `Paid: ${amount}`,
+    refundText: (amount) => `You'll get ${amount} back automatically.`,
+    refunded: (amount) => `${amount} refunded`,
     keep: 'Keep',
   },
 };

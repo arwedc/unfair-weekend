@@ -19,6 +19,7 @@ import { OnboardingExperience } from '@/components/onboarding/OnboardingExperien
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { OnboardingProvider } from '@/features/onboarding/onboarding-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
+import { PaymentsProvider } from '@/features/payments/stripe-provider';
 import { usePushSetup } from '@/features/push/use-push';
 import { hideDevToolsButton } from '@/lib/dev-tools';
 import { useLoadLocale, useT } from '@/lib/i18n/context';
@@ -70,42 +71,51 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.default }}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <OfferFiltersProvider>
-            <OnboardingProvider>
-              <BottomSheetModalProvider>
-                <StatusBar style="dark" />
-                <Stack
-                  screenOptions={{
-                    contentStyle: { backgroundColor: colors.background.default },
-                    headerTintColor: colors.text.primary,
-                    headerBackButtonDisplayMode: 'minimal',
-                    headerShadowVisible: false,
-                    headerStyle: { backgroundColor: colors.background.default },
-                  }}
-                >
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
-                  <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
-                  <Stack.Screen name="code/[id]" options={{ title: t.common.screens.code }} />
-                  <Stack.Screen
-                    name="anmelden"
-                    options={{ headerShown: false, presentation: 'modal' }}
-                  />
-                  <Stack.Screen
-                    name="name"
-                    options={{ title: t.common.screens.name, presentation: 'modal' }}
-                  />
-                  <Stack.Screen name="favoriten" options={{ title: t.common.screens.favorites }} />
-                  <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
-                  <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-                </Stack>
-                <OnboardingExperience />
-                <PushBridge />
-              </BottomSheetModalProvider>
-            </OnboardingProvider>
-          </OfferFiltersProvider>
-        </AuthProvider>
+        <PaymentsProvider>
+          <AuthProvider>
+            <OfferFiltersProvider>
+              <OnboardingProvider>
+                <BottomSheetModalProvider>
+                  <StatusBar style="dark" />
+                  <Stack
+                    screenOptions={{
+                      contentStyle: { backgroundColor: colors.background.default },
+                      headerTintColor: colors.text.primary,
+                      headerBackButtonDisplayMode: 'minimal',
+                      headerShadowVisible: false,
+                      headerStyle: { backgroundColor: colors.background.default },
+                    }}
+                  >
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="code/[id]" options={{ title: t.common.screens.code }} />
+                    <Stack.Screen
+                      name="bezahlen/[id]"
+                      options={{ title: t.common.screens.checkout }}
+                    />
+                    <Stack.Screen
+                      name="anmelden"
+                      options={{ headerShown: false, presentation: 'modal' }}
+                    />
+                    <Stack.Screen
+                      name="name"
+                      options={{ title: t.common.screens.name, presentation: 'modal' }}
+                    />
+                    <Stack.Screen
+                      name="favoriten"
+                      options={{ title: t.common.screens.favorites }}
+                    />
+                    <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
+                    <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+                  </Stack>
+                  <OnboardingExperience />
+                  <PushBridge />
+                </BottomSheetModalProvider>
+              </OnboardingProvider>
+            </OfferFiltersProvider>
+          </AuthProvider>
+        </PaymentsProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

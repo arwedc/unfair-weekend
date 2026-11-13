@@ -84,7 +84,7 @@ select lives_ok(pg_temp.create_sql(p_name => '  TEST AUTOTEST Vorlage  ', p_imag
 select tests.set_id('tpl', (select id from public.offer_templates where name = 'TEST AUTOTEST Vorlage'));
 select is(
   (select image_paths from public.offer_templates where id = tests.id('tpl')),
-  array['a.jpg', 'b.jpg'], 'Name und Bildpfade getrimmt'
+  '{}'::text[], 'Vorlagenbilder werden nicht mehr gespeichert'
 );
 select is(
   (select location_id from public.offer_templates where id = tests.id('tpl')),

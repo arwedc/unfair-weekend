@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { emailSchema } from '@repo/shared';
 import { getT } from '@/lib/i18n/locale';
+import { NEXT_PARAM, safeNext } from '@/lib/safe-redirect';
 import { createClient } from '@/lib/supabase/server';
 
 export interface LoginState {
@@ -40,7 +41,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: t.common.login.noLocation, email };
   }
 
-  redirect('/angebote');
+  redirect(safeNext(formData.get(NEXT_PARAM)) ?? '/angebote');
 }
 
 export async function logout(): Promise<void> {

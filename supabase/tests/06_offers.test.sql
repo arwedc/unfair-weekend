@@ -48,8 +48,8 @@ select is(
 select lives_ok(pg_temp.create_sql(p_title => 'TEST AUTOTEST Getrimmt', p_images => 'array['' a.jpg '', ''b.jpg'']'), 'Bildpfade mit Leerzeichen');
 select is(
   (select image_paths from public.offers where title = 'TEST AUTOTEST Getrimmt'),
-  array['a.jpg', 'b.jpg'],
-  'Bildpfade getrimmt, Reihenfolge bleibt'
+  '{}'::text[],
+  'Einzelne Angebotsbilder werden nicht mehr gespeichert'
 );
 select throws_ok(pg_temp.create_sql(p_images => 'array[''1'',''2'',''3'',''4'',''5'',''6'']'), 'P0001', 'BILDER_UNGUELTIG', '6 Bilder');
 select throws_ok(pg_temp.create_sql(p_images => 'array[''a.jpg'', null]'), 'P0001', 'BILDER_UNGUELTIG', 'leerer Bildeintrag');

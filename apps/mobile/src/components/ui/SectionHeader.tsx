@@ -1,6 +1,7 @@
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { fonts, layout, space } from '@/theme';
+import { colors, fonts, layout, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -16,9 +17,13 @@ export interface SectionHeaderProps {
   onAction?: () => void;
   /** Für Screenreader, z. B. „Alle Angebote aus Kochen & Essen“. */
   actionAccessibilityLabel?: string;
+  /** Macht die ganze Zeile zum Auf-/Zuklapp-Knopf mit Pfeil rechts (neben `detail`). */
+  onToggle?: () => void;
+  /** Nur mit `onToggle`: ob der Abschnitt gerade offen ist. */
+  expanded?: boolean;
 }
 
-/** Überschrift eines Abschnitts, z. B. „Heute in Münster“. */
+/** Überschrift eines Abschnitts, z. B. „Heute in Münster“. Mit `onToggle` auf- und zuklappbar. */
 export function SectionHeader({
   title,
   detail,
@@ -26,7 +31,39 @@ export function SectionHeader({
   actionLabel,
   onAction,
   actionAccessibilityLabel,
+  onToggle,
+  expanded = false,
 }: SectionHeaderProps) {
+  if (onToggle) {
+    const Chevron = expanded ? ChevronUp : ChevronDown;
+    return (
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={detail ? `${title}, ${detail}` : title}
+        accessibilityState={{ expanded }}
+        pressedScale={0.99}
+        onPress={onToggle}
+        style={[
+          styles.row,
+          styles.toggleRow,
+          inset && { paddingHorizontal: layout.screenPaddingX },
+        ]}
+      >
+        <Text variant="title2" style={styles.title}>
+          {title}
+        </Text>
+        <View style={styles.toggleEnd}>
+          {detail ? (
+            <Text variant="subhead" color="tertiary">
+              {detail}
+            </Text>
+          ) : null}
+          <Chevron size={20} color={colors.text.tertiary} strokeWidth={2.25} />
+        </View>
+      </PressableScale>
+    );
+  }
+
   return (
     <View style={[styles.row, inset && { paddingHorizontal: layout.screenPaddingX }]}>
       <Text variant="title2" accessibilityRole="header" style={styles.title}>
@@ -62,6 +99,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: space[3],
   },
+  toggleRow: { alignItems: 'center', minHeight: layout.minTouchTarget },
+  toggleEnd: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
 });

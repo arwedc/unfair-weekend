@@ -6,6 +6,7 @@ import {
   pastSummary,
   seatsText,
   splitVouchers,
+  voucherQrValue,
   voucherStatusInfo,
   voucherWhenText,
 } from './voucher-logic';
@@ -168,5 +169,25 @@ describe('seatsText und maxSelectableSeats', () => {
     expect(maxSelectableSeats({ max_per_user: 4, free_seats: 2 })).toBe(2);
     expect(maxSelectableSeats({ max_per_user: 2, free_seats: 9 })).toBe(2);
     expect(maxSelectableSeats({ max_per_user: 2, free_seats: 0 })).toBe(0);
+  });
+});
+
+describe('voucherQrValue', () => {
+  const TOKEN = 'p9ySM_9f21StzFLKzoQwne-6bk1Qm-ozjh7xL6isYH0';
+
+  it('baut einen Link auf die Einlöse-Seite', () => {
+    expect(voucherQrValue(TOKEN, 'https://partner.example.com')).toBe(
+      `https://partner.example.com/einloesen/${TOKEN}`,
+    );
+  });
+
+  it('verträgt einen Slash am Ende der Adresse', () => {
+    expect(voucherQrValue(TOKEN, 'http://192.168.1.20:3000/')).toBe(
+      `http://192.168.1.20:3000/einloesen/${TOKEN}`,
+    );
+  });
+
+  it('nimmt ohne Website-Adresse nur den Token', () => {
+    expect(voucherQrValue(TOKEN, null)).toBe(TOKEN);
   });
 });

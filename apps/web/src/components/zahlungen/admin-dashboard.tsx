@@ -1,16 +1,8 @@
-import {
-  BOOKING_CANCEL_REASON_LABELS,
-  BOOKING_STATUS_LABELS,
-  PAYMENT_JOB_KIND_LABELS,
-  PAYMENT_JOB_STATUS_LABELS,
-  REFUND_STATUS_LABELS,
-  TRANSFER_STATUS_LABELS,
-  formatDateTime,
-  formatPrice,
-} from '@repo/shared';
+import { formatDateTime, formatPrice } from '@repo/shared';
 import { Card } from '@/components/ui';
 import { PaymentSettingsForm } from './payment-settings-form';
 import { getAdminPaymentData } from '@/lib/zahlungen/queries';
+import { getT } from '@/lib/i18n/locale';
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
@@ -51,10 +43,16 @@ function EmptyRows({ children }: { children: string }) {
   );
 }
 
-function TableFrame({ children }: { children: React.ReactNode }) {
+function DataTable({
+  children,
+  minWidth = 'min-w-[700px]',
+}: {
+  children: React.ReactNode;
+  minWidth?: string;
+}) {
   return (
     <div className="overflow-x-auto rounded-card border border-border-subtle bg-surface-raised shadow-card">
-      {children}
+      <table className={`${minWidth} w-full text-left text-footnote`}>{children}</table>
     </div>
   );
 }
@@ -67,7 +65,30 @@ function TableHead({ children }: { children: React.ReactNode }) {
   );
 }
 
-const DISPUTE_STATUS_LABELS: Record<string, string> = {
+const DISPUTE_STATUS_EN: Record<string, string> = {
+  needs_response: 'Response required',
+  warning_needs_response: 'Response required',
+  under_review: 'Under review',
+  warning_under_review: 'Under review',
+  won: 'Won',
+  lost: 'Lost',
+  charge_refunded: 'Payment refunded',
+  prevented: 'Prevented',
+};
+
+const DISPUTE_REASON_EN: Record<string, string> = {
+  duplicate: 'Duplicate payment',
+  fraudulent: 'Suspected fraud',
+  product_not_received: 'Service not received',
+  product_unacceptable: 'Service unacceptable',
+  subscription_canceled: 'Subscription canceled',
+  unrecognized: 'Unrecognized payment',
+  credit_not_processed: 'Credit not processed',
+  general: 'General',
+  other: 'Other',
+};
+
+const DISPUTE_STATUS_DE: Record<string, string> = {
   needs_response: 'Antwort erforderlich',
   warning_needs_response: 'Antwort erforderlich',
   under_review: 'Wird geprüft',
@@ -78,7 +99,7 @@ const DISPUTE_STATUS_LABELS: Record<string, string> = {
   prevented: 'Verhindert',
 };
 
-const DISPUTE_REASON_LABELS: Record<string, string> = {
+const DISPUTE_REASON_DE: Record<string, string> = {
   duplicate: 'Doppelte Zahlung',
   fraudulent: 'Verdacht auf Betrug',
   product_not_received: 'Leistung nicht erhalten',
@@ -91,21 +112,21 @@ const DISPUTE_REASON_LABELS: Record<string, string> = {
 };
 
 export async function AdminDashboard() {
-  const data = await getAdminPaymentData();
+  const [data, { locale, t, labels }] = await Promise.all([getAdminPaymentData(), getT()]);
+  const a = t.admin;
   const bookingById = new Map(data.bookings.map((booking) => [booking.booking_id, booking]));
-  const weekStart = (date: string) => formatDateTime(date + 'T12:00:00Z');
+  const date = (value: string) => formatDateTime(value, new Date(), locale);
+  const price = (value: number) => formatPrice(value, { locale });
+  const weekStart = (value: string) => date(`${value}T12:00:00Z`);
+  const disputeStatus = locale === 'en' ? DISPUTE_STATUS_EN : DISPUTE_STATUS_DE;
+  const disputeReason = locale === 'en' ? DISPUTE_REASON_EN : DISPUTE_REASON_DE;
 
   return (
     <>
-      <h1 className="text-title2 text-text-primary">Zahlungen</h1>
-      <p className="mb-6 mt-1 text-callout text-text-secondary">
-        Einstellungen und Überblick zu bezahlten Buchungen, Erstattungen und Auszahlungen.
-      </p>
+      <h1 className="text-title2 text-text-primary">{a.title}</h1>
+      <p className="mb-6 mt-1 text-callout text-text-secondary">{a.intro}</p>
 
-      <Section
-        title="Einstellungen"
-        description="Das Flag betrifft neue Buchungen. Bereits bezahlte Buchungen laufen weiter."
-      >
+      <Section title={a.settings} description={a.settingsDescription}>
         <Card className="p-5">
           <PaymentSettingsForm
             paymentsEnabled={data.settings.payments_enabled}
@@ -116,374 +137,277 @@ export async function AdminDashboard() {
       </Section>
 
       <Section
-        title="Wochenübersicht"
-        description={
-          'Zeitraum ' +
-          weekStart(data.metrics.range.from) +
-          ' bis ' +
-          weekStart(data.metrics.range.to) +
-          '.'
-        }
+        title={a.weeklyOverview}
+        description={a.period(weekStart(data.metrics.range.from), weekStart(data.metrics.range.to))}
       >
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <SummaryCard label="Buchungen" value={String(data.metrics.totals.bookings)} />
-          <SummaryCard label="Umsatz" value={formatPrice(data.metrics.totals.gross_cents)} />
-          <SummaryCard label="Erstattet" value={formatPrice(data.metrics.totals.refunded_cents)} />
-          <SummaryCard label="Ausgezahlt" value={formatPrice(data.metrics.totals.paid_out_cents)} />
-          <SummaryCard
-            label="Provision"
-            value={formatPrice(data.metrics.totals.commission_cents)}
-          />
+          <SummaryCard label={a.bookings} value={String(data.metrics.totals.bookings)} />
+          <SummaryCard label={a.revenue} value={price(data.metrics.totals.gross_cents)} />
+          <SummaryCard label={a.refunded} value={price(data.metrics.totals.refunded_cents)} />
+          <SummaryCard label={a.paidOut} value={price(data.metrics.totals.paid_out_cents)} />
+          <SummaryCard label={a.commission} value={price(data.metrics.totals.commission_cents)} />
         </div>
-        {data.metrics.by_week.length > 0 ? (
-          <TableFrame>
-            <table className="mt-4 min-w-[720px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Woche ab
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Buchungen
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Umsatz
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Erstattet
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Ausgezahlt
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Provision
-                  </th>
+        {data.metrics.by_week.length ? (
+          <DataTable minWidth="mt-4 min-w-[720px]">
+            <TableHead>
+              <tr>
+                {[a.weekStarting, a.bookings, a.revenue, a.refunded, a.paidOut, a.commission].map(
+                  (label) => (
+                    <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                      {label}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.metrics.by_week.map((week) => (
+                <tr key={week.week_start}>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-primary">
+                    {weekStart(week.week_start)}
+                  </td>
+                  <td className="px-4 py-3">{week.bookings}</td>
+                  <td className="px-4 py-3">{price(week.gross_cents)}</td>
+                  <td className="px-4 py-3">{price(week.refunded_cents)}</td>
+                  <td className="px-4 py-3">{price(week.paid_out_cents)}</td>
+                  <td className="px-4 py-3">{price(week.commission_cents)}</td>
                 </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.metrics.by_week.map((week) => (
-                  <tr key={week.week_start}>
-                    <td className="whitespace-nowrap px-4 py-3 text-text-primary">
-                      {weekStart(week.week_start)}
-                    </td>
-                    <td className="px-4 py-3">{week.bookings}</td>
-                    <td className="px-4 py-3">{formatPrice(week.gross_cents)}</td>
-                    <td className="px-4 py-3">{formatPrice(week.refunded_cents)}</td>
-                    <td className="px-4 py-3">{formatPrice(week.paid_out_cents)}</td>
-                    <td className="px-4 py-3">{formatPrice(week.commission_cents)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableFrame>
+              ))}
+            </tbody>
+          </DataTable>
         ) : (
-          <EmptyRows>Im ausgewählten Zeitraum gibt es noch keine Zahlungen.</EmptyRows>
+          <EmptyRows>{a.emptyPeriod}</EmptyRows>
         )}
       </Section>
 
-      <Section title="Zahlungen" description="Die letzten 500 Buchungen aus dem Backend.">
-        {data.bookings.length > 0 ? (
-          <TableFrame>
-            <table className="min-w-[850px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Standort und Angebot
+      <Section title={a.payments} description={a.latestBookings}>
+        {data.bookings.length ? (
+          <DataTable minWidth="min-w-[850px]">
+            <TableHead>
+              <tr>
+                {[a.venueAndOffer, a.payment, a.amounts, a.refund, a.payout].map((label) => (
+                  <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                    {label}
                   </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Zahlung
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Beträge
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Erstattung
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Auszahlung
-                  </th>
+                ))}
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.bookings.map((booking) => (
+                <tr key={booking.booking_id} className="align-top">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-text-primary">{booking.location_name}</p>
+                    <p className="text-text-secondary">{booking.offer_title}</p>
+                    <p className="mt-1 text-text-tertiary">
+                      {booking.short_code ? `${a.code(booking.short_code)} · ` : ''}
+                      {labels.bookingStatus[booking.status]}
+                    </p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
+                    {booking.paid_at ? date(booking.paid_at) : '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <p className="font-semibold text-text-primary">
+                      {a.gross(price(booking.amount_cents))}
+                    </p>
+                    <p className="text-text-secondary">
+                      {a.commission} {price(booking.commission_cents)}
+                    </p>
+                    <p className="text-text-secondary">{a.net(price(booking.payout_cents))}</p>
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {booking.refund_status ? labels.refundStatus[booking.refund_status] : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {booking.transfer_status ? labels.transferStatus[booking.transfer_status] : '—'}
+                  </td>
                 </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.bookings.map((booking) => (
-                  <tr key={booking.booking_id} className="align-top">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-text-primary">{booking.location_name}</p>
-                      <p className="text-text-secondary">{booking.offer_title}</p>
-                      <p className="mt-1 text-text-tertiary">
-                        {booking.short_code ? 'Code ' + booking.short_code + ' · ' : ''}
-                        {BOOKING_STATUS_LABELS[booking.status]}
+              ))}
+            </tbody>
+          </DataTable>
+        ) : (
+          <EmptyRows>{a.noPaidBookings}</EmptyRows>
+        )}
+      </Section>
+
+      <Section title={a.refunds}>
+        {data.refunds.length ? (
+          <DataTable>
+            <TableHead>
+              <tr>
+                {[a.booking, a.reason, a.amount, a.status, a.time].map((label) => (
+                  <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.refunds.map((refund) => (
+                <tr key={refund.id}>
+                  <td className="px-4 py-3 text-text-primary">
+                    {bookingById.get(refund.booking_id)?.short_code ??
+                      refund.booking_id.slice(0, 8)}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {labels.bookingCancelReason[refund.reason]}
+                  </td>
+                  <td className="px-4 py-3">{price(refund.amount_cents)}</td>
+                  <td className="px-4 py-3">
+                    {labels.refundStatus[refund.status]}
+                    {refund.last_error ? (
+                      <p className="mt-1 max-w-sm break-words text-status-error-text">
+                        {refund.last_error}
                       </p>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                      {booking.paid_at ? formatDateTime(booking.paid_at) : '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
+                    ) : null}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
+                    {date(refund.refunded_at ?? refund.created_at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        ) : (
+          <EmptyRows>{a.noRefunds}</EmptyRows>
+        )}
+      </Section>
+
+      <Section title={a.transfers}>
+        {data.transfers.length ? (
+          <DataTable minWidth="min-w-[650px]">
+            <TableHead>
+              <tr>
+                {[a.venue, a.booking, a.amount, a.status, a.time].map((label) => (
+                  <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.transfers.map((transfer) => (
+                <tr key={transfer.id}>
+                  <td className="px-4 py-3 text-text-primary">
+                    {bookingById.get(transfer.booking_id)?.location_name ??
+                      transfer.location_id.slice(0, 8)}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {bookingById.get(transfer.booking_id)?.short_code ??
+                      transfer.booking_id.slice(0, 8)}
+                  </td>
+                  <td className="px-4 py-3">{price(transfer.amount_cents)}</td>
+                  <td className="px-4 py-3">
+                    {labels.transferStatus[transfer.status]}
+                    {transfer.last_error ? (
+                      <p className="mt-1 max-w-sm break-words text-status-error-text">
+                        {transfer.last_error}
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
+                    {date(transfer.transferred_at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        ) : (
+          <EmptyRows>{a.noTransfers}</EmptyRows>
+        )}
+      </Section>
+
+      <Section title={a.disputes} description={a.disputeDescription}>
+        {data.disputes.length ? (
+          <DataTable minWidth="min-w-[800px]">
+            <TableHead>
+              <tr>
+                {[a.statusAndReason, a.amount, a.paymentOrCode, a.redeemed, a.evidenceDeadline].map(
+                  (label) => (
+                    <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                      {label}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.disputes.map((dispute) => {
+                const evidence = dispute.booking_id ? data.evidence[dispute.booking_id] : undefined;
+                return (
+                  <tr key={dispute.id} className="align-top">
+                    <td className="px-4 py-3">
                       <p className="font-semibold text-text-primary">
-                        Brutto {formatPrice(booking.amount_cents)}
+                        {disputeStatus[dispute.stripe_status] ??
+                          a.stripeStatus(dispute.stripe_status)}
                       </p>
                       <p className="text-text-secondary">
-                        Provision {formatPrice(booking.commission_cents)}
+                        {dispute.reason
+                          ? (disputeReason[dispute.reason] ?? a.genericReason(dispute.reason))
+                          : a.unspecifiedReason}
                       </p>
-                      <p className="text-text-secondary">
-                        Netto {formatPrice(booking.payout_cents)}
+                      <p className="mt-1 text-caption text-text-tertiary">
+                        {dispute.stripe_dispute_id}
                       </p>
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3">{price(dispute.amount_cents)}</td>
                     <td className="px-4 py-3 text-text-secondary">
-                      {booking.refund_status ? REFUND_STATUS_LABELS[booking.refund_status] : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {booking.transfer_status
-                        ? TRANSFER_STATUS_LABELS[booking.transfer_status]
-                        : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableFrame>
-        ) : (
-          <EmptyRows>Noch keine bezahlten Buchungen.</EmptyRows>
-        )}
-      </Section>
-
-      <Section title="Erstattungen">
-        {data.refunds.length > 0 ? (
-          <TableFrame>
-            <table className="min-w-[700px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Buchung
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Grund
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Betrag
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Zeitpunkt
-                  </th>
-                </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.refunds.map((refund) => (
-                  <tr key={refund.id}>
-                    <td className="px-4 py-3 text-text-primary">
-                      {bookingById.get(refund.booking_id)?.short_code ??
-                        refund.booking_id.slice(0, 8)}
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {BOOKING_CANCEL_REASON_LABELS[refund.reason]}
-                    </td>
-                    <td className="px-4 py-3">{formatPrice(refund.amount_cents)}</td>
-                    <td className="px-4 py-3">
-                      {REFUND_STATUS_LABELS[refund.status]}
-                      {refund.last_error ? (
-                        <p className="mt-1 max-w-sm break-words text-status-error-text">
-                          {refund.last_error}
-                        </p>
-                      ) : null}
+                      {evidence?.paidAt ? date(evidence.paidAt) : a.paidAtUnavailable}
+                      <p className="mt-1">
+                        {evidence?.shortCode ? a.code(evidence.shortCode) : a.noCodeLinked}
+                      </p>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                      {formatDateTime(refund.refunded_at ?? refund.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableFrame>
-        ) : (
-          <EmptyRows>Noch keine Erstattungen.</EmptyRows>
-        )}
-      </Section>
-
-      <Section title="Auszahlungen an Standorte">
-        {data.transfers.length > 0 ? (
-          <TableFrame>
-            <table className="min-w-[650px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Standort
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Buchung
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Betrag
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Zeitpunkt
-                  </th>
-                </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.transfers.map((transfer) => (
-                  <tr key={transfer.id}>
-                    <td className="px-4 py-3 text-text-primary">
-                      {bookingById.get(transfer.booking_id)?.location_name ??
-                        transfer.location_id.slice(0, 8)}
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {bookingById.get(transfer.booking_id)?.short_code ??
-                        transfer.booking_id.slice(0, 8)}
-                    </td>
-                    <td className="px-4 py-3">{formatPrice(transfer.amount_cents)}</td>
-                    <td className="px-4 py-3">
-                      {TRANSFER_STATUS_LABELS[transfer.status]}
-                      {transfer.last_error ? (
-                        <p className="mt-1 max-w-sm break-words text-status-error-text">
-                          {transfer.last_error}
-                        </p>
-                      ) : null}
+                      {evidence?.redeemedAt ? date(evidence.redeemedAt) : a.notRedeemed}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                      {formatDateTime(transfer.transferred_at)}
+                      {dispute.evidence_due_by ? date(dispute.evidence_due_by) : '—'}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableFrame>
+                );
+              })}
+            </tbody>
+          </DataTable>
         ) : (
-          <EmptyRows>Noch keine Auszahlungen.</EmptyRows>
+          <EmptyRows>{a.noDisputes}</EmptyRows>
         )}
       </Section>
 
-      <Section
-        title="Rückbuchungen"
-        description="Belege für eine Antwort reichst du im Stripe-Dashboard ein."
-      >
-        {data.disputes.length > 0 ? (
-          <TableFrame>
-            <table className="min-w-[800px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Status und Grund
+      <Section title={a.failedJobs}>
+        {data.failedJobs.length ? (
+          <DataTable>
+            <TableHead>
+              <tr>
+                {[a.job, a.booking, a.attempts, a.error, a.time].map((label) => (
+                  <th key={label} scope="col" className="px-4 py-3 font-semibold">
+                    {label}
                   </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Betrag
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Zahlung / Code
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Eingelöst
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Belegfrist
-                  </th>
-                </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.disputes.map((dispute) => {
-                  const evidence = dispute.booking_id
-                    ? data.evidence[dispute.booking_id]
-                    : undefined;
-                  return (
-                    <tr key={dispute.id} className="align-top">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-text-primary">
-                          {DISPUTE_STATUS_LABELS[dispute.stripe_status] ??
-                            'Stripe-Status: ' + dispute.stripe_status}
-                        </p>
-                        <p className="text-text-secondary">
-                          {dispute.reason
-                            ? (DISPUTE_REASON_LABELS[dispute.reason] ?? 'Grund: ' + dispute.reason)
-                            : 'Grund nicht angegeben'}
-                        </p>
-                        <p className="mt-1 text-caption text-text-tertiary">
-                          {dispute.stripe_dispute_id}
-                        </p>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {formatPrice(dispute.amount_cents)}
-                      </td>
-                      <td className="px-4 py-3 text-text-secondary">
-                        {evidence?.paidAt
-                          ? formatDateTime(evidence.paidAt)
-                          : 'Zahlzeit nicht verfügbar'}
-                        <p className="mt-1">
-                          {evidence?.shortCode
-                            ? 'Code ' + evidence.shortCode
-                            : 'Kein Code verknüpft'}
-                        </p>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                        {evidence?.redeemedAt
-                          ? formatDateTime(evidence.redeemedAt)
-                          : 'Nicht eingelöst'}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                        {dispute.evidence_due_by ? formatDateTime(dispute.evidence_due_by) : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </TableFrame>
-        ) : (
-          <EmptyRows>Keine Rückbuchungen erfasst.</EmptyRows>
-        )}
-      </Section>
-
-      <Section title="Fehlgeschlagene Hintergrundjobs">
-        {data.failedJobs.length > 0 ? (
-          <TableFrame>
-            <table className="min-w-[700px] w-full text-left text-footnote">
-              <TableHead>
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Job
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Buchung
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Versuche
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Fehler
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Zeitpunkt
-                  </th>
-                </tr>
-              </TableHead>
-              <tbody className="divide-y divide-border-subtle">
-                {data.failedJobs.map((job) => (
-                  <tr key={job.id} className="align-top">
-                    <td className="px-4 py-3">
-                      {PAYMENT_JOB_KIND_LABELS[job.kind]}
-                      <p className="text-text-tertiary">{PAYMENT_JOB_STATUS_LABELS[job.status]}</p>
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {bookingById.get(job.booking_id)?.short_code ?? job.booking_id.slice(0, 8)}
-                    </td>
-                    <td className="px-4 py-3">{job.attempts}</td>
-                    <td className="max-w-md break-words px-4 py-3 text-status-error-text">
-                      {job.last_error ?? 'Keine Fehlerdetails'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
-                      {formatDateTime(job.created_at)}
-                    </td>
-                  </tr>
                 ))}
-              </tbody>
-            </table>
-          </TableFrame>
+              </tr>
+            </TableHead>
+            <tbody className="divide-y divide-border-subtle">
+              {data.failedJobs.map((job) => (
+                <tr key={job.id} className="align-top">
+                  <td className="px-4 py-3">
+                    {labels.paymentJobKind[job.kind]}
+                    <p className="text-text-tertiary">{labels.paymentJobStatus[job.status]}</p>
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {bookingById.get(job.booking_id)?.short_code ?? job.booking_id.slice(0, 8)}
+                  </td>
+                  <td className="px-4 py-3">{job.attempts}</td>
+                  <td className="max-w-md break-words px-4 py-3 text-status-error-text">
+                    {job.last_error ?? a.noErrorDetails}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
+                    {date(job.created_at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
         ) : (
-          <EmptyRows>Keine fehlgeschlagenen Jobs.</EmptyRows>
+          <EmptyRows>{a.noFailedJobs}</EmptyRows>
         )}
       </Section>
     </>

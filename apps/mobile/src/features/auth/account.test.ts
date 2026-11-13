@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { blockedNotice, fullName, parseAccount, sessionTokensFromUrl, splitName } from './account';
+import {
+  blockedNotice,
+  fullName,
+  parseAccount,
+  sessionTokensFromUrl,
+  splitName,
+  supabaseSafeRedirectUrl,
+} from './account';
 
 const raw = {
   user_id: 'u1',
@@ -100,5 +107,31 @@ describe('sessionTokensFromUrl', () => {
 
   it('ist null ohne Tokens', () => {
     expect(sessionTokensFromUrl('unfairweekend://auth/callback')).toBeNull();
+  });
+});
+
+describe('supabaseSafeRedirectUrl', () => {
+  const safe = (url: string) => supabaseSafeRedirectUrl(url, 'unfairweekend', 'auth/callback');
+
+  it('nimmt das App-Schema, wenn Expo Go eine WLAN-IP liefert', () => {
+    expect(safe('exp://10.10.58.170:8082/--/auth/callback')).toBe('unfairweekend://auth/callback');
+    expect(safe('exp://192.168.178.20:8081/--/auth/callback')).toBe(
+      'unfairweekend://auth/callback',
+    );
+    expect(safe('exp://[fe80::1]:8081/--/auth/callback')).toBe('unfairweekend://auth/callback');
+  });
+
+  it('lässt Adressen mit Hostnamen unverändert (Tunnel, eigene Builds)', () => {
+    expect(safe('exp://abc-anonymous-8081.exp.direct/--/auth/callback')).toBe(
+      'exp://abc-anonymous-8081.exp.direct/--/auth/callback',
+    );
+    expect(safe('unfairweekend://auth/callback')).toBe('unfairweekend://auth/callback');
+  });
+
+  it('lässt Loopback unverändert, das erlaubt Supabase (Simulator)', () => {
+    expect(safe('exp://127.0.0.1:8081/--/auth/callback')).toBe(
+      'exp://127.0.0.1:8081/--/auth/callback',
+    );
+    expect(safe('exp://[::1]:8081/--/auth/callback')).toBe('exp://[::1]:8081/--/auth/callback');
   });
 });

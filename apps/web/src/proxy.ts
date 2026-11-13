@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@repo/shared';
+import { loginUrl, NEXT_PARAM, safeNext } from '@/lib/safe-redirect';
 import { assertSupabaseEnv, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase/env';
 
 /**
@@ -38,11 +39,14 @@ export async function proxy(request: NextRequest) {
 
   const protectedPath =
     path.startsWith('/angebote') ||
+    path.startsWith('/einloesen') ||
     path.startsWith('/bewertungen') ||
     path.startsWith('/auszahlungen') ||
     path.startsWith('/admin');
   if (!signedIn && protectedPath) {
-    return redirectKeepingCookies(new URL('/login', request.url), response);
+    // Nach dem Login zurück auf dieselbe Seite (wichtig für gescannte QR-Links).
+    const target = loginUrl(path + request.nextUrl.search);
+    return redirectKeepingCookies(new URL(target, request.url), response);
   }
   if (signedIn && path === '/login') {
     // Rollen stehen nicht im JWT. Der DB-Vertrag liefert die aktuelle Rolle fürs Login-Routing;
@@ -50,7 +54,13 @@ export async function proxy(request: NextRequest) {
     const { data: accountData, error } = await supabase.rpc('get_my_account');
     const account = accountData as unknown as { role?: string } | null;
     if (!error && account) {
-      const destination = account.role === 'admin' ? '/admin/zahlungen' : '/angebote';
+      const next = safeNext(request.nextUrl.searchParams.get(NEXT_PARAM));
+      const destination =
+        account.role === 'admin'
+          ? '/admin/zahlungen'
+          : account.role === 'standort' && next
+            ? next
+            : '/angebote';
       return redirectKeepingCookies(new URL(destination, request.url), response);
     }
   }
@@ -70,6 +80,7 @@ function redirectKeepingCookies(url: URL, from: NextResponse) {
 export const config = {
   matcher: [
     '/angebote/:path*',
+    '/einloesen/:path*',
     '/bewertungen/:path*',
     '/auszahlungen/:path*',
     '/admin/:path*',
