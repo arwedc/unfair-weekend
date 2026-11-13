@@ -9,11 +9,13 @@ export interface ImageGalleryProps {
   paths: readonly string[];
   /** Für Screenreader: wozu die Bilder gehören. */
   title: string;
+  width?: number;
 }
 
 /** Bildergalerie über die volle Breite, zum Wischen, mit Punkten als Positionsanzeige. */
-export function ImageGallery({ paths, title }: ImageGalleryProps) {
-  const { width } = useWindowDimensions();
+export function ImageGallery({ paths, title, width: contentWidth }: ImageGalleryProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const width = contentWidth ?? windowWidth;
   const [index, setIndex] = useState(0);
   const height = Math.round(width * 0.82);
   const images = paths.length > 0 ? paths : [null];
