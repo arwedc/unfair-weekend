@@ -15,6 +15,11 @@ type Pair = [name: string, foreground: string, background: string];
 
 const textPairs: Pair[] = [
   [
+    'Rabatt-Etikett neben dem Preis (Akzent auf zarter Akzentfläche)',
+    colors.accent.onSubtle,
+    colors.accent.subtle,
+  ],
+  [
     'Status-Pill neutral (Text sekundär auf gedämpft)',
     colors.text.secondary,
     colors.background.muted,

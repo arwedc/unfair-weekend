@@ -1,3 +1,4 @@
+import { OFFER_CATEGORIES } from '@repo/shared';
 import { describe, expect, it } from 'vitest';
 
 import type { OfferPlace } from '@/features/offers/feed-logic';
@@ -5,9 +6,11 @@ import type { OfferPlace } from '@/features/offers/feed-logic';
 import {
   buildMapHtml,
   MAP_ATTRIBUTION,
+  MAP_PALETTE,
   MAPLIBRE_CDNS,
   parseMapMessage,
   placesToGeoJson,
+  selectPlaceScript,
   setCenterScript,
   setPlacesScript,
   toScriptJson,
@@ -15,9 +18,8 @@ import {
 
 const colors = {
   pin: '#111111',
-  pinText: '#ffffff',
-  cluster: '#222222',
-  clusterText: '#ffffff',
+  pinActive: '#000000',
+  pinDot: '#ffffff',
   user: '#333333',
   background: '#ffffff',
 };
@@ -32,16 +34,43 @@ const place = (overrides: Partial<OfferPlace> = {}): OfferPlace => ({
 });
 
 describe('placesToGeoJson', () => {
-  it('setzt Koordinaten als [lng, lat] und den Rabatt als Beschriftung', () => {
+  it('setzt Koordinaten als [lng, lat] und den Schlüssel des Orts', () => {
     const geojson = placesToGeoJson([place()]);
     expect(geojson.features).toHaveLength(1);
     expect(geojson.features[0]?.geometry.coordinates).toEqual([7.62, 51.96]);
     expect(geojson.features[0]?.properties.key).toBe('51.96000,7.62000');
-    expect(geojson.features[0]?.properties.label).toContain('40');
+  });
+
+  it('zählt die Angebote pro Ort', () => {
+    const offer = { free_seats: 3 } as OfferPlace['offers'][number];
+    expect(placesToGeoJson([place({ offers: [offer, offer] })]).features[0]?.properties.count).toBe(
+      2,
+    );
+  });
+
+  it('gibt jeder Nadel die Kategorie für das Symbol mit', () => {
+    const offer = { free_seats: 3, category: 'sport_bewegung' } as OfferPlace['offers'][number];
+    expect(placesToGeoJson([place({ offers: [offer] })]).features[0]?.properties.category).toBe(
+      'sport_bewegung',
+    );
   });
 
   it('liefert ohne Standorte eine leere Sammlung', () => {
     expect(placesToGeoJson([]).features).toEqual([]);
+  });
+});
+
+describe('Nadeln mit Kategorie-Symbol', () => {
+  const html = buildMapHtml({ styleUrl: 'https://tiles.openfreemap.org/styles/positron', colors });
+
+  it('legt pro Kategorie eine normale und eine gewählte Nadel an', () => {
+    expect(html).toContain("'pin-' + category");
+    expect(html).toContain("'-active'");
+    expect(html).toContain('new Path2D(d)');
+  });
+
+  it('bettet die Symbol-Pfade aller Kategorien ein', () => {
+    for (const category of OFFER_CATEGORIES) expect(html).toContain(`"${category}":[`);
   });
 });
 
@@ -59,6 +88,14 @@ describe('setPlacesScript', () => {
   });
 });
 
+describe('selectPlaceScript', () => {
+  it('übergibt Schlüssel und Abstände', () => {
+    const script = selectPlaceScript('a', { top: 120, bottom: 200 });
+    expect(script).toContain('window.selectPlace("a", {"top":120,"bottom":200})');
+    expect(selectPlaceScript(null, { top: 0, bottom: 0 })).toContain('window.selectPlace(null');
+  });
+});
+
 describe('setCenterScript', () => {
   it('springt mit [lng, lat] auf die Stadt', () => {
     const script = setCenterScript(54.6872, 25.2797);
@@ -73,6 +110,24 @@ describe('buildMapHtml', () => {
   it('enthält die Stil-URL und die Pflicht-Quellenangabe', () => {
     expect(html).toContain('https://tiles.openfreemap.org/styles/positron');
     expect(html).toContain(MAP_ATTRIBUTION);
+  });
+
+  it('färbt Parks grün und Wasser blau ein', () => {
+    expect(html).toContain('colorize()');
+    expect(html).toContain(MAP_PALETTE.park);
+    expect(html).toContain(MAP_PALETTE.water);
+    expect(html).toContain("paint('water', 'fill-color', p.water)");
+  });
+
+  it('zeichnet Nadeln statt Kreisen mit Rabatt', () => {
+    expect(html).toContain("'icon-image'");
+    expect(html).toContain("'icon-anchor': 'bottom'");
+    expect(html).not.toContain('pin-labels');
+  });
+
+  it('fasst nah beieinanderliegende Nadeln nicht zusammen', () => {
+    expect(html).not.toContain('cluster: true');
+    expect(html).not.toContain("id: 'clusters'");
   });
 
   it('zeigt die Quellenangabe als feste Zeile statt der automatischen (doppelten)', () => {

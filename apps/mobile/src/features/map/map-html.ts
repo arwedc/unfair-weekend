@@ -4,9 +4,11 @@
  * Warum WebView: Die native MapLibre-Bibliothek läuft nicht in Expo Go (siehe docs/SPEC-APP.md, Annahmen).
  * Kacheln und Stil kommen von OpenFreeMap, ohne API-Key. Die Seite spricht per postMessage mit der App.
  */
-import { formatDiscount } from '@repo/shared';
+import type { OfferCategory } from '@repo/shared';
 
-import type { OfferPlace } from '@/features/offers/feed-logic';
+import type { OfferPlace } from '../offers/feed-logic';
+
+import { PIN_ICON_PATHS, placeCategory } from './pin-icons';
 
 /**
  * MapLibre GL JS aus der 5er-Reihe (wird weiter gepflegt, npm-Tag `latest-5`).
@@ -29,12 +31,20 @@ export const DEFAULT_ZOOM = 12.2;
 export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
 
 export interface MapColors {
+  /** Nadel (Markenfarbe). */
   pin: string;
-  pinText: string;
-  cluster: string;
-  clusterText: string;
+  /** Nadel des gerade gezeigten Angebots. */
+  pinActive: string;
+  /** Kategorie-Symbol in der Nadel. */
+  pinDot: string;
   user: string;
   background: string;
+}
+
+/** Freiraum am Kartenrand (Suchleiste oben, Kachel unten), damit die Nadel sichtbar mittig landet. */
+export interface MapPadding {
+  top: number;
+  bottom: number;
 }
 
 /** Nachrichten der Karte an die App. */
@@ -74,10 +84,10 @@ export function parseMapMessage(raw: string): MapMessage | null {
 interface PlaceFeature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: { key: string; label: string; count: number };
+  properties: { key: string; count: number; category: OfferCategory };
 }
 
-/** Standorte als GeoJSON für die Pins. Im Pin steht der höchste Rabatt am Ort. */
+/** Standorte als GeoJSON für die Nadeln (eine Nadel pro Adresse, keine Gruppen, Symbol nach Kategorie). */
 export function placesToGeoJson(places: readonly OfferPlace[]): {
   type: 'FeatureCollection';
   features: PlaceFeature[];
@@ -89,8 +99,8 @@ export function placesToGeoJson(places: readonly OfferPlace[]): {
       geometry: { type: 'Point', coordinates: [place.lng, place.lat] },
       properties: {
         key: place.key,
-        label: formatDiscount(place.maxDiscount),
         count: place.offers.length,
+        category: placeCategory(place),
       },
     })),
   };
@@ -109,6 +119,45 @@ export function setPlacesScript(places: readonly OfferPlace[]): string {
   return `window.setPlaces && window.setPlaces(${toScriptJson(placesToGeoJson(places))}); true;`;
 }
 
+/**
+ * Befehl für die WebView: Nadel hervorheben und die Karte so verschieben, dass sie
+ * zwischen Suchleiste und Kachel sichtbar ist. `null` hebt die Auswahl auf.
+ */
+export function selectPlaceScript(key: string | null, padding: MapPadding): string {
+  return `window.selectPlace && window.selectPlace(${toScriptJson(key)}, ${toScriptJson(padding)}); true;`;
+}
+
+/**
+ * Farben für die Karte (Grün für Parks, Blau für Wasser …), angelehnt an die Klarheit von
+ * Karten-Apps, aber mit eigenen Tönen. Bewusst hier und nicht in @repo/shared: Sie gelten nur
+ * für den Kartenstil, nicht für Komponenten. Wird auf den OpenFreeMap-Stil „Positron“
+ * angewendet; fehlt eine Ebene (anderer Stil), wird sie einfach übersprungen.
+ */
+export const MAP_PALETTE = {
+  land: '#F6F4EF',
+  residential: '#F1EFE9',
+  building: '#E9E6E0',
+  buildingOutline: '#DDD9D2',
+  park: '#CFE8C3',
+  wood: '#BFDFB0',
+  grass: '#D9EECF',
+  cemetery: '#D4E4CB',
+  sport: '#C8E6BC',
+  hospital: '#F8EAEB',
+  education: '#F3EAD5',
+  water: '#A8D4F2',
+  waterLabel: '#2F6EA6',
+  roadMajor: '#FFFFFF',
+  roadMajorCasing: '#E3DED5',
+  motorway: '#FBE3A0',
+  motorwayCasing: '#E9C46A',
+  rail: '#C9CCD2',
+  /** Gewählte Nadel: sanftes Koralle, heller als die normale Nadel, aber nicht grell. */
+  pinSelected: '#F57C64',
+  /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den orangen Nadeln. */
+  userLocation: '#2F7FF0',
+} as const;
+
 /** Befehl für die WebView: ohne Animation auf eine Stadt springen (Zoom wie beim Start). */
 export function setCenterScript(lat: number, lng: number): string {
   return `window.setCenter && window.setCenter(${toScriptJson([lng, lat])}); true;`;
@@ -125,6 +174,8 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     center: [MUENSTER_CENTER.lng, MUENSTER_CENTER.lat],
     zoom: DEFAULT_ZOOM,
     colors: options.colors,
+    palette: MAP_PALETTE,
+    icons: PIN_ICON_PATHS,
   });
   const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
@@ -174,7 +225,8 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     style: config.styleUrl,
     center: config.center,
     zoom: config.zoom,
-    minZoom: 9,
+    // Weit raus bis ganz Europa (der Kartenstil hat ab Zoom 0 Daten).
+    minZoom: 3,
     maxZoom: 18,
     attributionControl: false,
     dragRotate: false,
@@ -185,10 +237,39 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   var pending = null;
   var loaded = false;
   var empty = { type: 'FeatureCollection', features: [] };
+  var current = empty;
+  var selectedKey = null;
+
+  // Bildname der Nadel: pin-<kategorie>, für die gewählte pin-<kategorie>-active.
+  var pinImage = ['concat', 'pin-', ['get', 'category']];
+
+  // Ausgewählte Nadel: heller Markenton, etwas größer und immer obenauf.
+  function applySelection() {
+    if (!loaded) return;
+    var isSelected = ['==', ['get', 'key'], selectedKey || ''];
+    map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, ['concat', pinImage, '-active'], pinImage]);
+    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.15, 1]);
+    map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
+  }
 
   window.setPlaces = function (geojson) {
+    current = geojson;
     if (!loaded) { pending = geojson; return; }
     map.getSource('places').setData(geojson);
+  };
+
+  window.selectPlace = function (key, padding) {
+    selectedKey = key;
+    applySelection();
+    if (!key) return;
+    var feature = current.features.find(function (f) { return f.properties.key === key; });
+    if (!feature) return;
+    map.easeTo({
+      center: feature.geometry.coordinates,
+      zoom: Math.max(map.getZoom(), 13.5),
+      padding: { top: padding.top, bottom: padding.bottom, left: 24, right: 24 },
+      duration: 280
+    });
   };
 
   var userMarker = null;
@@ -211,42 +292,108 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     if (!loaded) send({ type: 'error', message: event && event.error ? String(event.error.message) : '' });
   });
 
-  map.on('load', function () {
-    map.addSource('places', { type: 'geojson', data: pending || empty, cluster: true, clusterRadius: 44, clusterMaxZoom: 15 });
-
-    map.addLayer({ id: 'clusters', type: 'circle', source: 'places', filter: ['has', 'point_count'], paint: {
-      'circle-color': config.colors.cluster, 'circle-radius': ['step', ['get', 'point_count'], 20, 5, 24, 15, 28],
-      'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
-    map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'], layout: {
-      'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 14, 'text-allow-overlap': true },
-      paint: { 'text-color': config.colors.clusterText } });
-
-    map.addLayer({ id: 'pins', type: 'circle', source: 'places', filter: ['!', ['has', 'point_count']], paint: {
-      'circle-color': config.colors.pin, 'circle-radius': 22, 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
-    map.addLayer({ id: 'pin-labels', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], layout: {
-      'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true },
-      paint: { 'text-color': config.colors.pinText } });
-
-    map.on('click', 'clusters', function (event) {
-      var feature = event.features && event.features[0];
-      if (!feature) return;
-      map.getSource('places').getClusterExpansionZoom(feature.properties.cluster_id).then(function (zoom) {
-        map.easeTo({ center: feature.geometry.coordinates, zoom: zoom });
-      });
+  // Kartennadel (Tropfenform mit weißem Rand) mit dem Symbol der Kategorie im Kopf,
+  // gezeichnet statt als Bilddatei. Maße in Punkten, dreifache Auflösung für scharfe Kanten.
+  function makePin(fill, iconPaths) {
+    var ratio = 3, w = 32, h = 42, cx = 16, cy = 15, r = 12.5, tip = 39, icon = 14;
+    var canvas = document.createElement('canvas');
+    canvas.width = w * ratio; canvas.height = h * ratio;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    var beta = Math.acos(r / (tip - cy));
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI / 2 + beta, Math.PI / 2 - beta + Math.PI * 2, false);
+    ctx.lineTo(cx, tip);
+    ctx.closePath();
+    ctx.shadowColor = 'rgba(10, 10, 10, 0.3)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    // Symbol: Lucide-Pfade im 24er-Raster, mittig in den Kopf skaliert.
+    ctx.save();
+    ctx.translate(cx - icon / 2, cy - icon / 2);
+    ctx.scale(icon / 24, icon / 24);
+    ctx.lineWidth = 2.25; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = config.colors.pinDot;
+    (iconPaths || []).forEach(function (d) {
+      try { ctx.stroke(new Path2D(d)); } catch (e) {}
     });
+    ctx.restore();
+    return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
+  }
+
+  // Farben statt Grautönen: Parks grün, Wasser blau, große Straßen gelblich.
+  // Jede Änderung einzeln abgesichert, damit ein anderer Stil die Karte nicht zerbricht.
+  function paint(id, prop, value) {
+    if (!map.getLayer(id)) return;
+    try { map.setPaintProperty(id, prop, value); } catch (e) {}
+  }
+  function addFill(id, sourceLayer, classes, color, minzoom) {
+    if (map.getLayer(id) || !map.getSource('openmaptiles')) return;
+    try {
+      map.addLayer({
+        id: id, type: 'fill', source: 'openmaptiles', 'source-layer': sourceLayer, minzoom: minzoom,
+        filter: ['match', ['get', 'class'], classes, true, false],
+        paint: { 'fill-color': color, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], minzoom, 0, minzoom + 1, 1] }
+      }, map.getLayer('park') ? 'park' : undefined);
+    } catch (e) {}
+  }
+  function colorize() {
+    var p = config.palette;
+    paint('background', 'background-color', p.land);
+    paint('landuse_residential', 'fill-color', p.residential);
+    addFill('unfair-grass', 'landcover', ['grass', 'farmland', 'wetland'], p.grass, 10);
+    addFill('unfair-cemetery', 'landuse', ['cemetery'], p.cemetery, 11);
+    addFill('unfair-sport', 'landuse', ['stadium', 'pitch', 'playground'], p.sport, 12);
+    addFill('unfair-hospital', 'landuse', ['hospital'], p.hospital, 12);
+    addFill('unfair-education', 'landuse', ['school', 'university', 'college', 'kindergarten'], p.education, 12);
+    paint('park', 'fill-color', p.park);
+    paint('landcover_wood', 'fill-color', p.wood);
+    paint('water', 'fill-color', p.water);
+    paint('waterway', 'line-color', p.water);
+    paint('building', 'fill-color', p.building);
+    paint('building', 'fill-outline-color', p.buildingOutline);
+    paint('road_area_pier', 'fill-color', p.land);
+    paint('road_pier', 'line-color', p.land);
+    paint('highway_major_casing', 'line-color', p.roadMajorCasing);
+    paint('highway_major_inner', 'line-color', p.roadMajor);
+    ['highway_motorway_casing', 'highway_motorway_bridge_casing'].forEach(function (id) { paint(id, 'line-color', p.motorwayCasing); });
+    ['highway_motorway_inner', 'highway_motorway_bridge_inner'].forEach(function (id) { paint(id, 'line-color', p.motorway); });
+    ['railway', 'railway_transit', 'railway_service'].forEach(function (id) { paint(id, 'line-color', p.rail); });
+    ['water_name_point_label', 'water_name_line_label', 'waterway_line_label'].forEach(function (id) { paint(id, 'text-color', p.waterLabel); });
+  }
+
+  map.on('load', function () {
+    colorize();
+    // Pro Kategorie zwei Nadeln: normal und gewählt.
+    Object.keys(config.icons).forEach(function (category) {
+      var pin = makePin(config.colors.pin, config.icons[category]);
+      var pinActive = makePin(config.colors.pinActive, config.icons[category]);
+      map.addImage('pin-' + category, pin.image, { pixelRatio: pin.ratio });
+      map.addImage('pin-' + category + '-active', pinActive.image, { pixelRatio: pinActive.ratio });
+    });
+
+    // Jede Adresse bekommt eine eigene Nadel, auch wenn sie nah beieinanderliegen (keine Gruppen).
+    map.addSource('places', { type: 'geojson', data: pending || empty });
+
+    // Nadelspitze sitzt genau auf der Adresse.
+    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', layout: {
+      'icon-image': pinImage, 'icon-anchor': 'bottom',
+      'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+
+    // Die Auswahl übernimmt die App (Kachel unten). Die Karte meldet nur den Tipp.
     map.on('click', 'pins', function (event) {
       var feature = event.features && event.features[0];
-      if (!feature) return;
-      map.easeTo({ center: feature.geometry.coordinates });
-      send({ type: 'place', key: feature.properties.key });
+      if (feature) send({ type: 'place', key: feature.properties.key });
     });
     map.on('click', function (event) {
-      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins', 'clusters'] });
+      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins'] });
       if (hits.length === 0) send({ type: 'dismiss' });
     });
 
     loaded = true;
     pending = null;
+    applySelection();
     send({ type: 'ready' });
   });
 })();

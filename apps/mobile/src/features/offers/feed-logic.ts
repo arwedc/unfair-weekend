@@ -349,15 +349,39 @@ export interface OfferPlace {
   maxDiscount: number;
 }
 
+/**
+ * Schlüssel des Orts (gerundete Koordinaten). Angebote an derselben Adresse teilen ihn.
+ * `null`, wenn die Koordinaten fehlen.
+ */
+export function placeKeyOf(offer: Pick<Offer, 'lat' | 'lng'>): string | null {
+  // Die Typen sagen number, in der DB können die Koordinaten aber fehlen.
+  const lat = offer.lat as number | null;
+  const lng = offer.lng as number | null;
+  if (lat === null || lng === null) return null;
+  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
+/**
+ * Kategorien als Vorschläge unter der Suche (Karte). Ohne Eingabe alle,
+ * sonst die, deren Name zum Text passt („koch“ → Kochen & Essen).
+ */
+export function categorySuggestions(query: string): OfferCategory[] {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...OFFER_CATEGORIES];
+  return OFFER_CATEGORIES.filter((category) => {
+    const label = normalize(OFFER_CATEGORY_LABELS[category]);
+    return words.every((word) => label.includes(word));
+  });
+}
+
 /** Fasst Angebote an derselben Adresse (gleiche Koordinaten) zu einem Pin zusammen. */
 export function groupByPlace(offers: readonly Offer[]): OfferPlace[] {
   const places = new Map<string, OfferPlace>();
   for (const offer of offers) {
-    // Die Typen sagen number, in der DB können die Koordinaten aber fehlen.
-    const lat = offer.lat as number | null;
-    const lng = offer.lng as number | null;
-    if (lat === null || lng === null) continue;
-    const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    const key = placeKeyOf(offer);
+    if (key === null) continue;
+    const lat = offer.lat;
+    const lng = offer.lng;
     const place = places.get(key);
     if (place) {
       place.offers.push(offer);
