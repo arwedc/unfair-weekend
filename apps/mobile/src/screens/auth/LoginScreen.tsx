@@ -1,10 +1,4 @@
-import {
-  emailSchema,
-  OFFER_CATEGORIES,
-  passwordSchema,
-  userSignUpSchema,
-  type OfferCategory,
-} from '@repo/shared';
+import { emailSchema } from '@repo/shared';
 import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
@@ -14,7 +8,8 @@ import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NameForm } from '@/components/auth/NameForm';
-import { Button, Chip, EmptyState, IconButton, Input, Text } from '@/components/ui';
+import { RegisterFlow } from '@/components/auth/RegisterFlow';
+import { Button, EmptyState, IconButton, Input, Text } from '@/components/ui';
 import { splitName } from '@/features/auth/account';
 import {
   CANCELLED,
@@ -23,7 +18,6 @@ import {
   signInWithGoogle,
   signInWithPassword,
   signOut,
-  signUpWithEmail,
   updateProfile,
 } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
@@ -32,7 +26,7 @@ import { env } from '@/lib/env';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
-type Busy = 'apple' | 'google' | 'password' | 'register' | 'dev' | null;
+type Busy = 'apple' | 'google' | 'password' | 'dev' | null;
 type Mode = 'login' | 'register';
 
 /** Erstes Test-Konto aus den Seed-Daten. Das Passwort tippt man selbst ein (steht in der .env). */
@@ -47,23 +41,19 @@ function firstIssue(
   return message ? translateValidationMessage(message, locale) : fallback;
 }
 
-/** Anmeldung per E-Mail/Passwort; bei der Registrierung sind Alter und Interessen freiwillig. */
+/** Anmeldung per E-Mail/Passwort. Die Registrierung läuft in drei Schritten (`RegisterFlow`). */
 export function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t, locale, labels } = useT();
+  const { t, locale } = useT();
   const a = t.common.auth;
   const { ready, userId, account, accountLoading, accountError, refetchAccount, suggestedName } =
     useAuth();
 
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
-  const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [age, setAge] = useState('');
-  const [interests, setInterests] = useState<OfferCategory[]>([]);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [devEmail, setDevEmail] = useState(DEV_EMAIL);
   const [devPassword, setDevPassword] = useState('');
@@ -131,56 +121,12 @@ export function LoginScreen() {
     void run('password', () => signInWithPassword(parsedEmail.data, password));
   };
 
-  const continueRegistration = () => {
-    const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
-    if (!parsedEmail.success) {
-      setError(firstIssue(parsedEmail.error, locale, t.common.checkInput));
-      return;
-    }
-    const parsedPassword = passwordSchema.safeParse(password);
-    if (!parsedPassword.success) {
-      setError(firstIssue(parsedPassword.error, locale, t.common.checkInput));
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setError(a.passwordMismatch);
-      return;
-    }
-    setError(null);
-    setRegisterStep(2);
-  };
-
-  const register = () => {
-    const parsed = userSignUpSchema.safeParse({
-      email: email.trim().toLowerCase(),
-      password,
-      ...(age.trim() ? { age: Number(age.trim()) } : {}),
-      interests,
-    });
-    if (!parsed.success) {
-      setError(firstIssue(parsed.error, locale, t.common.checkInput));
-      return;
-    }
-    void run('register', async () => {
-      const hasSession = await signUpWithEmail(parsed.data);
-      if (!hasSession) setConfirmationSent(true);
-    });
-  };
-
   const devLogin = () => {
     if (!devEmail.trim() || !devPassword) {
       setError(a.devMissing);
       return;
     }
     void run('dev', () => signInWithPassword(devEmail.trim(), devPassword));
-  };
-
-  const toggleInterest = (category: OfferCategory) => {
-    setInterests((current) =>
-      current.includes(category)
-        ? current.filter((value) => value !== category)
-        : [...current, category],
-    );
   };
 
   let body;
@@ -240,49 +186,35 @@ export function LoginScreen() {
           onPress={() => {
             setConfirmationSent(false);
             setMode('login');
-            setRegisterStep(1);
             setPassword('');
           }}
         />
       </View>
+    );
+  } else if (mode === 'register') {
+    body = (
+      <RegisterFlow
+        onSignIn={() => {
+          setError(null);
+          setMode('login');
+        }}
+        onConfirmationSent={(registeredEmail) => {
+          setEmail(registeredEmail);
+          setConfirmationSent(true);
+        }}
+      />
     );
   } else {
     body = (
       <View style={styles.block}>
         <View style={styles.intro}>
           <Text variant="title1" accessibilityRole="header">
-            {mode === 'register' ? a.registerTitle : t.common.signIn}
+            {t.common.signIn}
           </Text>
           <Text variant="body" color="secondary">
-            {mode === 'register'
-              ? registerStep === 1
-                ? a.registerIntro
-                : a.aboutYouIntro
-              : a.loginIntro}
+            {a.loginIntro}
           </Text>
         </View>
-
-        {mode === 'register' ? (
-          <View style={styles.progress}>
-            <View style={styles.progressLabels}>
-              <Text variant="footnote" color="secondary">
-                {a.stepOf(registerStep, 2)}
-              </Text>
-              <Text variant="footnote" color="tertiary">
-                {registerStep === 1 ? a.stepAccount : a.stepAboutYou}
-              </Text>
-            </View>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, registerStep === 2 && styles.progressComplete]} />
-              <View
-                style={[
-                  styles.progressFill,
-                  registerStep === 2 ? styles.progressComplete : styles.progressEmpty,
-                ]}
-              />
-            </View>
-          </View>
-        ) : null}
 
         {showSocialLogin ? (
           <View style={styles.providers}>
@@ -309,161 +241,57 @@ export function LoginScreen() {
           </View>
         ) : null}
 
-        {mode === 'login' ? (
-          <>
-            {showSocialLogin ? (
-              <View style={styles.divider}>
-                <View style={styles.line} />
-                <Text variant="footnote" color="tertiary">
-                  {a.orEmail}
-                </Text>
-                <View style={styles.line} />
-              </View>
-            ) : null}
+        {showSocialLogin ? (
+          <View style={styles.divider}>
+            <View style={styles.line} />
+            <Text variant="footnote" color="tertiary">
+              {a.orEmail}
+            </Text>
+            <View style={styles.line} />
+          </View>
+        ) : null}
 
-            <Input
-              label={a.emailLabel}
-              icon={Mail}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={a.emailPlaceholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-            />
-            <Input
-              label={a.password}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={login}
-            />
-            <Button
-              label={t.common.signIn}
-              size="lg"
-              fullWidth
-              loading={busy === 'password'}
-              disabled={busy !== null && busy !== 'password'}
-              onPress={login}
-            />
-            <Button
-              label={a.toRegister}
-              variant="ghost"
-              onPress={() => {
-                setError(null);
-                setMode('register');
-                setRegisterStep(1);
-              }}
-            />
-          </>
-        ) : (
-          <>
-            {registerStep === 1 ? (
-              <>
-                <Input
-                  label={a.emailLabel}
-                  icon={Mail}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder={a.emailPlaceholder}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                />
-                <Input
-                  label={a.password}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  hint={a.passwordHint}
-                />
-                <Input
-                  label={a.passwordRepeat}
-                  value={passwordConfirmation}
-                  onChangeText={setPasswordConfirmation}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  returnKeyType="done"
-                  onSubmitEditing={continueRegistration}
-                />
-                <Button label={t.common.next} size="lg" fullWidth onPress={continueRegistration} />
-                <Button
-                  label={a.toSignIn}
-                  variant="ghost"
-                  onPress={() => {
-                    setError(null);
-                    setRegisterStep(1);
-                    setMode('login');
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <View style={styles.interests}>
-                  <Input
-                    label={a.age}
-                    value={age}
-                    onChangeText={setAge}
-                    keyboardType="number-pad"
-                    maxLength={3}
-                    autoComplete="off"
-                  />
-                </View>
-                <View style={styles.interests}>
-                  <Text variant="subhead" color="secondary">
-                    {a.interestsQuestion}{' '}
-                    <Text variant="footnote" color="tertiary">
-                      {a.optional}
-                    </Text>
-                  </Text>
-                  <View style={styles.chips}>
-                    {OFFER_CATEGORIES.map((category) => (
-                      <Chip
-                        key={category}
-                        label={labels.offerCategory[category]}
-                        selected={interests.includes(category)}
-                        onPress={() => toggleInterest(category)}
-                      />
-                    ))}
-                  </View>
-                </View>
-                <Button
-                  label={a.createAccount}
-                  size="lg"
-                  fullWidth
-                  loading={busy === 'register'}
-                  disabled={busy !== null && busy !== 'register'}
-                  onPress={register}
-                />
-                <Button
-                  label={t.common.back}
-                  variant="ghost"
-                  onPress={() => {
-                    setError(null);
-                    setRegisterStep(1);
-                  }}
-                />
-              </>
-            )}
-          </>
-        )}
+        <Input
+          label={a.emailLabel}
+          icon={Mail}
+          value={email}
+          onChangeText={setEmail}
+          placeholder={a.emailPlaceholder}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+        />
+        <Input
+          label={a.password}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="password"
+          textContentType="password"
+          returnKeyType="done"
+          onSubmitEditing={login}
+        />
+        <Button
+          label={t.common.signIn}
+          size="lg"
+          fullWidth
+          loading={busy === 'password'}
+          disabled={busy !== null && busy !== 'password'}
+          onPress={login}
+        />
+        <Button
+          label={a.toRegister}
+          variant="ghost"
+          onPress={() => {
+            setError(null);
+            setMode('register');
+          }}
+        />
 
         {__DEV__ ? (
           <View style={styles.dev}>
@@ -550,17 +378,9 @@ const styles = StyleSheet.create({
   block: { gap: space[4] },
   intro: { gap: space[2], marginBottom: space[2] },
   providers: { gap: space[3] },
-  progress: { gap: space[2] },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressTrack: { flexDirection: 'row', gap: space[1], height: 4 },
-  progressFill: { flex: 1, borderRadius: radius.badge, backgroundColor: colors.accent.strong },
-  progressEmpty: { backgroundColor: colors.border.strong },
-  progressComplete: { backgroundColor: colors.accent.strong },
   appleButton: { height: 56, alignSelf: 'stretch' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginVertical: space[1] },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border.strong },
-  interests: { gap: space[2] },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   dev: {
     gap: space[3],
     marginTop: space[6],
