@@ -15,13 +15,21 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { AuthProvider } from '@/features/auth/auth-context';
+import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { OfferFiltersProvider } from '@/features/offers/filters-context';
+import { usePushSetup } from '@/features/push/use-push';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
 
 // Splash bleibt sichtbar, bis die Schrift geladen ist (sonst springt der Text).
 void SplashScreen.preventAutoHideAsync();
+
+/** Push-Einrichtung. Steht hinter dem Stack, damit ein Tap auf eine Benachrichtigung navigieren kann. */
+function PushBridge() {
+  const { userId } = useAuth();
+  usePushSetup(userId);
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -76,6 +84,7 @@ export default function RootLayout() {
                 <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                 <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
               </Stack>
+              <PushBridge />
             </BottomSheetModalProvider>
           </OfferFiltersProvider>
         </AuthProvider>

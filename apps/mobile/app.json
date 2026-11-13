@@ -38,6 +38,13 @@
       "expo-apple-authentication",
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "color": "#D63A0A",
+          "defaultChannel": "default"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Mit deinem Standort zeigen wir dir auf der Karte, welche Angebote in deiner Nähe sind."

@@ -3,6 +3,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
+import { forgetDevice, unregisterDevice } from '@/features/push/push';
 import { ApiError, toApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
 
@@ -145,6 +146,8 @@ export async function completeSignInFromUrl(url: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  // Erst das Gerät für Pushes abmelden, solange die Session noch gilt.
+  await unregisterDevice();
   // Auch ohne Netz abmelden: lokal reicht, der Server-Token läuft von selbst ab.
   await supabase.auth.signOut({ scope: 'local' });
 }
@@ -153,5 +156,7 @@ export async function signOut(): Promise<void> {
 export async function deleteAccount(): Promise<void> {
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw toApiError(error);
-  await signOut();
+  // Push-Tokens hat der Server mit dem Konto gelöscht, lokal nur vergessen.
+  await forgetDevice();
+  await supabase.auth.signOut({ scope: 'local' });
 }

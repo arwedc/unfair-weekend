@@ -30,6 +30,8 @@ src/
     offers/           api.ts (RPC-Aufrufe), queries.ts (TanStack-Query-Hooks),
                       feed-logic.ts (Filter, Abschnitte, Badges; mit Tests), filters-context.tsx
     map/              map-html.ts (Karte als Webseite für die WebView; mit Tests)
+    push/             push.ts (Berechtigung, Token, An-/Abmelden), use-push.ts (Hooks),
+                      push-logic.ts (Deep-Link-Ziel, Profilzeile; mit Tests)
   components/ui/    Komponentenbibliothek: Text, Button, IconButton, Card, Chip, Badge, Input,
                     Sheet, Skeleton, EmptyState, SectionHeader, Screen, PressableScale
   components/offers/ fachliche Bausteine: OfferCard, OfferImage, PriceRow, FilterBar, ImageGallery
@@ -49,6 +51,7 @@ src/
 - **Secrets:** In `apps/mobile/.env` stehen nur `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und optional `EXPO_PUBLIC_MAP_STYLE_URL`. Nie den Secret Key. Werte nie in Antworten ausgeben.
 - **Expo Go muss laufen**, bis es Development Builds gibt (SPEC-APP, Annahme 1). Vor einer neuen Bibliothek prüfen, ob sie nativen Code braucht, der nicht in Expo Go steckt.
 - **React Compiler ist an.** Shared Values von Reanimated mit `.get()`/`.set()` statt `.value`. Kein `setState` direkt im Effekt-Körper (Daten in einer Funktion laden und im `.then` setzen, mit Abbruch-Flag).
+- **Push:** Die Erlaubnis wird nie beim Start abgefragt, sondern nach dem ersten geholten Code (`askForPushAfterClaim`) oder über den Schalter im Profil. Das Gerät meldet sich nach dem Login an (`register_push_token`) und vor dem Abmelden ab. Ein Tap öffnet `data.url` (`/angebot/<id>` oder `/code/<id>`), andere Pfade werden ignoriert. Der Android-Kanal heißt `default`, passend zu `send-push`. In Expo Go, im Simulator und ohne EAS-Projekt-ID passiert nichts; das Profil erklärt dann warum.
 - **Bottom Sheets** über `Sheet` (basiert auf `@expo/ui/community/bottom-sheet`), nicht `@gorhom/bottom-sheet`.
 - **Tabs** sind native Tabs (`expo-router/native-tabs`). Keine selbstgebaute Tab-Leiste.
 - **Bilder** mit `expo-image`. **Icons** in der App mit `lucide-react-native`, in der Tab-Leiste SF Symbols bzw. Material Symbols.

@@ -32,9 +32,19 @@ Verbindet sich das Handy nicht, mit `pnpm start --tunnel` starten (beim ersten M
 
 EAS-Profile stehen in [eas.json](eas.json): `development` (Development Build), `preview` (Android-APK bzw. iOS intern), `production`. Für iOS-Builds braucht es ein Apple-Developer-Konto. Details: SPEC-APP.md, Annahme 1.
 
-## Offene Backend-Aufgaben
+## Push-Benachrichtigungen testen
+
+In Expo Go gibt es keine Push-Nachrichten. Das Profil zeigt dann „Kommt mit der fertigen App“. Zum Testen braucht es:
+
+1. `eas init` in `apps/mobile` (legt das EAS-Projekt an und trägt `extra.eas.projectId` in die App-Konfiguration ein)
+2. einen Development Build auf einem echten Gerät: Android per APK, iOS nur mit Apple-Developer-Konto
+3. für Android zusätzlich die FCM-Zugangsdaten in EAS, für iOS den APNs-Schlüssel (fragt `eas build` beim ersten Mal ab)
+4. auf dem Server die Edge Function `send-push` und die Vault-Secrets (siehe BACKEND.md, „send-push“)
+
+Danach: anmelden, einen Code holen, die Erlaubnis bestätigen. Einen Push löst z. B. ein neues Angebot eines Lieblingsorts aus.
+
+## Offene Aufgaben außerhalb der App
 
 - **E-Mail-OTP:** eigenes SMTP einrichten und die Vorlage „Magic Link“ auf `{{ .Token }}` umstellen (siehe BACKEND.md, Abschnitt 3)
 - **Apple und Google:** Provider im Supabase-Dashboard konfigurieren
-- **Standortseite:** öffentlicher RPC für Standort und Unternehmensinfo (Phase 2)
-- **Push-Versand:** Worker für `notification_outbox` (Edge Function + RPC mit `FOR UPDATE SKIP LOCKED`, siehe BACKEND.md, Abschnitt 10) und Trigger für neue Angebote an Favoriten (Phase 4)
+- **Push:** `send-push` deployen und `pnpm db:push-secrets` ausführen (PR „db: Push-Versand über die Outbox“)

@@ -2,6 +2,7 @@ import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS } from '@repo/shared';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
+  Bell,
   FileText,
   LogOut,
   Pencil,
@@ -11,8 +12,8 @@ import {
   TriangleAlert,
   UserRound,
 } from 'lucide-react-native';
-import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Linking, StyleSheet, Switch, View } from 'react-native';
 
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import {
@@ -35,6 +36,7 @@ import {
   useFavoriteLocations,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
+import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
 import { errorMessage } from '@/lib/api-error';
 import { colors, radius, space } from '@/theme';
 
@@ -71,6 +73,53 @@ function LegalRows() {
           router.push({ pathname: '/rechtliches/[seite]', params: { seite: 'impressum' } })
         }
       />
+    </View>
+  );
+}
+
+/** Schalter für Push-Benachrichtigungen. Erklärt, warum es (noch) nicht geht, statt still nichts zu tun. */
+function PushSettings() {
+  const { data: state, refetch } = usePushStatus();
+  const toggle = useSetPushEnabled();
+
+  useEffect(() => {
+    // Nach der Rückkehr aus den Handy-Einstellungen den Stand neu lesen.
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refetch();
+    });
+    return () => subscription.remove();
+  }, [refetch]);
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Benachrichtigungen" />
+      {!state ? (
+        <Skeleton height={56} />
+      ) : (
+        <ListRow
+          icon={Bell}
+          title="Push-Nachrichten"
+          detail={state.detail}
+          onPress={
+            state.action === 'settings'
+              ? () => void Linking.openSettings()
+              : state.action === 'toggle' && !toggle.isPending
+                ? () => toggle.mutate(!state.enabled)
+                : undefined
+          }
+          trailing={
+            state.action === 'toggle' ? (
+              <Switch
+                value={state.enabled}
+                disabled={toggle.isPending}
+                onValueChange={(value) => toggle.mutate(value)}
+                trackColor={{ true: colors.accent.solid, false: colors.border.strong }}
+                accessibilityLabel="Push-Nachrichten"
+              />
+            ) : undefined
+          }
+        />
+      )}
     </View>
   );
 }
@@ -236,6 +285,7 @@ export function ProfileScreen() {
 
       <FavoriteCategories />
       <FavoriteLocations />
+      <PushSettings />
 
       <View style={styles.section}>
         <SectionHeader title="Konto" />
