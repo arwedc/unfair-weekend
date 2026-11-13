@@ -24,23 +24,25 @@ export const gray = {
 } as const;
 
 /**
- * Akzentfarbe „Glut“: energiegeladenes Orange-Rot.
+ * Akzentfarbe „Glut“: warmes, mattes Orange (Terrakotta-Richtung).
+ * Wärmer und weniger grell als ein reines Signal-Orange, damit es das Auge nicht angreift.
  * - 500 ist der Markenton (große Flächen, Illustrationen, große fette Zahlen).
  * - 600 ist der Arbeitston für Flächen mit weißem Text (Buttons, Deal-Badges)
- *   und für Akzent-Text auf Weiß: Kontrast ≥ 4,5:1 (WCAG AA).
+ *   und für Akzent-Text auf Weiß: Kontrast ≥ 4,5:1 (WCAG AA), auch auf 50.
+ * - 50–200 sind zarte Flächen (Hintergründe, Formen, Avatare).
  */
 export const glut = {
-  50: '#FFF3EE',
-  100: '#FFE3D6',
-  200: '#FFC4AA',
-  300: '#FF9C75',
-  400: '#FF7745',
-  500: '#FF5A1F',
-  600: '#D63A0A',
-  700: '#B0300A',
-  800: '#8A280C',
-  900: '#6E220D',
-  950: '#3D0F06',
+  50: '#FDF6F0',
+  100: '#F8E2D2',
+  200: '#F1C4A5',
+  300: '#E8A378',
+  400: '#E0874F',
+  500: '#D9733A',
+  600: '#B0531D',
+  700: '#96461A',
+  800: '#783817',
+  900: '#5E2D14',
+  950: '#34180A',
 } as const;
 
 /** Erfolg: Grün. */

@@ -165,6 +165,40 @@ export type Database = {
           },
         ];
       };
+      favorite_offers: {
+        Row: {
+          created_at: string;
+          offer_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          offer_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          offer_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'favorite_offers_offer_id_fkey';
+            columns: ['offer_id'];
+            isOneToOne: false;
+            referencedRelation: 'offers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'favorite_offers_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       geocode_cache: {
         Row: {
           created_at: string;
@@ -486,6 +520,370 @@ export type Database = {
           },
         ];
       };
+      paid_bookings: {
+        Row: {
+          amount_cents: number;
+          cancel_reason: Database['public']['Enums']['booking_cancel_reason'] | null;
+          cancelled_at: string | null;
+          charge_id: string | null;
+          commission_bps: number;
+          commission_cents: number;
+          created_at: string;
+          currency: string;
+          expired_at: string | null;
+          id: string;
+          location_id: string;
+          offer_id: string;
+          paid_at: string | null;
+          paid_out_at: string | null;
+          payment_intent_id: string | null;
+          payout_cents: number | null;
+          payout_due_at: string | null;
+          refunded_at: string | null;
+          reserved_until: string;
+          seats: number;
+          status: Database['public']['Enums']['booking_status'];
+          unit_price_cents: number;
+          updated_at: string;
+          user_id: string | null;
+          voucher_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          cancel_reason?: Database['public']['Enums']['booking_cancel_reason'] | null;
+          cancelled_at?: string | null;
+          charge_id?: string | null;
+          commission_bps: number;
+          commission_cents: number;
+          created_at?: string;
+          currency?: string;
+          expired_at?: string | null;
+          id?: string;
+          location_id: string;
+          offer_id: string;
+          paid_at?: string | null;
+          paid_out_at?: string | null;
+          payment_intent_id?: string | null;
+          payout_cents?: never;
+          payout_due_at?: string | null;
+          refunded_at?: string | null;
+          reserved_until: string;
+          seats: number;
+          status?: Database['public']['Enums']['booking_status'];
+          unit_price_cents: number;
+          updated_at?: string;
+          user_id?: string | null;
+          voucher_id?: string | null;
+        };
+        Update: {
+          amount_cents?: number;
+          cancel_reason?: Database['public']['Enums']['booking_cancel_reason'] | null;
+          cancelled_at?: string | null;
+          charge_id?: string | null;
+          commission_bps?: number;
+          commission_cents?: number;
+          created_at?: string;
+          currency?: string;
+          expired_at?: string | null;
+          id?: string;
+          location_id?: string;
+          offer_id?: string;
+          paid_at?: string | null;
+          paid_out_at?: string | null;
+          payment_intent_id?: string | null;
+          payout_cents?: never;
+          payout_due_at?: string | null;
+          refunded_at?: string | null;
+          reserved_until?: string;
+          seats?: number;
+          status?: Database['public']['Enums']['booking_status'];
+          unit_price_cents?: number;
+          updated_at?: string;
+          user_id?: string | null;
+          voucher_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'paid_bookings_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'paid_bookings_offer_id_fkey';
+            columns: ['offer_id'];
+            isOneToOne: false;
+            referencedRelation: 'offers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'paid_bookings_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'paid_bookings_voucher_id_fkey';
+            columns: ['voucher_id'];
+            isOneToOne: true;
+            referencedRelation: 'vouchers';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payment_disputes: {
+        Row: {
+          amount_cents: number;
+          booking_id: string | null;
+          charge_id: string | null;
+          closed_at: string | null;
+          created_at: string;
+          evidence_due_by: string | null;
+          id: string;
+          reason: string | null;
+          stripe_dispute_id: string;
+          stripe_status: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          booking_id?: string | null;
+          charge_id?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          evidence_due_by?: string | null;
+          id?: string;
+          reason?: string | null;
+          stripe_dispute_id: string;
+          stripe_status: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          booking_id?: string | null;
+          charge_id?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          evidence_due_by?: string | null;
+          id?: string;
+          reason?: string | null;
+          stripe_dispute_id?: string;
+          stripe_status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_disputes_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'paid_bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payment_jobs: {
+        Row: {
+          attempts: number;
+          booking_id: string;
+          created_at: string;
+          finished_at: string | null;
+          id: number;
+          kind: Database['public']['Enums']['payment_job_kind'];
+          last_error: string | null;
+          next_attempt_at: string;
+          status: Database['public']['Enums']['payment_job_status'];
+        };
+        ComputedFields: never;
+        Insert: {
+          attempts?: number;
+          booking_id: string;
+          created_at?: string;
+          finished_at?: string | null;
+          id?: never;
+          kind: Database['public']['Enums']['payment_job_kind'];
+          last_error?: string | null;
+          next_attempt_at?: string;
+          status?: Database['public']['Enums']['payment_job_status'];
+        };
+        Update: {
+          attempts?: number;
+          booking_id?: string;
+          created_at?: string;
+          finished_at?: string | null;
+          id?: never;
+          kind?: Database['public']['Enums']['payment_job_kind'];
+          last_error?: string | null;
+          next_attempt_at?: string;
+          status?: Database['public']['Enums']['payment_job_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_jobs_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'paid_bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payment_refunds: {
+        Row: {
+          amount_cents: number;
+          booking_id: string;
+          created_at: string;
+          id: string;
+          last_error: string | null;
+          reason: Database['public']['Enums']['booking_cancel_reason'];
+          refunded_at: string | null;
+          status: Database['public']['Enums']['refund_status'];
+          stripe_refund_id: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          booking_id: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          reason: Database['public']['Enums']['booking_cancel_reason'];
+          refunded_at?: string | null;
+          status?: Database['public']['Enums']['refund_status'];
+          stripe_refund_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          booking_id?: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          reason?: Database['public']['Enums']['booking_cancel_reason'];
+          refunded_at?: string | null;
+          status?: Database['public']['Enums']['refund_status'];
+          stripe_refund_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_refunds_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'paid_bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payment_settings: {
+        Row: {
+          commission_bps: number;
+          id: boolean;
+          payments_enabled: boolean;
+          payout_delay_hours: number;
+          reservation_minutes: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          commission_bps?: number;
+          id?: boolean;
+          payments_enabled?: boolean;
+          payout_delay_hours?: number;
+          reservation_minutes?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          commission_bps?: number;
+          id?: boolean;
+          payments_enabled?: boolean;
+          payout_delay_hours?: number;
+          reservation_minutes?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_settings_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payment_transfers: {
+        Row: {
+          amount_cents: number;
+          booking_id: string;
+          created_at: string;
+          destination_account_id: string;
+          id: string;
+          last_error: string | null;
+          location_id: string;
+          reversed_at: string | null;
+          source_charge_id: string;
+          status: Database['public']['Enums']['transfer_status'];
+          stripe_reversal_id: string | null;
+          stripe_transfer_id: string;
+          transferred_at: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          booking_id: string;
+          created_at?: string;
+          destination_account_id: string;
+          id?: string;
+          last_error?: string | null;
+          location_id: string;
+          reversed_at?: string | null;
+          source_charge_id: string;
+          status?: Database['public']['Enums']['transfer_status'];
+          stripe_reversal_id?: string | null;
+          stripe_transfer_id: string;
+          transferred_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          booking_id?: string;
+          created_at?: string;
+          destination_account_id?: string;
+          id?: string;
+          last_error?: string | null;
+          location_id?: string;
+          reversed_at?: string | null;
+          source_charge_id?: string;
+          status?: Database['public']['Enums']['transfer_status'];
+          stripe_reversal_id?: string | null;
+          stripe_transfer_id?: string;
+          transferred_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_transfers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'paid_bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payment_transfers_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           blocked_until: string | null;
@@ -655,6 +1053,94 @@ export type Database = {
         };
         Relationships: [];
       };
+      stripe_accounts: {
+        Row: {
+          charges_enabled: boolean;
+          created_at: string;
+          details_submitted: boolean;
+          disabled_reason: string | null;
+          is_ready: boolean | null;
+          location_id: string;
+          payouts_enabled: boolean;
+          requirements_due: string[];
+          stripe_account_id: string;
+          synced_at: string | null;
+          transfers_active: boolean;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          charges_enabled?: boolean;
+          created_at?: string;
+          details_submitted?: boolean;
+          disabled_reason?: string | null;
+          is_ready?: never;
+          location_id: string;
+          payouts_enabled?: boolean;
+          requirements_due?: string[];
+          stripe_account_id: string;
+          synced_at?: string | null;
+          transfers_active?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          charges_enabled?: boolean;
+          created_at?: string;
+          details_submitted?: boolean;
+          disabled_reason?: string | null;
+          is_ready?: never;
+          location_id?: string;
+          payouts_enabled?: boolean;
+          requirements_due?: string[];
+          stripe_account_id?: string;
+          synced_at?: string | null;
+          transfers_active?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_accounts_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: true;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      stripe_webhook_events: {
+        Row: {
+          attempts: number;
+          event_id: string;
+          last_error: string | null;
+          livemode: boolean;
+          processed_at: string | null;
+          received_at: string;
+          stripe_created_at: string | null;
+          type: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          attempts?: number;
+          event_id: string;
+          last_error?: string | null;
+          livemode?: boolean;
+          processed_at?: string | null;
+          received_at?: string;
+          stripe_created_at?: string | null;
+          type: string;
+        };
+        Update: {
+          attempts?: number;
+          event_id?: string;
+          last_error?: string | null;
+          livemode?: boolean;
+          processed_at?: string | null;
+          received_at?: string;
+          stripe_created_at?: string | null;
+          type?: string;
+        };
+        Relationships: [];
+      };
       vouchers: {
         Row: {
           cancel_reason: Database['public']['Enums']['voucher_cancel_reason'] | null;
@@ -761,7 +1247,51 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      attach_payment_intent: {
+        Args: { p_booking_id: string; p_payment_intent_id: string };
+        Returns: {
+          amount_cents: number;
+          cancel_reason: Database['public']['Enums']['booking_cancel_reason'] | null;
+          cancelled_at: string | null;
+          charge_id: string | null;
+          commission_bps: number;
+          commission_cents: number;
+          created_at: string;
+          currency: string;
+          expired_at: string | null;
+          id: string;
+          location_id: string;
+          offer_id: string;
+          paid_at: string | null;
+          paid_out_at: string | null;
+          payment_intent_id: string | null;
+          payout_cents: number | null;
+          payout_due_at: string | null;
+          refunded_at: string | null;
+          reserved_until: string;
+          seats: number;
+          status: Database['public']['Enums']['booking_status'];
+          unit_price_cents: number;
+          updated_at: string;
+          user_id: string | null;
+          voucher_id: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'paid_bookings';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       cancel_offer: { Args: { p_offer_id: string; p_reason?: string }; Returns: Json };
+      cancel_paid_booking: {
+        Args: { p_booking_id: string };
+        Returns: {
+          id: string;
+          refund_amount_cents: number;
+          status: Database['public']['Enums']['booking_status'];
+        }[];
+      };
       cancel_voucher: {
         Args: { p_voucher_id: string };
         Returns: {
@@ -770,6 +1300,21 @@ export type Database = {
           offer_id: string;
           seats: number;
           status: Database['public']['Enums']['voucher_status'];
+        }[];
+      };
+      claim_payment_jobs: {
+        Args: { p_booking_id?: string; p_limit?: number };
+        Returns: {
+          attempts: number;
+          booking_id: string;
+          charge_id: string;
+          destination_account_id: string;
+          job_id: number;
+          kind: Database['public']['Enums']['payment_job_kind'];
+          payment_intent_id: string;
+          payout_cents: number;
+          refund_amount_cents: number;
+          stripe_transfer_id: string;
         }[];
       };
       claim_push_batch: {
@@ -795,6 +1340,21 @@ export type Database = {
           short_code: string;
           status: Database['public']['Enums']['voucher_status'];
           token: string;
+        }[];
+      };
+      confirm_paid_booking: {
+        Args: {
+          p_amount_received: number;
+          p_booking_id: string;
+          p_charge_id: string;
+          p_currency: string;
+          p_payment_intent_id: string;
+        };
+        Returns: {
+          booking_id: string;
+          outcome: string;
+          status: Database['public']['Enums']['booking_status'];
+          voucher_id: string;
         }[];
       };
       create_offer: {
@@ -899,11 +1459,52 @@ export type Database = {
       };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       delete_offer_template: { Args: { p_template_id: string }; Returns: undefined };
+      finish_payment_job: {
+        Args: {
+          p_error?: string;
+          p_job_id: number;
+          p_ok: boolean;
+          p_permanent?: boolean;
+          p_stripe_id?: string;
+          p_stripe_status?: string;
+        };
+        Returns: undefined;
+      };
       finish_push_batch: {
         Args: { p_failed?: Json; p_invalid_tokens?: string[]; p_sent_ids?: number[] };
         Returns: Json;
       };
+      finish_webhook_event: { Args: { p_error?: string; p_event_id: string }; Returns: undefined };
       get_admin_metrics: { Args: { p_from?: string; p_to?: string }; Returns: Json };
+      get_admin_payment_metrics: { Args: { p_from?: string; p_to?: string }; Returns: Json };
+      get_location_bookings: {
+        Args: { p_limit?: number; p_location_id?: string; p_offset?: number };
+        Returns: {
+          amount_cents: number;
+          booking_id: string;
+          cancel_reason: Database['public']['Enums']['booking_cancel_reason'];
+          commission_cents: number;
+          ends_at: string;
+          first_name: string;
+          last_initial: string;
+          location_id: string;
+          location_name: string;
+          offer_id: string;
+          offer_title: string;
+          offer_type: Database['public']['Enums']['offer_type'];
+          paid_at: string;
+          payout_cents: number;
+          payout_due_at: string;
+          refund_status: Database['public']['Enums']['refund_status'];
+          refunded_at: string;
+          seats: number;
+          short_code: string;
+          starts_at: string;
+          status: Database['public']['Enums']['booking_status'];
+          transfer_status: Database['public']['Enums']['transfer_status'];
+          transferred_at: string;
+        }[];
+      };
       get_location_ratings: {
         Args: { p_location_ids: string[] };
         Returns: {
@@ -1012,6 +1613,33 @@ export type Database = {
           voucher_id: string;
         }[];
       };
+      get_offer_participants_paid: {
+        Args: { p_offer_id: string };
+        Returns: {
+          amount_cents: number;
+          booking_id: string;
+          booking_status: Database['public']['Enums']['booking_status'];
+          claimed_at: string;
+          first_name: string;
+          is_paid: boolean;
+          last_initial: string;
+          no_show_at: string;
+          redeemed_at: string;
+          seats: number;
+          short_code: string;
+          status: Database['public']['Enums']['voucher_status'];
+          voucher_id: string;
+        }[];
+      };
+      get_payment_settings: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          commission_bps: number;
+          payments_enabled: boolean;
+          payout_delay_hours: number;
+          reservation_minutes: number;
+        }[];
+      };
       get_settings: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -1094,6 +1722,49 @@ export type Database = {
           user_blocked: boolean;
         }[];
       };
+      mark_paid_no_show: {
+        Args: { p_voucher_id: string };
+        Returns: {
+          id: string;
+          no_show_at: string;
+          status: Database['public']['Enums']['voucher_status'];
+        }[];
+      };
+      record_dispute: {
+        Args: {
+          p_amount_cents: number;
+          p_charge_id: string;
+          p_closed: boolean;
+          p_evidence_due_by: string;
+          p_payment_intent_id: string;
+          p_reason: string;
+          p_stripe_dispute_id: string;
+          p_stripe_status: string;
+        };
+        Returns: {
+          amount_cents: number;
+          booking_id: string | null;
+          charge_id: string | null;
+          closed_at: string | null;
+          created_at: string;
+          evidence_due_by: string | null;
+          id: string;
+          reason: string | null;
+          stripe_dispute_id: string;
+          stripe_status: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'payment_disputes';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_webhook_event: {
+        Args: { p_created: string; p_event_id: string; p_livemode: boolean; p_type: string };
+        Returns: boolean;
+      };
       redeem_voucher: {
         Args: { p_code: string };
         Returns: {
@@ -1127,6 +1798,29 @@ export type Database = {
         Args: { p_platform: Database['public']['Enums']['push_platform']; p_token: string };
         Returns: undefined;
       };
+      register_stripe_account: {
+        Args: { p_location_id: string; p_stripe_account_id: string };
+        Returns: {
+          charges_enabled: boolean;
+          created_at: string;
+          details_submitted: boolean;
+          disabled_reason: string | null;
+          is_ready: boolean | null;
+          location_id: string;
+          payouts_enabled: boolean;
+          requirements_due: string[];
+          stripe_account_id: string;
+          synced_at: string | null;
+          transfers_active: boolean;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stripe_accounts';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       reject_location: { Args: { p_location_id: string; p_reason?: string }; Returns: Json };
       remove_offer: { Args: { p_offer_id: string; p_reason?: string }; Returns: Json };
       set_review_hidden: {
@@ -1136,6 +1830,51 @@ export type Database = {
           hidden_reason: string;
           id: string;
         }[];
+      };
+      start_paid_booking: {
+        Args: { p_offer_id: string; p_seats?: number };
+        Returns: {
+          amount_cents: number;
+          commission_cents: number;
+          currency: string;
+          id: string;
+          offer_id: string;
+          reserved_until: string;
+          seats: number;
+          server_now: string;
+          status: Database['public']['Enums']['booking_status'];
+        }[];
+      };
+      sync_stripe_account: {
+        Args: {
+          p_charges_enabled: boolean;
+          p_details_submitted: boolean;
+          p_disabled_reason: string;
+          p_payouts_enabled: boolean;
+          p_requirements_due: string[];
+          p_stripe_account_id: string;
+          p_transfers_active: boolean;
+        };
+        Returns: {
+          charges_enabled: boolean;
+          created_at: string;
+          details_submitted: boolean;
+          disabled_reason: string | null;
+          is_ready: boolean | null;
+          location_id: string;
+          payouts_enabled: boolean;
+          requirements_due: string[];
+          stripe_account_id: string;
+          synced_at: string | null;
+          transfers_active: boolean;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stripe_accounts';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       unregister_push_token: { Args: { p_token: string }; Returns: undefined };
       update_my_company: {
@@ -1302,6 +2041,19 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      update_payment_settings: {
+        Args: { p_commission_bps: number; p_payments_enabled: boolean };
+        Returns: {
+          commission_bps: number;
+          payments_enabled: boolean;
+          payout_delay_hours: number;
+          reservation_minutes: number;
+        }[];
+      };
+      update_refund_status: {
+        Args: { p_error?: string; p_stripe_refund_id: string; p_stripe_status: string };
+        Returns: undefined;
+      };
       update_settings: {
         Args: {
           p_block_days: number;
@@ -1330,6 +2082,17 @@ export type Database = {
     };
     Enums: {
       app_role: 'nutzer' | 'standort' | 'admin';
+      booking_cancel_reason:
+        'nutzer' | 'angebot_abgesagt' | 'angebot_entfernt' | 'konto_geloescht' | 'zahlung_zu_spaet';
+      booking_status:
+        | 'reserviert'
+        | 'abgelaufen'
+        | 'bezahlt'
+        | 'storniert'
+        | 'erstattet'
+        | 'eingeloest'
+        | 'no_show'
+        | 'ausgezahlt';
       event_type:
         'angebot_angesehen' | 'code_geholt' | 'code_storniert' | 'code_eingeloest' | 'no_show';
       location_status: 'pending' | 'approved' | 'rejected';
@@ -1344,7 +2107,11 @@ export type Database = {
         | 'sonstiges';
       offer_status: 'aktiv' | 'abgesagt' | 'entfernt';
       offer_type: 'einzeltermin' | 'zeitraum';
+      payment_job_kind: 'pi_abbrechen' | 'erstatten' | 'auszahlen' | 'auszahlung_zurueckholen';
+      payment_job_status: 'offen' | 'laeuft' | 'erledigt' | 'fehlgeschlagen';
       push_platform: 'ios' | 'android' | 'web';
+      refund_status: 'offen' | 'angefragt' | 'erstattet' | 'fehlgeschlagen';
+      transfer_status: 'ueberwiesen' | 'zurueckholen' | 'zurueckgeholt' | 'fehlgeschlagen';
       voucher_cancel_reason: 'nutzer' | 'angebot_abgesagt' | 'angebot_entfernt' | 'konto_geloescht';
       voucher_status: 'aktiv' | 'storniert' | 'eingeloest' | 'no_show' | 'abgelaufen';
     };
@@ -1459,6 +2226,23 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ['nutzer', 'standort', 'admin'],
+      booking_cancel_reason: [
+        'nutzer',
+        'angebot_abgesagt',
+        'angebot_entfernt',
+        'konto_geloescht',
+        'zahlung_zu_spaet',
+      ],
+      booking_status: [
+        'reserviert',
+        'abgelaufen',
+        'bezahlt',
+        'storniert',
+        'erstattet',
+        'eingeloest',
+        'no_show',
+        'ausgezahlt',
+      ],
       event_type: [
         'angebot_angesehen',
         'code_geholt',
@@ -1479,7 +2263,11 @@ export const Constants = {
       ],
       offer_status: ['aktiv', 'abgesagt', 'entfernt'],
       offer_type: ['einzeltermin', 'zeitraum'],
+      payment_job_kind: ['pi_abbrechen', 'erstatten', 'auszahlen', 'auszahlung_zurueckholen'],
+      payment_job_status: ['offen', 'laeuft', 'erledigt', 'fehlgeschlagen'],
       push_platform: ['ios', 'android', 'web'],
+      refund_status: ['offen', 'angefragt', 'erstattet', 'fehlgeschlagen'],
+      transfer_status: ['ueberwiesen', 'zurueckholen', 'zurueckgeholt', 'fehlgeschlagen'],
       voucher_cancel_reason: ['nutzer', 'angebot_abgesagt', 'angebot_entfernt', 'konto_geloescht'],
       voucher_status: ['aktiv', 'storniert', 'eingeloest', 'no_show', 'abgelaufen'],
     },
