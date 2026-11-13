@@ -178,8 +178,8 @@ export const MAP_PALETTE = {
   motorway: '#FBE3A0',
   motorwayCasing: '#E9C46A',
   rail: '#C9CCD2',
-  /** Gewählte Nadel: dunkleres Gold (gold[600] aus @/theme), hebt sich von den gelben Nadeln ab. */
-  pinSelected: '#B87E14',
+  /** Gewählte Nadel: sanftes Hellgelb (gold[200] aus @/theme), heller als die normalen Nadeln. */
+  pinSelected: '#FCDF9C',
   /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den gelben Nadeln. */
   userLocation: '#2F7FF0',
 } as const;
