@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { formatCommission } from '@repo/shared';
 import { Button, Field, inputClass } from '@/components/ui';
+import { useT } from '@/lib/i18n/context';
 import {
   savePaymentSettingsAction,
   type PaymentSettingsActionState,
@@ -19,17 +20,24 @@ export function PaymentSettingsForm({
   commissionBps: number;
   offersWithoutPayoutAccount: number;
 }) {
+  const { locale, t } = useT();
+  const a = t.admin;
   const [state, action, pending] = useActionState(savePaymentSettingsAction, INITIAL_STATE);
   const currentEnabled = state.values?.payments_enabled ?? paymentsEnabled;
   const percentValue =
-    state.values?.commission_percent ?? String(commissionBps / 100).replace('.', ',');
+    state.values?.commission_percent ??
+    (locale === 'en' ? String(commissionBps / 100) : String(commissionBps / 100).replace('.', ','));
 
   return (
     <form action={action} className="space-y-5">
       <Field
         id="commission_percent"
-        label="Provision in Prozent"
-        hint={`Aktuell ${formatCommission(commissionBps)}. Gilt nur für neue Buchungen.`}
+        label={a.commissionForm}
+        hint={a.commissionHint(
+          locale === 'en'
+            ? formatCommission(commissionBps).replace(',', '.')
+            : formatCommission(commissionBps),
+        )}
       >
         <div className="flex max-w-xs items-center gap-2">
           <input
@@ -56,16 +64,14 @@ export function PaymentSettingsForm({
             defaultChecked={currentEnabled}
             className="size-5 accent-accent-solid"
           />
-          Bezahlung in der App aktivieren
+          {a.enablePayments}
         </label>
         {offersWithoutPayoutAccount > 0 ? (
           <p
             role="alert"
             className="mt-2 rounded-card bg-status-warning-subtle px-4 py-3 text-callout text-status-warning-on-subtle"
           >
-            Wenn du das Flag einschaltest, können {offersWithoutPayoutAccount}{' '}
-            {offersWithoutPayoutAccount === 1 ? 'aktives Angebot' : 'aktive Angebote'} ohne
-            eingerichtetes Stripe-Konto nicht mehr gebucht werden.
+            {a.offersWithoutAccount(offersWithoutPayoutAccount)}
           </p>
         ) : null}
         <label className="mt-3 flex items-start gap-3 text-footnote text-text-secondary">
@@ -75,9 +81,7 @@ export function PaymentSettingsForm({
             defaultChecked={state.values?.confirm_enable ?? paymentsEnabled}
             className="mt-0.5 size-4 accent-accent-solid"
           />
-          <span>
-            Ich habe die Aktivierung im gemeinsamen Dev-Projekt mit Ben und @arwedc abgestimmt.
-          </span>
+          <span>{a.confirmEnable}</span>
         </label>
       </div>
 
@@ -93,12 +97,12 @@ export function PaymentSettingsForm({
           role="status"
           className="rounded-card bg-status-success-subtle px-4 py-3 text-callout text-status-success-on-subtle"
         >
-          Einstellungen gespeichert.
+          {a.saved}
         </p>
       ) : null}
 
       <Button type="submit" disabled={pending}>
-        {pending ? 'Wird gespeichert …' : 'Einstellungen speichern'}
+        {pending ? a.saving : a.save}
       </Button>
     </form>
   );
