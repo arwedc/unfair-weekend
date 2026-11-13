@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  activeFilterCount,
   buildSections,
+  categorySuggestions,
   EMPTY_FILTERS,
   filterOffers,
   groupByPlace,
@@ -134,14 +136,51 @@ describe('filterOffers', () => {
       ['b'],
     );
     expect(
-      filterOffers(offers, { category: 'kochen_essen', time: 'heute', query: '' }, NOW),
+      filterOffers(offers, { ...EMPTY_FILTERS, category: 'kochen_essen', time: 'heute' }, NOW),
     ).toEqual([]);
   });
 
-  it('erkennt aktive Filter', () => {
+  it('zeigt mit „Noch Plätze frei“ keine ausgebuchten Angebote', () => {
+    const mitVoll = [...offers, offer({ id: 'voll', free_seats: 0 })];
+    expect(
+      filterOffers(mitVoll, { ...EMPTY_FILTERS, onlyAvailable: true }, NOW).map((o) => o.id),
+    ).toEqual(['a', 'b']);
+  });
+
+  it('zeigt mit „Lieblingsorte“ nur Angebote dieser Standorte', () => {
+    const zwei = [offer({ id: 'a', location_id: 'l1' }), offer({ id: 'c', location_id: 'l2' })];
+    const nurFavoriten = { ...EMPTY_FILTERS, favoritesOnly: true };
+    expect(filterOffers(zwei, nurFavoriten, NOW, new Set(['l2'])).map((o) => o.id)).toEqual(['c']);
+    // nicht angemeldet: keine Liste, also nichts
+    expect(filterOffers(zwei, nurFavoriten, NOW)).toEqual([]);
+  });
+
+  it('erkennt und zählt aktive Filter (ohne Suche)', () => {
     expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '  ' })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, time: 'morgen' })).toBe(true);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
+    expect(activeFilterCount({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(0);
+    expect(
+      activeFilterCount({
+        ...EMPTY_FILTERS,
+        category: 'kochen_essen',
+        onlyAvailable: true,
+        favoritesOnly: true,
+      }),
+    ).toBe(3);
+  });
+});
+
+describe('categorySuggestions', () => {
+  it('schlägt ohne Eingabe alle Kategorien vor', () => {
+    expect(categorySuggestions('')).toHaveLength(6);
+  });
+
+  it('findet Kategorien über Teile des Namens, ohne auf Umlaute und Groß-/Kleinschreibung zu achten', () => {
+    expect(categorySuggestions('koch')).toEqual(['kochen_essen']);
+    expect(categorySuggestions('WELL')).toEqual(['wellness_beauty']);
+    expect(categorySuggestions('Pizza')).toEqual([]);
   });
 });
 

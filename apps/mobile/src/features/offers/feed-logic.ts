@@ -11,6 +11,7 @@ import {
   formatDiscount,
   formatTimeRange,
   isFewSeatsLeft,
+  OFFER_CATEGORIES,
   OFFER_CATEGORY_LABELS,
   offerTimeLabel,
   seatsLabel,
@@ -35,12 +36,32 @@ export interface OfferFilters {
   category: OfferCategory | null;
   time: TimeFilter;
   query: string;
+  /** Nur Angebote mit freien Plätzen. */
+  onlyAvailable: boolean;
+  /** Nur Angebote der eigenen Lieblingsorte (braucht Login). */
+  favoritesOnly: boolean;
 }
 
-export const EMPTY_FILTERS: OfferFilters = { category: null, time: 'alle', query: '' };
+export const EMPTY_FILTERS: OfferFilters = {
+  category: null,
+  time: 'alle',
+  query: '',
+  onlyAvailable: false,
+  favoritesOnly: false,
+};
+
+/** Anzahl gesetzter Filter ohne die Suche, z. B. für „Filter · 2“. */
+export function activeFilterCount(filters: OfferFilters): number {
+  return [
+    filters.category !== null,
+    filters.time !== 'alle',
+    filters.onlyAvailable,
+    filters.favoritesOnly,
+  ].filter(Boolean).length;
+}
 
 export function hasActiveFilters(filters: OfferFilters): boolean {
-  return filters.category !== null || filters.time !== 'alle' || filters.query.trim() !== '';
+  return activeFilterCount(filters) > 0 || filters.query.trim() !== '';
 }
 
 type Timing = Pick<Offer, 'type' | 'starts_at' | 'ends_at'>;
@@ -95,17 +116,37 @@ export function matchesSearch(offer: Searchable, query: string): boolean {
   return words.every((word) => haystack.includes(word));
 }
 
+/**
+ * Wendet alle Filter an. `favoriteLocationIds` braucht es nur für „Lieblingsorte“;
+ * fehlt die Liste (nicht angemeldet), passt bei diesem Filter kein Angebot.
+ */
 export function filterOffers<T extends Offer>(
   offers: readonly T[],
   filters: OfferFilters,
   now: DateInput = new Date(),
+  favoriteLocationIds?: ReadonlySet<string>,
 ): T[] {
   return offers.filter(
     (offer) =>
       (filters.category === null || offer.category === filters.category) &&
+      (!filters.onlyAvailable || offer.free_seats > 0) &&
+      (!filters.favoritesOnly || (favoriteLocationIds?.has(offer.location_id) ?? false)) &&
       matchesTimeFilter(offer, filters.time, now) &&
       matchesSearch(offer, filters.query),
   );
+}
+
+/**
+ * Kategorien als Vorschläge unter der Suche. Ohne Eingabe alle,
+ * sonst die, deren Name zum Text passt („koch“ → Kochen & Essen).
+ */
+export function categorySuggestions(query: string): OfferCategory[] {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...OFFER_CATEGORIES];
+  return OFFER_CATEGORIES.filter((category) => {
+    const label = normalize(OFFER_CATEGORY_LABELS[category]);
+    return words.every((word) => label.includes(word));
+  });
 }
 
 export interface FeedSections {

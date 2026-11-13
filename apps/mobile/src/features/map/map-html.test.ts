@@ -14,7 +14,8 @@ import {
 
 const colors = {
   pin: '#111111',
-  pinText: '#ffffff',
+  pinMuted: '#999999',
+  pinDot: '#ffffff',
   cluster: '#222222',
   clusterText: '#ffffff',
   user: '#333333',
@@ -31,12 +32,21 @@ const place = (overrides: Partial<OfferPlace> = {}): OfferPlace => ({
 });
 
 describe('placesToGeoJson', () => {
-  it('setzt Koordinaten als [lng, lat] und den Rabatt als Beschriftung', () => {
+  it('setzt Koordinaten als [lng, lat] und den Schlüssel des Orts', () => {
     const geojson = placesToGeoJson([place()]);
     expect(geojson.features).toHaveLength(1);
     expect(geojson.features[0]?.geometry.coordinates).toEqual([7.62, 51.96]);
     expect(geojson.features[0]?.properties.key).toBe('51.96000,7.62000');
-    expect(geojson.features[0]?.properties.label).toContain('40');
+  });
+
+  it('markiert Orte als ausgebucht, wenn kein Angebot mehr Plätze hat', () => {
+    const offer = (free_seats: number) => ({ free_seats }) as OfferPlace['offers'][number];
+    const [voll, frei] = placesToGeoJson([
+      place({ offers: [offer(0), offer(0)] }),
+      place({ offers: [offer(0), offer(3)] }),
+    ]).features;
+    expect(voll?.properties.soldOut).toBe(true);
+    expect(frei?.properties.soldOut).toBe(false);
   });
 
   it('liefert ohne Standorte eine leere Sammlung', () => {
@@ -64,6 +74,12 @@ describe('buildMapHtml', () => {
   it('enthält die Stil-URL und die Pflicht-Quellenangabe', () => {
     expect(html).toContain('https://tiles.openfreemap.org/styles/positron');
     expect(html).toContain(MAP_ATTRIBUTION);
+  });
+
+  it('zeichnet Nadeln statt Kreisen mit Rabatt', () => {
+    expect(html).toContain("'icon-image'");
+    expect(html).toContain("'icon-anchor': 'bottom'");
+    expect(html).not.toContain('pin-labels');
   });
 
   it('zeigt die Quellenangabe als feste Zeile statt der automatischen (doppelten)', () => {

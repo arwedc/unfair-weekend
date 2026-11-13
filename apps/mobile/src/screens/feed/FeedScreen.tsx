@@ -5,9 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import { Appear, EmptyState, SectionHeader, Text } from '@/components/ui';
-import { buildSections, filterOffers, hasActiveFilters } from '@/features/offers/feed-logic';
+import { buildSections, hasActiveFilters } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { useOffers } from '@/features/offers/queries';
+import { useFilteredOffers } from '@/features/offers/use-filtered-offers';
 import type { FeedOffer } from '@/features/offers/types';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { colors, layout, space } from '@/theme';
@@ -53,11 +53,10 @@ function LoadingState() {
 export function FeedScreen() {
   const insets = useSafeAreaInsets();
   const { filters, resetFilters } = useOfferFilters();
-  const { data, error, isPending, isRefetching, refetch } = useOffers();
+  const { data, error, isPending, isRefetching, refetch, visible } = useFilteredOffers();
 
   const offers = data ?? [];
   const filtering = hasActiveFilters(filters);
-  const visible = filterOffers(offers, filters);
   const sections = buildSections(offers);
 
   const header = (

@@ -23,9 +23,9 @@ import {
   setPlacesScript,
   showUserScript,
 } from '@/features/map/map-html';
-import { filterOffers, groupByPlace, type OfferPlace } from '@/features/offers/feed-logic';
+import { groupByPlace, type OfferPlace } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { useOffers } from '@/features/offers/queries';
+import { useFilteredOffers } from '@/features/offers/use-filtered-offers';
 import { errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
 import { openWebsite } from '@/lib/open-external';
@@ -35,7 +35,8 @@ const MAP_HTML = buildMapHtml({
   styleUrl: env.mapStyleUrl,
   colors: {
     pin: colors.accent.solid,
-    pinText: colors.accent.onSolid,
+    pinMuted: colors.text.disabled,
+    pinDot: colors.accent.onSolid,
     cluster: colors.background.inverse,
     clusterText: colors.text.inverse,
     user: colors.accent.vivid,
@@ -48,15 +49,15 @@ type LocationNotice = 'denied' | 'failed' | null;
 // Die Typen der Bibliothek brauchen einen Typparameter, sonst gelten alle Props als unzulässig.
 type MapWebView = WebView<object>;
 
-/** Tab „Karte“: Angebote als Pins mit Rabatt. Tippen öffnet eine Vorschau als Bottom Sheet. */
+/** Tab „Karte“: Angebote als Kartennadeln. Tippen öffnet eine Vorschau als Bottom Sheet. */
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const webview = useRef<MapWebView>(null);
   const previewSheet = useRef<SheetRef>(null);
   const noticeSheet = useRef<SheetRef>(null);
 
-  const { filters, resetFilters } = useOfferFilters();
-  const { data, error, refetch } = useOffers();
+  const { resetFilters } = useOfferFilters();
+  const { data, error, refetch, visible } = useFilteredOffers();
 
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
@@ -65,7 +66,6 @@ export function MapScreen() {
   const [locating, setLocating] = useState(false);
   const [notice, setNotice] = useState<LocationNotice>(null);
 
-  const visible = filterOffers(data ?? [], filters);
   const places = groupByPlace(visible);
   const placesScript = setPlacesScript(places);
 
@@ -175,7 +175,7 @@ export function MapScreen() {
       ) : null}
 
       <View style={[styles.top, { paddingTop: insets.top + space[2] }]} pointerEvents="box-none">
-        <FilterBar showSearch={false} />
+        <FilterBar variant="floating" />
         {error ? (
           <View style={styles.banner}>
             <Text variant="footnote" color="secondary">

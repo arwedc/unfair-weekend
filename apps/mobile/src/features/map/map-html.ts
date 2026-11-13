@@ -4,8 +4,6 @@
  * Warum WebView: Die native MapLibre-Bibliothek läuft nicht in Expo Go (siehe docs/SPEC-APP.md, Annahmen).
  * Kacheln und Stil kommen von OpenFreeMap, ohne API-Key. Die Seite spricht per postMessage mit der App.
  */
-import { formatDiscount } from '@repo/shared';
-
 import type { OfferPlace } from '@/features/offers/feed-logic';
 
 /**
@@ -29,8 +27,12 @@ export const DEFAULT_ZOOM = 12.2;
 export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
 
 export interface MapColors {
+  /** Nadel mit freien Plätzen (Markenfarbe). */
   pin: string;
-  pinText: string;
+  /** Nadel, wenn am Ort alles ausgebucht ist. */
+  pinMuted: string;
+  /** Punkt in der Nadel. */
+  pinDot: string;
   cluster: string;
   clusterText: string;
   user: string;
@@ -74,10 +76,10 @@ export function parseMapMessage(raw: string): MapMessage | null {
 interface PlaceFeature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: { key: string; label: string; count: number };
+  properties: { key: string; count: number; soldOut: boolean };
 }
 
-/** Standorte als GeoJSON für die Pins. Im Pin steht der höchste Rabatt am Ort. */
+/** Standorte als GeoJSON für die Pins. Ausgebuchte Orte bekommen eine graue Nadel. */
 export function placesToGeoJson(places: readonly OfferPlace[]): {
   type: 'FeatureCollection';
   features: PlaceFeature[];
@@ -89,8 +91,8 @@ export function placesToGeoJson(places: readonly OfferPlace[]): {
       geometry: { type: 'Point', coordinates: [place.lng, place.lat] },
       properties: {
         key: place.key,
-        label: formatDiscount(place.maxDiscount),
         count: place.offers.length,
+        soldOut: place.offers.every((offer) => offer.free_seats === 0),
       },
     })),
   };
@@ -202,7 +204,34 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     if (!loaded) send({ type: 'error', message: event && event.error ? String(event.error.message) : '' });
   });
 
+  // Kartennadel (Tropfenform mit weißem Rand und Punkt), gezeichnet statt als Bilddatei.
+  // Maße in Punkten; gezeichnet in dreifacher Auflösung, damit sie scharf bleibt.
+  function makePin(fill) {
+    var ratio = 3, w = 34, h = 46, cx = 17, cy = 16, r = 13, tip = 42;
+    var canvas = document.createElement('canvas');
+    canvas.width = w * ratio; canvas.height = h * ratio;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    var beta = Math.acos(r / (tip - cy));
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI / 2 + beta, Math.PI / 2 - beta + Math.PI * 2, false);
+    ctx.lineTo(cx, tip);
+    ctx.closePath();
+    ctx.shadowColor = 'rgba(10, 10, 10, 0.3)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = config.colors.pinDot; ctx.fill();
+    return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
+  }
+
   map.on('load', function () {
+    var pin = makePin(config.colors.pin);
+    var pinMuted = makePin(config.colors.pinMuted);
+    map.addImage('unfair-pin', pin.image, { pixelRatio: pin.ratio });
+    map.addImage('unfair-pin-muted', pinMuted.image, { pixelRatio: pinMuted.ratio });
+
     map.addSource('places', { type: 'geojson', data: pending || empty, cluster: true, clusterRadius: 44, clusterMaxZoom: 15 });
 
     map.addLayer({ id: 'clusters', type: 'circle', source: 'places', filter: ['has', 'point_count'], paint: {
@@ -212,11 +241,11 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
       'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 14, 'text-allow-overlap': true },
       paint: { 'text-color': config.colors.clusterText } });
 
-    map.addLayer({ id: 'pins', type: 'circle', source: 'places', filter: ['!', ['has', 'point_count']], paint: {
-      'circle-color': config.colors.pin, 'circle-radius': 22, 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
-    map.addLayer({ id: 'pin-labels', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], layout: {
-      'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true },
-      paint: { 'text-color': config.colors.pinText } });
+    // Nadelspitze sitzt genau auf der Adresse. Ausgebuchte Orte grau.
+    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], layout: {
+      'icon-image': ['case', ['get', 'soldOut'], 'unfair-pin-muted', 'unfair-pin'],
+      'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      'symbol-sort-key': ['case', ['get', 'soldOut'], 0, 1] } });
 
     map.on('click', 'clusters', function (event) {
       var feature = event.features && event.features[0];

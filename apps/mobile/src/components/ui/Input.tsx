@@ -1,12 +1,20 @@
-import type { LucideIcon } from 'lucide-react-native';
-import { useState } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { X, type LucideIcon } from 'lucide-react-native';
+import { useState, type Ref } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  type TextInputInstance,
+  type TextInputProps,
+} from 'react-native';
 
-import { colors, layout, MAX_FONT_SCALE, radius, space, textStyle } from '@/theme';
+import { colors, layout, MAX_FONT_SCALE, radius, shadow, space, textStyle } from '@/theme';
 
 import { Text } from './Text';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
+  ref?: Ref<TextInputInstance>;
   label?: string;
   /** Fehlertext unter dem Feld (z. B. aus der Zod-Validierung). */
   error?: string;
@@ -14,14 +22,21 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   icon?: LucideIcon;
   /** Runde Pillenform, z. B. für die Suche. */
   shape?: 'default' | 'pill';
+  /** Mit Schatten statt Rahmen, z. B. schwebend über der Karte. */
+  elevated?: boolean;
+  /** Zeigt ein „x“ zum Leeren, sobald etwas eingegeben ist. */
+  onClear?: () => void;
 }
 
 export function Input({
+  ref,
   label,
   error,
   hint,
   icon: Icon,
   shape = 'default',
+  elevated = false,
+  onClear,
   onFocus,
   onBlur,
   ...rest
@@ -31,7 +46,10 @@ export function Input({
     ? colors.status.error.solid
     : focused
       ? colors.border.focus
-      : colors.border.default;
+      : elevated
+        ? 'transparent'
+        : colors.border.default;
+  const showClear = onClear !== undefined && (rest.value ?? '').length > 0;
 
   return (
     <View style={styles.wrapper}>
@@ -44,11 +62,13 @@ export function Input({
         style={[
           styles.field,
           shape === 'pill' ? styles.pill : styles.rounded,
+          elevated && styles.elevated,
           { borderColor, borderWidth: focused || error ? 1.5 : 1 },
         ]}
       >
         {Icon ? <Icon size={20} color={colors.text.tertiary} /> : null}
         <TextInput
+          ref={ref}
           accessibilityLabel={label ?? rest.placeholder}
           placeholderTextColor={colors.text.tertiary}
           selectionColor={colors.accent.solid}
@@ -65,6 +85,17 @@ export function Input({
           style={[textStyle('body'), styles.input]}
           {...rest}
         />
+        {showClear ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Eingabe löschen"
+            onPress={onClear}
+            hitSlop={12}
+            style={styles.clear}
+          >
+            <X size={14} color={colors.text.inverse} strokeWidth={3} />
+          </Pressable>
+        ) : null}
       </View>
       {error ? (
         <Text variant="footnote" style={{ color: colors.status.error.text }}>
@@ -91,5 +122,14 @@ const styles = StyleSheet.create({
   },
   rounded: { borderRadius: radius.input, borderCurve: 'continuous' },
   pill: { borderRadius: radius.button },
+  elevated: { boxShadow: shadow.floating },
   input: { flex: 1, color: colors.text.primary, paddingVertical: space[3] },
+  clear: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.text.tertiary,
+  },
 });
