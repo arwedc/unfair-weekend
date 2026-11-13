@@ -1,5 +1,6 @@
 /** Anmelden, Profil und Konto. Abläufe nach docs/BACKEND.md, Abschnitt „Rollen und Auth“. */
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import type { UserSignUpInput } from '@repo/shared';
@@ -10,7 +11,13 @@ import { getLocale } from '@/lib/i18n/locale-store';
 import { getMessages } from '@/lib/i18n/messages';
 import { supabase } from '@/lib/supabase';
 
-import { authCodeFromUrl, parseAccount, sessionTokensFromUrl, type Account } from './account';
+import {
+  authCodeFromUrl,
+  parseAccount,
+  sessionTokensFromUrl,
+  supabaseSafeRedirectUrl,
+  type Account,
+} from './account';
 
 /** Der Nutzer hat den Login selbst abgebrochen. Dafür zeigen wir keinen Fehler. */
 export const CANCELLED = 'ABGEBROCHEN';
@@ -138,9 +145,20 @@ export async function signInWithApple(): Promise<{ firstName: string; lastName: 
   };
 }
 
-/** Rücksprungadresse nach dem Browser-Login. Muss in Supabase unter „Redirect URLs“ erlaubt sein. */
+/** Schema der App aus app.json (`scheme`). */
+const APP_SCHEME = (() => {
+  const scheme = Constants.expoConfig?.scheme;
+  return (Array.isArray(scheme) ? scheme[0] : scheme) ?? 'unfairweekend';
+})();
+
+/**
+ * Rücksprungadresse nach dem Browser-Login. Muss in Supabase unter „Redirect URLs“ erlaubt sein
+ * (`exp://**`, `unfairweekend://**`). In Expo Go im WLAN wird daraus das App-Schema, weil
+ * Supabase Adressen mit IP ablehnt (siehe `supabaseSafeRedirectUrl`).
+ */
 export function authRedirectUrl(): string {
-  return Linking.createURL('auth/callback');
+  const path = 'auth/callback';
+  return supabaseSafeRedirectUrl(Linking.createURL(path), APP_SCHEME, path);
 }
 
 /** Google-Login über den System-Browser (läuft auch in Expo Go). */

@@ -97,6 +97,26 @@ export function sessionTokensFromUrl(
   return { accessToken, refreshToken };
 }
 
+/**
+ * Rücksprungadresse, die Supabase Auth auch annimmt. Supabase lehnt Adressen ab, deren Host
+ * eine IP ist (außer 127.0.0.1 und ::1), egal was in „Redirect URLs“ steht, und leitet dann
+ * auf die Site URL (localhost) um. Expo Go im WLAN liefert aber genau so eine Adresse
+ * (exp://192.168.…:8081/--/auth/callback). Dann nehmen wir das App-Schema
+ * (unfairweekend://auth/callback). Auf iOS fängt das Login-Fenster diesen Rücksprung auch
+ * in Expo Go selbst ab.
+ */
+export function supabaseSafeRedirectUrl(linkingUrl: string, scheme: string, path: string): string {
+  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(linkingUrl)?.[1] ?? '';
+  const host = authority.replace(/^.*@/, '');
+  const ipv6 = /^\[([^\]]*)\]/.exec(host)?.[1];
+  const hostname = ipv6 ?? host.replace(/:\d*$/, '');
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+  const isIp = isIpv4 || ipv6 !== undefined;
+  const isLoopback = (isIpv4 && hostname.startsWith('127.')) || hostname === '::1';
+  if (!isIp || isLoopback) return linkingUrl;
+  return `${scheme}://${path.replace(/^\/+/, '')}`;
+}
+
 /** Bestätigungscode aus der Query der Supabase-E-Mail-Redirect-URL. */
 export function authCodeFromUrl(url: string): string | null {
   const [beforeHash, hash = ''] = url.split('#');
