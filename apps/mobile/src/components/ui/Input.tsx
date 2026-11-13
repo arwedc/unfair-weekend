@@ -31,6 +31,10 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   trailing?: ReactNode;
 }
 
+const bodyText = textStyle('body');
+// Einzeilige Felder ohne lineHeight: iOS setzt den Text sonst an den unteren Rand statt in die Mitte.
+const { lineHeight: _lineHeight, ...bodyTextSingleLine } = bodyText;
+
 export function Input({
   ref,
   label,
@@ -87,7 +91,7 @@ export function Input({
             setFocused(false);
             onBlur?.(event);
           }}
-          style={[textStyle('body'), styles.input]}
+          style={[rest.multiline ? bodyText : bodyTextSingleLine, styles.input]}
           {...rest}
         />
         {showClear ? (
