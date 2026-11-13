@@ -162,9 +162,6 @@ export const BUDGET_PRICE_CENTS = 1500;
 /** Themen-Abschnitte erscheinen erst ab so vielen Angeboten, damit der Feed nicht zerfasert. */
 const THEME_MIN_OFFERS = 2;
 
-/** Kategorien mit eigenem Abschnitt. „Sonstiges“ steht nur in der Liste „Alle Angebote“. */
-type SectionCategory = Exclude<OfferCategory, 'sonstiges'>;
-
 interface SectionDraft {
   section: FeedSection;
   minOffers: number;
@@ -177,7 +174,7 @@ interface SectionDraft {
  */
 export function buildSections(
   offers: readonly FeedOffer[],
-  options: { cityName: string; now?: DateInput },
+  options: { cityName: string; now?: DateInput; favoriteIds?: readonly string[] },
 ): FeedSection[] {
   const now = options.now ?? new Date();
   const available = offers.filter((offer) => offer.free_seats > 0);
@@ -190,17 +187,29 @@ export function buildSections(
     section: { key, title, offers: items },
     minOffers: THEME_MIN_OFFERS,
   });
-  const category = (value: SectionCategory): SectionDraft => ({
+  // Jede Kategorie hat eine Reihe, so taucht jedes holbare Angebot mindestens einmal auf.
+  const category = (
+    value: OfferCategory,
+    title: string = OFFER_CATEGORY_LABELS[value],
+  ): SectionDraft => ({
     section: {
       key: `kategorie-${value}`,
-      title: OFFER_CATEGORY_LABELS[value],
+      title,
       offers: available.filter((offer) => offer.category === value),
       category: value,
     },
     minOffers: 1,
   });
 
+  // Favoriten in der gemerkten Reihenfolge (auch ausgebuchte, die will man ja im Blick behalten)
+  const byId = new Map(offers.map((offer) => [offer.id, offer]));
+  const favorites = (options.favoriteIds ?? []).flatMap((id) => {
+    const offer = byId.get(id);
+    return offer ? [offer] : [];
+  });
+
   const drafts: SectionDraft[] = [
+    time('favoriten', 'Deine Favoriten', favorites),
     time(
       'heute',
       `Heute in ${options.cityName}`,
@@ -259,6 +268,7 @@ export function buildSections(
       'Einlösen, wann du willst',
       available.filter((offer) => offer.type === 'zeitraum'),
     ),
+    category('sonstiges', 'Noch mehr entdecken'),
   ];
 
   return drafts

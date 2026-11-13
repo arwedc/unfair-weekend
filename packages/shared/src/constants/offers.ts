@@ -51,3 +51,12 @@ export const OFFER_LIMITS = {
   originalPriceMaxCents: 10_000_000,
   maxDurationDays: 90,
 } as const;
+
+/** Grenzen für Angebotsvorlagen (gleich wie in der Datenbank). */
+export const OFFER_TEMPLATE_LIMITS = {
+  nameMin: 2,
+  nameMax: 60,
+  durationMinMinutes: 1,
+  durationMaxMinutes: OFFER_LIMITS.maxDurationDays * 24 * 60,
+  maxPerLocation: 30,
+} as const;

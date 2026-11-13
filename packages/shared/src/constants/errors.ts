@@ -35,6 +35,11 @@ export const RPC_ERROR_MESSAGES = {
   KONTINGENT_ZU_KLEIN: 'Das Kontingent kann nicht unter die vergebenen Plätze sinken.',
   FELD_GESPERRT: 'Es gibt schon Codes. Zeit, Adresse und Preise sind deshalb gesperrt.',
 
+  // Angebotsvorlagen
+  VORLAGE_NICHT_GEFUNDEN: 'Diese Vorlage gibt es nicht.',
+  VORLAGENNAME_VERGEBEN: 'Eine Vorlage mit diesem Namen gibt es schon.',
+  VORLAGEN_LIMIT: 'Es sind höchstens 30 Vorlagen möglich.',
+
   // Codes
   CODE_NICHT_GEFUNDEN: 'Diesen Code gibt es nicht.',
   CODE_NICHT_AKTIV: 'Dieser Code ist nicht mehr gültig.',
