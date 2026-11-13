@@ -12,7 +12,8 @@ export const screensDe = {
     search: 'Angebote durchsuchen',
     searchPlaceholder: 'Kochkurs, Yoga, Keramik …',
     count: (n: number) => (n === 1 ? '1 Angebot' : `${n} Angebote`),
-    dealCount: (n: number) => (n === 1 ? '1 Deal am Start 🔥' : `${n} Deals am Start 🔥`),
+    // Slogan zwischen Stadt und Kategorien. Bewusst ohne Zahl, damit es auch mit wenigen Deals passt.
+    slogan: 'Heute schon was vor?',
     categoryHintOn: 'Zeigt nur diese Kategorie',
     categoryHintOff: 'Hebt den Filter auf',
     comingSoonTitle: (city: string) => `Bald auch in ${city} ✨`,
@@ -118,7 +119,7 @@ export const screensEn: Widen<typeof screensDe> = {
     search: 'Search offers',
     searchPlaceholder: 'Cooking class, yoga, pottery …',
     count: (n) => (n === 1 ? '1 offer' : `${n} offers`),
-    dealCount: (n) => (n === 1 ? '1 deal ready 🔥' : `${n} deals ready 🔥`),
+    slogan: 'Got plans today?',
     categoryHintOn: 'Shows only this category',
     categoryHintOff: 'Removes the filter',
     comingSoonTitle: (city) => `Coming soon to ${city} ✨`,

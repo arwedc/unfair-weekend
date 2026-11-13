@@ -212,17 +212,16 @@ export function FeedScreen() {
   const header = (
     <View style={styles.header}>
       <View style={styles.intro}>
-        {cityOffers.length > 0 ? (
-          <Text
-            variant="title2"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            style={styles.inset}
-          >
-            {m.dealCount(cityOffers.length)}
-          </Text>
-        ) : null}
+        <Text
+          variant="title2"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          accessibilityRole="header"
+          style={styles.inset}
+        >
+          {m.slogan}
+        </Text>
         <CategoryCircles />
       </View>
 
