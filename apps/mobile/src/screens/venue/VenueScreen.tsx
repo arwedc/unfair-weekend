@@ -41,6 +41,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
+import { ImageGallery } from '@/components/offers/ImageGallery';
 import { MiniMap } from '@/components/offers/MiniMap';
 import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
@@ -444,6 +445,18 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         >
           {offer ? (
             <View style={styles.card}>
+              {offer.image_paths.length > 0 ? (
+                <ImageGallery
+                  paths={offer.image_paths}
+                  title={offer.title}
+                  width={width - layout.screenPaddingX * 2}
+                  labels={{
+                    gallery: v.imageGalleryLabel,
+                    image: v.imageLabel,
+                    singleImage: v.singleImageLabel,
+                  }}
+                />
+              ) : null}
               <View style={styles.cardBody}>
                 <View style={styles.offerTitleText}>
                   <Text variant="caption" color="accent" style={styles.semibold}>
