@@ -22,6 +22,8 @@ interface AuthContextValue {
   ready: boolean;
   userId: string | null;
   email: string | null;
+  /** Wann das Konto angelegt wurde (ISO), für „Dabei seit …“ im Profil. */
+  memberSince: string | null;
   /** Name, den der Login-Anbieter (z. B. Google) mitliefert. Vorschlag für das Profil. */
   suggestedName: string;
   account: Account | null;
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ready: state.ready,
         userId,
         email: state.session?.user.email ?? null,
+        memberSince: state.session?.user.created_at ?? null,
         suggestedName: typeof providerName === 'string' ? providerName : '',
         account: userId ? (accountQuery.data ?? null) : null,
         accountLoading: userId !== null && accountQuery.isPending,

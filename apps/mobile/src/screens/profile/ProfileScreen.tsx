@@ -1,5 +1,5 @@
-import { OFFER_CATEGORIES } from '@repo/shared';
 import { LOCALE_NAMES, LOCALES } from '@repo/shared/i18n';
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
@@ -9,18 +9,16 @@ import {
   Languages,
   LogOut,
   Pencil,
+  Share2,
   ShieldCheck,
-  Store,
   Trash2,
   TriangleAlert,
-  UserRound,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Linking, StyleSheet, Switch, View } from 'react-native';
+import { AppState, Linking, Share, StyleSheet, Switch, View } from 'react-native';
 
 import {
   Button,
-  Chip,
   EmptyState,
   ListRow,
   Screen,
@@ -31,40 +29,37 @@ import {
   Text,
   type SheetRef,
 } from '@/components/ui';
-import { blockedNotice, fullName } from '@/features/auth/account';
+import { blockedNotice } from '@/features/auth/account';
 import { deleteAccount, signOut } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
 import { useOnboarding } from '@/features/onboarding/onboarding-context';
-import {
-  useFavoriteCategories,
-  useFavoriteLocations,
-  useToggleFavoriteCategory,
-} from '@/features/favorites/queries';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
 import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, space } from '@/theme';
 
-function Header({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <View style={styles.header}>
-      <Text variant="title1" accessibilityRole="header">
-        {title}
-      </Text>
-      {subtitle ? (
-        <Text variant="callout" color="secondary">
-          {subtitle}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
+import {
+  FavoritePlacesRow,
+  GuestCard,
+  InterestCircles,
+  ProfileHero,
+  StatsSection,
+} from './ProfileParts';
 
-function LegalRows() {
+/** Hilfe & Infos: Rundgang, Freunde einladen, Datenschutz, Impressum. */
+function HelpRows() {
   const router = useRouter();
   const { t } = useT();
+  const p = t.common.profile;
   return (
     <View>
+      <OnboardingHelpRow />
+      <ListRow
+        icon={Share2}
+        title={p.invite}
+        detail={p.inviteHint}
+        onPress={() => void Share.share({ message: p.inviteMessage })}
+      />
       <ListRow
         icon={ShieldCheck}
         title={t.common.profile.privacy}
@@ -111,8 +106,7 @@ function PushSettings() {
   }, [refetch]);
 
   return (
-    <View style={styles.section}>
-      <SectionHeader title={t.common.profile.notifications} />
+    <View>
       {!state ? (
         <Skeleton height={56} />
       ) : (
@@ -144,65 +138,11 @@ function PushSettings() {
   );
 }
 
-function FavoriteCategories() {
-  const { data: selected } = useFavoriteCategories();
-  const toggle = useToggleFavoriteCategory();
-  const { t, labels } = useT();
-
-  return (
-    <View style={styles.section}>
-      <SectionHeader title={t.common.profile.interests} />
-      <Text variant="footnote" color="secondary">
-        {t.common.profile.interestsHint}
-      </Text>
-      <View style={styles.chips}>
-        {OFFER_CATEGORIES.map((category) => {
-          const active = selected?.includes(category) ?? false;
-          return (
-            <Chip
-              key={category}
-              label={labels.offerCategory[category]}
-              selected={active}
-              onPress={() => toggle.mutate({ item: category, favorite: !active })}
-            />
-          );
-        })}
-      </View>
-      {toggle.error ? (
-        <Text variant="footnote" style={{ color: colors.status.error.text }}>
-          {errorMessage(toggle.error)}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-/** Einstieg zu den gemerkten Standorten. */
-function Favorites() {
-  const router = useRouter();
-  const { locations } = useFavoriteLocations();
-  const { t } = useT();
-  const p = t.common.profile;
-
-  return (
-    <View style={styles.section}>
-      <SectionHeader title={p.favorites} />
-      <ListRow
-        icon={Store}
-        title={p.favoritePlaces}
-        detail={locations.length > 0 ? p.placesCount(locations.length) : p.placesHint}
-        onPress={() => router.push('/favoriten')}
-      />
-    </View>
-  );
-}
-
 /** Sprache der Oberfläche. Inhalte (Angebote, Bewertungen) bleiben, wie sie sind. */
 function LanguageSettings() {
   const { t, locale, setLocale } = useT();
   return (
-    <View style={styles.section}>
-      <SectionHeader title={t.common.profile.language} />
+    <View style={styles.languageBlock}>
       <View style={styles.language}>
         <Languages size={20} color={colors.text.secondary} />
         <View style={styles.languageTabs}>
@@ -220,11 +160,25 @@ function LanguageSettings() {
   );
 }
 
-/** Tab „Profil“: Name, Interessen, Favoriten, Push, Sprache, Abmelden und Konto löschen. */
+function Footer() {
+  const { t } = useT();
+  const version = Constants.expoConfig?.version;
+  return version ? (
+    <Text variant="caption" color="tertiary" align="center">
+      {t.common.profile.version(version)}
+    </Text>
+  ) : null;
+}
+
+/**
+ * Tab „Profil“: oben was Spaß macht (Avatar, Bilanz, Stufe), dann Persönliches
+ * (Interessen, Lieblingsorte), darunter Einstellungen, Hilfe und ganz unten das Konto.
+ */
 export function ProfileScreen() {
   const router = useRouter();
   const deleteSheet = useRef<SheetRef>(null);
-  const { ready, userId, email, account, accountLoading, accountError, refetchAccount } = useAuth();
+  const auth = useAuth();
+  const { ready, userId, email, memberSince, account, accountLoading } = auth;
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { t, locale } = useT();
@@ -233,9 +187,14 @@ export function ProfileScreen() {
   if (!ready || (userId !== null && accountLoading)) {
     return (
       <Screen>
-        <Header title={p.title} />
-        <Skeleton height={64} />
-        <Skeleton height={120} radius={radius.card} />
+        <View style={styles.loadingHero}>
+          <Skeleton width={76} height={76} radius={38} />
+          <View style={styles.loadingText}>
+            <Skeleton width="70%" height={28} />
+            <Skeleton width="45%" height={16} />
+          </View>
+        </View>
+        <Skeleton height={112} radius={radius.card} />
       </Screen>
     );
   }
@@ -243,17 +202,19 @@ export function ProfileScreen() {
   if (userId === null) {
     return (
       <Screen>
-        <Header title={p.title} />
-        <OnboardingHelpRow />
-        <EmptyState icon={UserRound} title={p.notSignedIn} message={p.notSignedInText} />
-        <Button
-          label={t.common.signIn}
-          size="lg"
-          fullWidth
-          onPress={() => router.push('/anmelden')}
-        />
-        <LanguageSettings />
-        <LegalRows />
+        <Text variant="title1" accessibilityRole="header">
+          {p.title}
+        </Text>
+        <GuestCard />
+        <View style={styles.section}>
+          <SectionHeader title={p.settings} />
+          <LanguageSettings />
+        </View>
+        <View style={styles.section}>
+          <SectionHeader title={p.help} />
+          <HelpRows />
+        </View>
+        <Footer />
       </Screen>
     );
   }
@@ -261,15 +222,16 @@ export function ProfileScreen() {
   if (!account) {
     return (
       <Screen>
-        <Header title={p.title} />
-        <OnboardingHelpRow />
+        <Text variant="title1" accessibilityRole="header">
+          {p.title}
+        </Text>
         <EmptyState
           tone="error"
           icon={TriangleAlert}
           title={t.common.accountNotLoaded}
-          message={errorMessage(accountError)}
+          message={errorMessage(auth.accountError)}
           actionLabel={t.common.retry}
-          onAction={() => void refetchAccount()}
+          onAction={() => void auth.refetchAccount()}
         />
         <ListRow icon={LogOut} title={t.common.signOut} onPress={() => void signOut()} />
       </Screen>
@@ -277,7 +239,6 @@ export function ProfileScreen() {
   }
 
   const blocked = blockedNotice(account, locale);
-  const name = fullName(account);
 
   const confirmDelete = async () => {
     setDeleteError(null);
@@ -295,8 +256,7 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <Header title={name || p.yourProfile} subtitle={email ?? undefined} />
-      <OnboardingHelpRow />
+      <ProfileHero account={account} email={email} memberSince={memberSince} />
 
       {blocked ? (
         <View style={styles.notice} accessibilityRole="alert">
@@ -310,26 +270,33 @@ export function ProfileScreen() {
       {!account.profileComplete ? (
         <Button
           label={p.addName}
+          icon={Pencil}
           variant="secondary"
           fullWidth
           onPress={() => router.push('/name')}
         />
       ) : null}
 
-      <FavoriteCategories />
-      <Favorites />
-      <PushSettings />
-      <LanguageSettings />
+      <StatsSection />
+      <InterestCircles />
+      <FavoritePlacesRow />
+
+      <View style={styles.section}>
+        <SectionHeader title={p.settings} />
+        <View style={styles.group}>
+          <PushSettings />
+          <LanguageSettings />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title={p.help} />
+        <HelpRows />
+      </View>
 
       <View style={styles.section}>
         <SectionHeader title={p.account} />
         <View>
-          <ListRow
-            icon={Pencil}
-            title={p.changeName}
-            detail={name || undefined}
-            onPress={() => router.push('/name')}
-          />
           <ListRow icon={LogOut} title={t.common.signOut} onPress={() => void signOut()} />
           <ListRow
             icon={Trash2}
@@ -343,10 +310,7 @@ export function ProfileScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <SectionHeader title={p.legal} />
-        <LegalRows />
-      </View>
+      <Footer />
 
       <Sheet ref={deleteSheet} title={p.deleteTitle}>
         <Text variant="body" color="secondary">
@@ -382,9 +346,10 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { gap: space[1] },
   section: { gap: space[3] },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+  group: { gap: space[4] },
+  loadingHero: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
+  loadingText: { flex: 1, gap: space[2] },
   notice: {
     flexDirection: 'row',
     gap: space[3],
@@ -393,6 +358,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.warning.subtle,
   },
   noticeText: { flex: 1, color: colors.status.warning.onSubtle },
+  languageBlock: { gap: space[2] },
   language: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
   languageTabs: { flex: 1 },
 });
