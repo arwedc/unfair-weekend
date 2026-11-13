@@ -123,6 +123,16 @@ export function pastSummary(
   }
 }
 
+/**
+ * Inhalt des QR-Codes: Link auf die Einlöse-Seite der Partner-Website, damit der Partner
+ * mit der normalen Handy-Kamera scannen kann. Ohne Website-Adresse nur der Token
+ * (`redeem_voucher` nimmt beides an).
+ */
+export function voucherQrValue(token: string, webUrl: string | null): string {
+  if (!webUrl) return token;
+  return `${webUrl.replace(/\/+$/, '')}/einloesen/${encodeURIComponent(token)}`;
+}
+
 export function seatsText(seats: number, locale: Locale = DEFAULT_LOCALE): string {
   return getMessages(locale).logic.seats(seats);
 }
