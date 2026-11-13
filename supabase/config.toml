@@ -435,3 +435,23 @@ verify_jwt = true
 # Aufruf nur durch pg_cron mit dem Secret Key im apikey-Header (kein JWT).
 # Die Function prüft den Key selbst über withSupabase({ auth: 'secret' }).
 verify_jwt = false
+
+# Zahlungen (Variante B, docs/SPEC-PAYMENTS.md)
+[functions.stripe-connect-onboarding]
+# Standort-JWT; die Function prüft den Standort selbst.
+verify_jwt = true
+
+[functions.stripe-create-booking]
+# Nutzer-JWT; Reservierung läuft als dieser Nutzer (start_paid_booking).
+verify_jwt = true
+
+[functions.stripe-cancel-booking]
+verify_jwt = true
+
+[functions.stripe-webhook]
+# Stripe schickt kein Supabase-JWT. Die Function prüft die Stripe-Signatur.
+verify_jwt = false
+
+[functions.stripe-worker]
+# Aufruf nur durch pg_cron mit dem Secret Key im apikey-Header (withSupabase auth 'secret').
+verify_jwt = false

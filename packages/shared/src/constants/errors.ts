@@ -87,6 +87,9 @@ export const RPC_ERROR_CODES = Object.keys(RPC_ERROR_MESSAGES) as RpcErrorCode[]
 export const FUNCTION_ERROR_MESSAGES = {
   ADRESSE_NICHT_GEFUNDEN: 'Diese Adresse wurde nicht gefunden.',
   GEOCODING_NICHT_VERFUEGBAR: 'Der Kartendienst ist gerade nicht erreichbar.',
+  // Zahlungen (stripe-* Functions). Daneben liefern sie die RPC-Codes von oben.
+  STRIPE_NICHT_ERREICHBAR: 'Die Zahlung ist gerade nicht möglich. Bitte versuche es gleich erneut.',
+  KEIN_STRIPE_KONTO: 'Für diesen Standort sind noch keine Auszahlungen eingerichtet.',
 } as const;
 
 export type FunctionErrorCode = keyof typeof FUNCTION_ERROR_MESSAGES;
