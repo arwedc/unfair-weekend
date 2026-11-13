@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { radii, soft, space, type TextStyleName } from '@/theme';
@@ -10,15 +11,56 @@ export interface HighlightTitleProps {
   variant?: TextStyleName;
 }
 
+interface MarkerLine {
+  height: number;
+  y: number;
+}
+
 /**
  * Überschrift mit weichem Marker-Strich dahinter (zartes Apricot, leicht versetzt).
  * Der Strich liegt hinter der unteren Texthälfte und ragt etwas über die Ränder.
  */
 export function HighlightTitle({ children, variant = 'title3' }: HighlightTitleProps) {
+  const [lines, setLines] = useState<MarkerLine[]>([]);
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.marker} />
-      <Text variant={variant} accessibilityRole="header">
+      {lines.map((line, index) => {
+        const markerHeight = line.height * 0.42;
+
+        return (
+          <View
+            key={index}
+            style={[
+              styles.marker,
+              {
+                top: line.y + line.height - space[0.5] - markerHeight,
+                height: markerHeight,
+              },
+            ]}
+          />
+        );
+      })}
+      <Text
+        variant={variant}
+        accessibilityRole="header"
+        onTextLayout={({ nativeEvent }) => {
+          const nextLines = nativeEvent.lines.map(({ height, y }) => ({ height, y }));
+
+          setLines((currentLines) => {
+            const unchanged =
+              currentLines.length === nextLines.length &&
+              currentLines.every((line, index) => {
+                const nextLine = nextLines[index];
+                return (
+                  nextLine !== undefined && line.height === nextLine.height && line.y === nextLine.y
+                );
+              });
+
+            return unchanged ? currentLines : nextLines;
+          });
+        }}
+      >
         {children}
       </Text>
     </View>
@@ -31,8 +73,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: -space[1],
     right: -space[1.5],
-    bottom: space[0.5],
-    height: '42%',
     borderRadius: radii.xs,
     backgroundColor: soft.tint,
     transform: [{ rotate: '-1deg' }],
