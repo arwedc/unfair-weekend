@@ -447,6 +447,11 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                   paths={offer.image_paths}
                   title={offer.title}
                   width={width - layout.screenPaddingX * 2}
+                  labels={{
+                    gallery: v.imageGalleryLabel,
+                    image: v.imageLabel,
+                    singleImage: v.singleImageLabel,
+                  }}
                 />
               ) : null}
               <View style={styles.cardBody}>
