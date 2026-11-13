@@ -174,7 +174,7 @@ describe('buildSections', () => {
     expect(titles([offer({ starts_at: at(0, '19:00') })])[0]).toBe('Heute in Münster');
   });
 
-  it('macht aus Kategorien eigene Abschnitte, ohne ausgebuchte und ohne „Sonstiges“', () => {
+  it('macht aus jeder Kategorie einen Abschnitt, ohne ausgebuchte, „Sonstiges“ am Ende', () => {
     const offers = [
       offer({ id: 'pasta', category: 'kochen_essen' }),
       offer({ id: 'yoga', category: 'sport_bewegung' }),
@@ -186,6 +186,7 @@ describe('buildSections', () => {
     expect(categories.map((s) => [s.category, s.title, s.offers.map((o) => o.id)])).toEqual([
       ['kochen_essen', 'Kochen & Essen', ['pasta']],
       ['sport_bewegung', 'Sport & Bewegung', ['yoga']],
+      ['sonstiges', 'Noch mehr entdecken', ['rad']],
     ]);
   });
 
@@ -208,6 +209,18 @@ describe('buildSections', () => {
     expect(ids(offers, 'budget')).toEqual(['mittag', 'abend']);
     expect(titles(offers)).toContain('Bis 15\u00a0€');
     expect(ids(offers, 'flexibel')).toEqual(['flex1', 'flex2']);
+  });
+
+  it('zeigt Favoriten ganz oben, in gemerkter Reihenfolge, nur wenn es welche gibt', () => {
+    const offers = [offer({ id: 'a' }), offer({ id: 'b', free_seats: 0 }), offer({ id: 'c' })];
+    const sections = buildSections(offers, {
+      cityName: 'Münster',
+      now: NOW,
+      favoriteIds: ['c', 'weg', 'b'],
+    });
+    expect(sections[0]?.title).toBe('Deine Favoriten');
+    expect(sections[0]?.offers.map((o) => o.id)).toEqual(['c', 'b']);
+    expect(ids(offers, 'favoriten')).toBeUndefined();
   });
 
   it('lässt leere Abschnitte weg', () => {

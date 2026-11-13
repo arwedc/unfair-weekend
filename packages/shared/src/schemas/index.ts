@@ -10,7 +10,12 @@
  *   await supabase.rpc('create_offer', toRpcArgs(input));
  */
 import * as z from 'zod';
-import { OFFER_CATEGORIES, OFFER_LIMITS, OFFER_TYPES } from '../constants/offers';
+import {
+  OFFER_CATEGORIES,
+  OFFER_LIMITS,
+  OFFER_TEMPLATE_LIMITS,
+  OFFER_TYPES,
+} from '../constants/offers';
 import { Constants } from '../types';
 import { meetsMinDiscount } from '../utils/money';
 
@@ -231,6 +236,70 @@ export function createOfferInputSchema(options: { minDiscountPercent: number; no
         code: 'custom',
         path: [value.type === 'einzeltermin' ? 'starts_at' : 'ends_at'],
         message: 'Der Zeitpunkt liegt in der Vergangenheit.',
+      });
+    }
+  });
+}
+
+/**
+ * Angebotsvorlage (create_offer_template, update_offer_template): wie ein Angebot,
+ * aber ohne Adresse und ohne Zeitpunkt. Statt Beginn und Ende nur die Dauer.
+ */
+export const offerTemplateSchema = offerBaseSchema
+  .pick({
+    title: true,
+    description: true,
+    category: true,
+    image_paths: true,
+    original_price_cents: true,
+    deal_price_cents: true,
+    capacity: true,
+    max_per_user: true,
+    type: true,
+  })
+  .extend({
+    name: text(OFFER_TEMPLATE_LIMITS.nameMin, OFFER_TEMPLATE_LIMITS.nameMax, 'Name der Vorlage'),
+    duration_minutes: z
+      .number({ error: 'Bitte die Dauer angeben.' })
+      .int({ error: 'Bitte die Dauer in ganzen Minuten angeben.' })
+      .min(OFFER_TEMPLATE_LIMITS.durationMinMinutes, { error: 'Bitte die Dauer angeben.' })
+      .max(OFFER_TEMPLATE_LIMITS.durationMaxMinutes, {
+        error: `Höchstens ${OFFER_LIMITS.maxDurationDays} Tage Dauer.`,
+      }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.deal_price_cents >= value.original_price_cents) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['deal_price_cents'],
+        message: 'Der Deal-Preis muss unter dem Originalpreis liegen.',
+      });
+    }
+    if (value.max_per_user > value.capacity) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['max_per_user'],
+        message: 'Plätze pro Person dürfen das Kontingent nicht übersteigen.',
+      });
+    }
+  });
+export type OfferTemplateInput = z.infer<typeof offerTemplateSchema>;
+
+/** Zusätzlich: Mindestrabatt (aus get_settings). */
+export function createOfferTemplateSchema(options: { minDiscountPercent: number }) {
+  return offerTemplateSchema.superRefine((value, ctx) => {
+    if (
+      value.deal_price_cents < value.original_price_cents &&
+      !meetsMinDiscount(
+        value.original_price_cents,
+        value.deal_price_cents,
+        options.minDiscountPercent,
+      )
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['deal_price_cents'],
+        message: `Der Rabatt muss mindestens ${options.minDiscountPercent} % betragen.`,
       });
     }
   });

@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   Bell,
+  Heart,
   FileText,
   LogOut,
   Pencil,
@@ -15,7 +16,6 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, StyleSheet, Switch, View } from 'react-native';
 
-import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import {
   Button,
   Chip,
@@ -34,6 +34,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import {
   useFavoriteCategories,
   useFavoriteLocations,
+  useFavoriteOffers,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
@@ -156,45 +157,40 @@ function FavoriteCategories() {
   );
 }
 
-function FavoriteLocations() {
+/** Einstieg zu den Favoriten: gemerkte Angebote und Lieblingsorte, jeweils mit Anzahl. */
+function Favorites() {
   const router = useRouter();
-  const { locations, isPending, error } = useFavoriteLocations();
+  const { offers } = useFavoriteOffers();
+  const { locations } = useFavoriteLocations();
 
   return (
     <View style={styles.section}>
-      <SectionHeader
-        title="Lieblingsorte"
-        detail={locations.length > 0 ? String(locations.length) : undefined}
-      />
-      {isPending ? (
-        <Skeleton height={56} />
-      ) : error ? (
-        <Text variant="footnote" style={{ color: colors.status.error.text }}>
-          {errorMessage(error)}
-        </Text>
-      ) : locations.length === 0 ? (
-        <Text variant="footnote" color="secondary">
-          Noch keine Lieblingsorte. Tipp bei einem Anbieter oben rechts auf das Herz.
-        </Text>
-      ) : (
-        <View>
-          {locations.map((place) => (
-            <ListRow
-              key={place.id}
-              icon={Store}
-              title={place.company_name}
-              detail={[place.street, place.city].filter(Boolean).join(', ')}
-              onPress={() => router.push({ pathname: '/standort/[id]', params: { id: place.id } })}
-              trailing={<FavoriteButton locationId={place.id} name={place.company_name} />}
-            />
-          ))}
-        </View>
-      )}
+      <SectionHeader title="Favoriten" />
+      <View>
+        <ListRow
+          icon={Heart}
+          title="Gemerkte Angebote"
+          detail={
+            offers.length > 0 ? `${offers.length} gemerkt` : 'Tipp bei Angeboten auf das Herz'
+          }
+          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'angebote' } })}
+        />
+        <ListRow
+          icon={Store}
+          title="Lieblingsorte"
+          detail={
+            locations.length > 0
+              ? `${locations.length} ${locations.length === 1 ? 'Ort' : 'Orte'}`
+              : 'Tipp bei Anbietern auf das Herz'
+          }
+          onPress={() => router.push({ pathname: '/favoriten', params: { tab: 'orte' } })}
+        />
+      </View>
     </View>
   );
 }
 
-/** Tab „Profil“: Name, Interessen, Lieblingsorte, Abmelden und Konto löschen. */
+/** Tab „Profil“: Name, Interessen, Favoriten, Push, Abmelden und Konto löschen. */
 export function ProfileScreen() {
   const router = useRouter();
   const deleteSheet = useRef<SheetRef>(null);
@@ -284,7 +280,7 @@ export function ProfileScreen() {
       ) : null}
 
       <FavoriteCategories />
-      <FavoriteLocations />
+      <Favorites />
       <PushSettings />
 
       <View style={styles.section}>

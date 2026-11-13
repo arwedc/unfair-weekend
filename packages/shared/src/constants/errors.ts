@@ -35,6 +35,11 @@ export const RPC_ERROR_MESSAGES = {
   KONTINGENT_ZU_KLEIN: 'Das Kontingent kann nicht unter die vergebenen Plätze sinken.',
   FELD_GESPERRT: 'Es gibt schon Codes. Zeit, Adresse und Preise sind deshalb gesperrt.',
 
+  // Angebotsvorlagen
+  VORLAGE_NICHT_GEFUNDEN: 'Diese Vorlage gibt es nicht.',
+  VORLAGENNAME_VERGEBEN: 'Eine Vorlage mit diesem Namen gibt es schon.',
+  VORLAGEN_LIMIT: 'Es sind höchstens 30 Vorlagen möglich.',
+
   // Codes
   CODE_NICHT_GEFUNDEN: 'Diesen Code gibt es nicht.',
   CODE_NICHT_AKTIV: 'Dieser Code ist nicht mehr gültig.',
@@ -87,6 +92,9 @@ export const RPC_ERROR_CODES = Object.keys(RPC_ERROR_MESSAGES) as RpcErrorCode[]
 export const FUNCTION_ERROR_MESSAGES = {
   ADRESSE_NICHT_GEFUNDEN: 'Diese Adresse wurde nicht gefunden.',
   GEOCODING_NICHT_VERFUEGBAR: 'Der Kartendienst ist gerade nicht erreichbar.',
+  // Zahlungen (stripe-* Functions). Daneben liefern sie die RPC-Codes von oben.
+  STRIPE_NICHT_ERREICHBAR: 'Die Zahlung ist gerade nicht möglich. Bitte versuche es gleich erneut.',
+  KEIN_STRIPE_KONTO: 'Für diesen Standort sind noch keine Auszahlungen eingerichtet.',
 } as const;
 
 export type FunctionErrorCode = keyof typeof FUNCTION_ERROR_MESSAGES;

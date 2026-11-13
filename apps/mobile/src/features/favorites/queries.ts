@@ -3,14 +3,47 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth, userKeys } from '@/features/auth/auth-context';
 import { fetchLocations } from '@/features/offers/api';
-import { locationKeys } from '@/features/offers/queries';
+import { locationKeys, useOffers } from '@/features/offers/queries';
+import type { FeedOffer } from '@/features/offers/types';
 
 import {
   fetchFavoriteCategories,
   fetchFavoriteLocationIds,
+  fetchFavoriteOfferIds,
   setFavoriteCategory,
   setFavoriteLocation,
+  setFavoriteOffer,
 } from './api';
+
+/** Unter userKeys.all, damit Abmelden auch diese Daten verwirft. */
+const favoriteOffersKey = (userId: string) => [...userKeys.all, userId, 'favorite-offers'] as const;
+
+/** IDs der gemerkten Angebote, zuletzt gemerkte zuerst. Leer ohne Konto. */
+export function useFavoriteOfferIds() {
+  const { userId } = useAuth();
+  return useQuery({
+    queryKey: favoriteOffersKey(userId ?? 'anon'),
+    queryFn: fetchFavoriteOfferIds,
+    enabled: userId !== null,
+  });
+}
+
+/**
+ * Gemerkte Angebote, die man noch holen kann (aus dem Feed), zuletzt gemerkte zuerst.
+ * Vorbei oder entfernt: verschwinden einfach aus der Liste.
+ */
+export function useFavoriteOffers(): { offers: FeedOffer[]; isPending: boolean } {
+  const { userId } = useAuth();
+  const ids = useFavoriteOfferIds();
+  const feed = useOffers();
+  const byId = new Map((feed.data ?? []).map((offer) => [offer.id, offer]));
+  const offers = (ids.data ?? []).flatMap((id) => {
+    const offer = byId.get(id);
+    return offer ? [offer] : [];
+  });
+  // Ohne Konto ist die (abgeschaltete) Abfrage dauerhaft „pending“: dann gibt es einfach keine.
+  return { offers, isPending: (userId !== null && ids.isPending) || feed.isPending };
+}
 
 export function useFavoriteLocationIds() {
   const { userId } = useAuth();
@@ -89,4 +122,9 @@ export function useToggleFavoriteCategory() {
     userKeys.favoriteCategories(userId ?? 'anon'),
     setFavoriteCategory,
   );
+}
+
+export function useToggleFavoriteOffer() {
+  const { userId } = useAuth();
+  return useToggle<string>(favoriteOffersKey(userId ?? 'anon'), setFavoriteOffer);
 }

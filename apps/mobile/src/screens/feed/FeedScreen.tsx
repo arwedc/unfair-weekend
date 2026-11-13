@@ -16,6 +16,7 @@ import {
   isListMode,
   type FeedSection,
 } from '@/features/offers/feed-logic';
+import { useFavoriteOfferIds } from '@/features/favorites/queries';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
@@ -72,8 +73,8 @@ function LoadingState() {
 }
 
 /**
- * Tab „Entdecken“: oben fest Stadt, Suche und Filter, darunter Abschnitte als Karussells
- * (Zeit, Themen, Kategorien) und alle Angebote der Stadt.
+ * Tab „Entdecken“: oben fest Stadt, Suche und Filter, darunter nur Abschnitte als Karussells
+ * (Favoriten, Zeit, Themen, Kategorien). Eine Liste gibt es nur bei Kategorie oder Suche.
  *
  * Die Kopfzeile steht bewusst vor der Liste: So findet die native Tab-Leiste auf iOS keine
  * ScrollView in der „ersten Kette“ und setzt oben keinen zweiten Abstand. Die Liste regelt
@@ -84,6 +85,7 @@ export function FeedScreen() {
   const list = useRef<FlatList<FeedOffer>>(null);
   const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
+  const { data: favoriteIds } = useFavoriteOfferIds();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const city = getCity(cityId);
@@ -92,7 +94,10 @@ export function FeedScreen() {
   const filtering = hasActiveFilters(filters);
   const visible = filterOffers(cityOffers, filters);
   // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.
-  const sections = listMode || isPending ? [] : buildSections(visible, { cityName: city.name });
+  const sections =
+    listMode || isPending
+      ? []
+      : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
   const showSearch = searchOpen || filters.query !== '';
 
   const toggleSearch = () => {
@@ -110,9 +115,8 @@ export function FeedScreen() {
     list.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
-  const listTitle = !listMode
-    ? 'Alle Angebote'
-    : filters.category && filters.query.trim() === ''
+  const listTitle =
+    filters.category && filters.query.trim() === ''
       ? OFFER_CATEGORY_LABELS[filters.category]
       : 'Passt zu dir';
 
@@ -172,7 +176,7 @@ export function FeedScreen() {
         <Carousel key={section.key} section={section} onShowAll={showCategory} />
       ))}
 
-      {!isPending && visible.length > 0 ? (
+      {!isPending && listMode && visible.length > 0 ? (
         <SectionHeader
           title={listTitle}
           detail={`${visible.length} ${visible.length === 1 ? 'Angebot' : 'Angebote'}`}
@@ -224,7 +228,8 @@ export function FeedScreen() {
 
       <FlatList
         ref={list}
-        data={isPending ? [] : visible}
+        // Ohne Kategorie und Suche zeigt der Feed nur die Reihen, keine Liste darunter.
+        data={isPending || !listMode ? [] : visible}
         keyExtractor={(offer) => offer.id}
         renderItem={({ item, index }) => (
           <Appear index={index} style={styles.inset}>
@@ -232,7 +237,7 @@ export function FeedScreen() {
           </Appear>
         )}
         ListHeaderComponent={header}
-        ListEmptyComponent={empty ?? undefined}
+        ListEmptyComponent={listMode || sections.length === 0 ? (empty ?? undefined) : undefined}
         ItemSeparatorComponent={Separator}
         style={styles.list}
         contentContainerStyle={styles.content}
