@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { otpVerifySchema } from '@repo/shared';
+
 import {
   blockedNotice,
+  cleanEmailCode,
+  firstIssueMessage,
   fullName,
   parseAccount,
   sessionTokensFromUrl,
@@ -133,5 +137,30 @@ describe('supabaseSafeRedirectUrl', () => {
       'exp://127.0.0.1:8081/--/auth/callback',
     );
     expect(safe('exp://[::1]:8081/--/auth/callback')).toBe('exp://[::1]:8081/--/auth/callback');
+  });
+});
+
+describe('Code aus der E-Mail', () => {
+  it('entfernt Leerzeichen und Zeilenumbrüche aus eingefügten Codes', () => {
+    expect(cleanEmailCode(' 123 456\n')).toBe('123456');
+    expect(cleanEmailCode('12345678')).toBe('12345678');
+  });
+
+  it('passt nach dem Säubern zum Schema aus @repo/shared', () => {
+    const ok = otpVerifySchema.safeParse({
+      email: 'mia@example.com',
+      token: cleanEmailCode('123 456'),
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('zeigt die erste Meldung übersetzt, sonst den Ersatztext', () => {
+    const bad = otpVerifySchema.safeParse({ email: 'mia@example.com', token: 'abc' });
+    expect(bad.success).toBe(false);
+    if (bad.success) return;
+    expect(firstIssueMessage(bad.error, 'de', 'Ersatz')).toBe(
+      'Bitte gib den Code aus der E-Mail ein.',
+    );
+    expect(firstIssueMessage({ issues: [] }, 'de', 'Ersatz')).toBe('Ersatz');
   });
 });

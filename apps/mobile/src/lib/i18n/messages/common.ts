@@ -35,10 +35,13 @@ export const commonDe = {
   auth: {
     invalidCredentials: 'E-Mail oder Passwort stimmt nicht.',
     emailNotConfirmed:
-      'Bitte bestätige zuerst deine E-Mail-Adresse. Öffne dafür den Link in der E-Mail.',
+      'Bitte bestätige zuerst deine E-Mail-Adresse. Gib den Code aus der E-Mail ein oder lass dir einen neuen schicken.',
     weakPassword: 'Das Passwort ist zu schwach. Verwende mindestens 8 Zeichen.',
-    userExists: 'Für diese E-Mail-Adresse gibt es bereits ein Konto. Melde dich stattdessen an.',
-    confirmRateLimit: 'Zu viele Bestätigungs-E-Mails. Warte kurz und probier es dann nochmal.',
+    samePassword: 'Das neue Passwort muss sich vom alten unterscheiden.',
+    userExists:
+      'Für diese E-Mail-Adresse gibt es schon ein Konto. Melde dich an oder setz dein Passwort zurück.',
+    confirmRateLimit:
+      'Wir haben gerade erst eine E-Mail geschickt. Warte kurz und probier es nochmal.',
     emailNotAuthorized:
       'Der aktuelle E-Mail-Versand erlaubt nur Projekt-Teammitglieder. Für andere Adressen muss eigenes SMTP eingerichtet werden.',
     otpExpired: 'Der Code ist abgelaufen oder falsch. Fordere einen neuen an.',
@@ -58,8 +61,22 @@ export const commonDe = {
     addLater: 'Später im Profil ergänzen',
     confirmTitle: 'Bestätige deine E-Mail',
     confirmText: (email: string) =>
-      `Wir haben dir einen Bestätigungslink an ${email} geschickt. Öffne ihn auf diesem Gerät, um deine Registrierung abzuschließen. Schau auch im Spam-Ordner nach.`,
+      `Wir haben dir eine E-Mail an ${email} geschickt. Gib den Code daraus hier ein oder öffne den Link auf diesem Gerät. Schau auch im Spam-Ordner nach.`,
+    confirmSubmit: 'Bestätigen',
     toLogin: 'Zur Anmeldung',
+    forgotPassword: 'Passwort vergessen?',
+    resetTitle: 'Passwort zurücksetzen',
+    resetIntro:
+      'Gib deine E-Mail-Adresse ein. Wir schicken dir einen Code, mit dem du ein neues Passwort festlegst.',
+    resetCodeIntro: (email: string) =>
+      `Wenn es zu ${email} ein Konto gibt, bekommst du gleich eine E-Mail mit einem Code. Gib ihn hier ein und wähl ein neues Passwort.`,
+    sendCode: 'Code senden',
+    resendCode: 'Code nochmal senden',
+    codeResent: 'Wir haben dir eine neue E-Mail geschickt.',
+    code: 'Code aus der E-Mail',
+    newPassword: 'Neues Passwort',
+    savePassword: 'Passwort speichern',
+    otherEmail: 'Andere E-Mail-Adresse',
     registerTitle: 'Konto erstellen',
     registerIntro: 'Erstelle dein Konto mit E-Mail und Passwort.',
     loginIntro: 'Melde dich an, um deine Codes und Favoriten wiederzufinden.',
@@ -169,10 +186,13 @@ export const commonEn: Widen<typeof commonDe> = {
   pushChannel: 'Offers and codes',
   auth: {
     invalidCredentials: 'Email or password is incorrect.',
-    emailNotConfirmed: 'Please confirm your email address first. Open the link in the email.',
+    emailNotConfirmed:
+      'Please confirm your email address first. Enter the code from the email or request a new one.',
     weakPassword: 'This password is too weak. Use at least 8 characters.',
-    userExists: 'There is already an account for this email address. Please sign in instead.',
-    confirmRateLimit: 'Too many confirmation emails. Wait a moment and try again.',
+    samePassword: 'Your new password must be different from the old one.',
+    userExists:
+      'There is already an account for this email address. Sign in or reset your password.',
+    confirmRateLimit: 'We just sent you an email. Wait a moment and try again.',
     emailNotAuthorized:
       'The current email service only allows project team members. Other addresses need a custom SMTP setup.',
     otpExpired: 'The code has expired or is wrong. Request a new one.',
@@ -192,8 +212,21 @@ export const commonEn: Widen<typeof commonDe> = {
     addLater: 'Add later in profile',
     confirmTitle: 'Confirm your email',
     confirmText: (email) =>
-      `We sent a confirmation link to ${email}. Open it on this device to finish signing up. Please also check your spam folder.`,
+      `We sent an email to ${email}. Enter the code from it here or open the link on this device. Please also check your spam folder.`,
+    confirmSubmit: 'Confirm',
     toLogin: 'Back to sign in',
+    forgotPassword: 'Forgot password?',
+    resetTitle: 'Reset password',
+    resetIntro: "Enter your email address. We'll send you a code to set a new password.",
+    resetCodeIntro: (email) =>
+      `If there is an account for ${email}, you'll get an email with a code shortly. Enter it here and choose a new password.`,
+    sendCode: 'Send code',
+    resendCode: 'Send code again',
+    codeResent: 'We sent you a new email.',
+    code: 'Code from the email',
+    newPassword: 'New password',
+    savePassword: 'Save password',
+    otherEmail: 'Use a different email',
     registerTitle: 'Create account',
     registerIntro: 'Create your account with email and password.',
     loginIntro: 'Sign in to find your codes and favourites again.',
