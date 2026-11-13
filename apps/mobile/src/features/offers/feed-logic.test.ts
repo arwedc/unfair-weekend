@@ -210,6 +210,18 @@ describe('buildSections', () => {
     expect(ids(offers, 'flexibel')).toEqual(['flex1', 'flex2']);
   });
 
+  it('zeigt Favoriten ganz oben, in gemerkter Reihenfolge, nur wenn es welche gibt', () => {
+    const offers = [offer({ id: 'a' }), offer({ id: 'b', free_seats: 0 }), offer({ id: 'c' })];
+    const sections = buildSections(offers, {
+      cityName: 'Münster',
+      now: NOW,
+      favoriteIds: ['c', 'weg', 'b'],
+    });
+    expect(sections[0]?.title).toBe('Deine Favoriten');
+    expect(sections[0]?.offers.map((o) => o.id)).toEqual(['c', 'b']);
+    expect(ids(offers, 'favoriten')).toBeUndefined();
+  });
+
   it('lässt leere Abschnitte weg', () => {
     expect(buildSections([], { cityName: 'Vilnius', now: NOW })).toEqual([]);
   });
