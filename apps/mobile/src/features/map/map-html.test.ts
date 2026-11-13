@@ -23,6 +23,7 @@ const colors = {
   pin: '#111111',
   pinActive: '#000000',
   pinDot: '#ffffff',
+  pinActiveDot: '#ffff00',
   user: '#333333',
   background: '#ffffff',
 };
