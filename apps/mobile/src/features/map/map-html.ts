@@ -38,6 +38,8 @@ export interface MapColors {
   pinActive: string;
   /** Kategorie-Symbol in der Nadel. */
   pinDot: string;
+  /** Kategorie-Symbol in der gewählten Nadel. */
+  pinActiveDot: string;
   user: string;
   background: string;
 }
@@ -178,8 +180,6 @@ export const MAP_PALETTE = {
   motorway: '#FBE3A0',
   motorwayCasing: '#E9C46A',
   rail: '#C9CCD2',
-  /** Gewählte Nadel: sanftes Hellgelb (gold[200] aus @/theme), heller als die normalen Nadeln. */
-  pinSelected: '#FCDF9C',
   /** Eigener Standort: Blau wie in Karten-Apps üblich, klar getrennt von den gelben Nadeln. */
   userLocation: '#2F7FF0',
 } as const;
@@ -273,12 +273,12 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   // Bildname der Nadel: pin-<kategorie>, für die gewählte pin-<kategorie>-active.
   var pinImage = ['concat', 'pin-', ['get', 'category']];
 
-  // Ausgewählte Nadel: heller Markenton, etwas größer und immer obenauf.
+  // Ausgewählte Nadel: kräftigerer Markenton, etwas größer und immer obenauf.
   function applySelection() {
     if (!loaded) return;
     var isSelected = ['==', ['get', 'key'], selectedKey || ''];
     map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, ['concat', pinImage, '-active'], pinImage]);
-    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.15, 1]);
+    map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.25, 1]);
     map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
   }
 
@@ -337,7 +337,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
 
   // Kartennadel (Tropfenform mit weißem Rand) mit dem Symbol der Kategorie im Kopf,
   // gezeichnet statt als Bilddatei. Maße in Punkten, dreifache Auflösung für scharfe Kanten.
-  function makePin(fill, iconPaths) {
+  function makePin(fill, iconColor, iconPaths) {
     var ratio = 3, w = 32, h = 42, cx = 16, cy = 15, r = 12.5, tip = 39, icon = 14;
     var canvas = document.createElement('canvas');
     canvas.width = w * ratio; canvas.height = h * ratio;
@@ -357,7 +357,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     ctx.translate(cx - icon / 2, cy - icon / 2);
     ctx.scale(icon / 24, icon / 24);
     ctx.lineWidth = 2.25; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = config.colors.pinDot;
+    ctx.strokeStyle = iconColor;
     (iconPaths || []).forEach(function (d) {
       try { ctx.stroke(new Path2D(d)); } catch (e) {}
     });
@@ -429,10 +429,10 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
 
   map.on('load', function () {
     colorize();
-    // Pro Kategorie zwei Nadeln: normal und gewählt.
+    // Pro Kategorie zwei Nadeln: normal und gewählt (kräftigere Farbe, damit sie heraussticht).
     Object.keys(config.icons).forEach(function (category) {
-      var pin = makePin(config.colors.pin, config.icons[category]);
-      var pinActive = makePin(config.colors.pinActive, config.icons[category]);
+      var pin = makePin(config.colors.pin, config.colors.pinDot, config.icons[category]);
+      var pinActive = makePin(config.colors.pinActive, config.colors.pinActiveDot, config.icons[category]);
       map.addImage('pin-' + category, pin.image, { pixelRatio: pin.ratio });
       map.addImage('pin-' + category + '-active', pinActive.image, { pixelRatio: pinActive.ratio });
     });
