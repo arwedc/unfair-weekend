@@ -69,6 +69,36 @@ export const passwordSchema = z
   .min(8, { error: 'Das Passwort braucht mindestens 8 Zeichen.' })
   .max(72, { error: 'Das Passwort darf höchstens 72 Zeichen haben.' });
 
+/** Nutzername für ein App-Konto (wird kleingeschrieben gespeichert). */
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{3,20}$/, {
+    error: 'Der Nutzername braucht 3–20 Zeichen: Kleinbuchstaben, Zahlen oder Unterstriche.',
+  });
+
+/** Direkte Registrierung eines Nutzerkontos per E-Mail und Passwort. */
+export const userSignUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  username: usernameSchema,
+  age: z
+    .number({ error: 'Bitte gib ein gültiges Alter an.' })
+    .int({ error: 'Das Alter muss eine ganze Zahl sein.' })
+    .min(1, { error: 'Das Alter muss mindestens 1 sein.' })
+    .max(120, { error: 'Das Alter darf höchstens 120 sein.' })
+    .optional(),
+  interests: z
+    .array(z.enum(OFFER_CATEGORIES))
+    .max(OFFER_CATEGORIES.length)
+    .refine((values) => new Set(values).size === values.length, {
+      error: 'Eine Kategorie kann nur einmal ausgewählt werden.',
+    })
+    .default([]),
+});
+export type UserSignUpInput = z.infer<typeof userSignUpSchema>;
+
 /** E-Mail-OTP-Login in der App */
 export const otpRequestSchema = z.object({ email: emailSchema });
 export const otpVerifySchema = z.object({
