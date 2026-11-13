@@ -19,7 +19,8 @@
     "db:types": "pnpm --filter @repo/db-tools db:types",
     "db:test:race": "pnpm --filter @repo/db-tools db:test:race",
     "db:seed": "pnpm --filter @repo/db-tools db:seed",
-    "db:push-secrets": "pnpm --filter @repo/db-tools db:push-secrets"
+    "db:push-secrets": "pnpm --filter @repo/db-tools db:push-secrets",
+    "pay:e2e": "pnpm --filter @repo/db-tools pay:e2e"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

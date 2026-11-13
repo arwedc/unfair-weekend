@@ -240,3 +240,22 @@ Getroffen, weil sie nicht blockieren. Widerspruch jederzeit möglich.
     - **SQL-Test:** Er prüft den letzten Platz (`AUSGEBUCHT`).
     - **Sperr-Test** (`pnpm db:test`): `start_paid_booking` und `claim_voucher` sperren dieselbe Angebotszeile. Das Flag wird dafür nur innerhalb einer zurückgerollten Transaktion eingeschaltet.
 21. **Fremde, ungemergte Migrationen:** Liegt im Dev-Projekt eine Migration, die in `main` noch fehlt, bricht `db push` ab. Für den Push wird die Datei dann vorübergehend aus dem Branch des anderen in den Arbeitsordner gelegt, nicht committet und danach wieder entfernt. So geschehen am 13.11.2026 mit `20261113112530_angebotsvorlagen` von @arwedc.
+
+**Ergänzt in Phase 2**
+
+22. **Accounts v2 statt Express-Typ:** Der Test in der Sandbox (13.11.2026) war erfolgreich. Wir legen deshalb v2-Konten an:
+    - Konfiguration `recipient` mit `stripe_transfers`, `dashboard: express`, Gebühren und Verluste trägt die Plattform.
+    - Onboarding über `v2/core/account_links`.
+    - Status über die Fähigkeiten `stripe_transfers` und `payouts`.
+    - Kontoänderungen kommen als Thin Events über einen eigenen Webhook-Endpunkt.
+23. **Stripe-API-Version `2026-10-28.endive`** (Bibliothek `stripe` 23.1.0). Zwei Unterschiede zu älteren Beispielen:
+    - Erlaubte Zahlungsmethoden heißen `allowed_payment_method_types`.
+    - Account Links brauchen keine `configurations` mehr.
+    - Die Testfunktion `stripe trigger` der Stripe CLI nutzt noch den alten Parameter und scheitert. Tests laufen deshalb über `pnpm pay:e2e` bzw. echte Testzahlungen.
+24. **Webhook-Endpunkte per API angelegt** statt im Dashboard. Ihre Secrets gingen direkt in die Supabase-Secrets, ohne angezeigt zu werden.
+25. **`pnpm pay:e2e` schaltet das Flag nicht ein:**
+    - Die Reservierung legt das Skript direkt an, mit denselben Werten wie `start_paid_booking`. Ab dem PaymentIntent läuft alles echt: Stripe-Sandbox, Webhook, Worker, Erstattung, Dispute.
+    - `start_paid_booking` selbst prüfen die SQL-Tests.
+    - Den vollständigen Weg über `stripe-create-booking` testen wir in Phase 4 mit der App. Dafür muss das Flag im Dev-Projekt kurz eingeschaltet werden, nach Absprache mit @arwedc.
+26. **Vault-Secrets im Dev-Projekt** (`project_url`, `push_worker_key`) am 13.11.2026 mit `pnpm db:push-secrets` angelegt. Seitdem laufen der Stripe-Worker und der Push-Versand per Cron.
+27. **Auszahlung und No-Show mit echtem Transfer** (Szenarien 10, 11) brauchen ein fertig eingerichtetes Stripe-Konto eines Test-Standorts. Das Onboarding mit Stripe-Testdaten wird in Phase 3 über die neue Seite „Auszahlungen“ durchgeklickt, die Szenarien folgen in Phase 5.
