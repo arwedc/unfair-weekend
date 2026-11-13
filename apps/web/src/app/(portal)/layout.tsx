@@ -33,6 +33,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               <Link href="/angebote" className={buttonClass('ghost', 'px-3')}>
                 Angebote
               </Link>
+              <Link href="/vorlagen" className={buttonClass('ghost', 'px-3')}>
+                Vorlagen
+              </Link>
               <Link href="/profil" className={buttonClass('ghost', 'px-3')}>
                 Profil
               </Link>
