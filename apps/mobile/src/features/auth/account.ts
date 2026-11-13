@@ -3,7 +3,7 @@
  * Reine Logik ohne React und ohne Netzwerk, damit sie sich testen lässt.
  */
 import { formatDate, OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
-import { DEFAULT_LOCALE, type Locale } from '@repo/shared/i18n';
+import { DEFAULT_LOCALE, translateValidationMessage, type Locale } from '@repo/shared/i18n';
 
 import { getMessages } from '../../lib/i18n/messages';
 
@@ -65,6 +65,21 @@ export function blockedNotice(
     ? formatDate(account.blockedUntil, { withYear: true, locale })
     : null;
   return getMessages(locale).logic.blocked(until);
+}
+
+/** Erste Meldung eines fehlgeschlagenen Zod-Checks in der gewählten Sprache. */
+export function firstIssueMessage(
+  error: { issues: { message: string }[] },
+  locale: Locale,
+  fallback: string,
+): string {
+  const message = error.issues[0]?.message;
+  return message ? translateValidationMessage(message, locale) : fallback;
+}
+
+/** Code aus der E-Mail, so wie man ihn abtippt oder einfügt („123 456“ → „123456“). */
+export function cleanEmailCode(input: string): string {
+  return input.replace(/\s+/g, '');
 }
 
 /** Zerlegt einen vollen Namen (z. B. von Apple) grob in Vor- und Nachname. */
