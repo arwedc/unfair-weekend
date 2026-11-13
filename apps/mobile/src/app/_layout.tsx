@@ -80,7 +80,7 @@ export default function RootLayout() {
               >
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="standort/[id]" options={{ title: '' }} />
+                <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
                 <Stack.Screen name="code/[id]" options={{ title: 'Dein Code' }} />
                 <Stack.Screen
                   name="anmelden"

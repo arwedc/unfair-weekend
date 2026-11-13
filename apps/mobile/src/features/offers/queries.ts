@@ -20,14 +20,19 @@ export function useOffers() {
   return useQuery({ queryKey: offerKeys.feed(), queryFn: fetchOffers });
 }
 
-export function useOffer(offerId: string) {
-  return useQuery({ queryKey: offerKeys.detail(offerId), queryFn: () => fetchOffer(offerId) });
+export function useOffer(offerId: string, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: offerKeys.detail(offerId),
+    queryFn: () => fetchOffer(offerId),
+    enabled: (options.enabled ?? true) && offerId !== '',
+  });
 }
 
-export function useLocation(locationId: string) {
+export function useLocation(locationId: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: locationKeys.detail(locationId),
     queryFn: async () => (await fetchLocations([locationId]))[0] ?? null,
+    enabled: (options.enabled ?? true) && locationId !== '',
   });
 }
 
