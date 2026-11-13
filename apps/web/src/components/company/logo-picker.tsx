@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { STORAGE_BUCKETS, STORAGE_LIMITS } from '@repo/shared';
 import { storageImageUrl } from '@repo/shared/utils';
+import { useT } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
 import { SUPABASE_URL } from '@/lib/supabase/env';
 
@@ -32,6 +33,8 @@ export function LogoPicker({
   savedPath: string;
   error?: string;
 }) {
+  const { t } = useT();
+  const m = t.profile.logo;
   const [path, setPath] = useState(initialPath);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -48,11 +51,11 @@ export function LogoPicker({
     setUploadError(null);
     const allowed: readonly string[] = STORAGE_LIMITS.allowedImageTypes;
     if (!allowed.includes(file.type)) {
-      setUploadError('Nur JPEG, PNG oder WebP.');
+      setUploadError(m.onlyTypes);
       return;
     }
     if (file.size > STORAGE_LIMITS.companyLogoMaxBytes) {
-      setUploadError('Das Logo darf höchstens 2 MB groß sein.');
+      setUploadError(m.tooLarge);
       return;
     }
 
@@ -65,7 +68,7 @@ export function LogoPicker({
     setUploading(false);
     if (inputRef.current) inputRef.current.value = '';
     if (err) {
-      setUploadError('Hochladen hat nicht geklappt. Bitte erneut versuchen.');
+      setUploadError(m.uploadFailed);
       return;
     }
     discardUnsaved(path);
@@ -78,7 +81,7 @@ export function LogoPicker({
 
   return (
     <div>
-      <p className="mb-1.5 text-subhead text-text-primary">Logo</p>
+      <p className="mb-1.5 text-subhead text-text-primary">{m.label}</p>
       <input type="hidden" name="logo_path" value={path} />
 
       <div className="flex flex-wrap items-center gap-4">
@@ -88,7 +91,7 @@ export function LogoPicker({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={storageImageUrl(SUPABASE_URL, STORAGE_BUCKETS.companyLogos, path)}
-              alt={`Logo von ${companyName}`}
+              alt={m.alt(companyName)}
               className="h-full w-full object-contain"
             />
           ) : (
@@ -104,7 +107,7 @@ export function LogoPicker({
               uploading ? 'pointer-events-none opacity-60' : ''
             }`}
           >
-            {uploading ? 'Lädt hoch …' : path ? 'Anderes Logo wählen' : 'Logo hochladen'}
+            {uploading ? m.uploading : path ? m.change : m.upload}
             <input
               ref={inputRef}
               type="file"
@@ -125,7 +128,7 @@ export function LogoPicker({
               disabled={uploading}
               className="inline-flex min-h-11 items-center justify-center rounded-button px-5 text-subhead font-semibold text-text-secondary transition-colors hover:bg-background-muted hover:text-text-primary disabled:opacity-60"
             >
-              Logo entfernen
+              {m.remove}
             </button>
           ) : null}
         </div>
@@ -134,13 +137,9 @@ export function LogoPicker({
       {shownError ? (
         <p className="mt-1.5 text-footnote text-status-error-text">{shownError}</p>
       ) : changed ? (
-        <p className="mt-1.5 text-footnote text-text-accent">
-          Wird mit „Änderungen speichern“ übernommen.
-        </p>
+        <p className="mt-1.5 text-footnote text-text-accent">{m.pending}</p>
       ) : (
-        <p className="mt-1.5 text-footnote text-text-tertiary">
-          Quadratisch wirkt am besten. JPEG, PNG oder WebP, höchstens 2 MB.
-        </p>
+        <p className="mt-1.5 text-footnote text-text-tertiary">{m.hint}</p>
       )}
     </div>
   );

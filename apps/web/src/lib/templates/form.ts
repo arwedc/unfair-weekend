@@ -1,4 +1,5 @@
 import type { Tables } from '@repo/shared';
+import { DEFAULT_LOCALE, type Locale } from '@repo/shared/i18n';
 import { berlinLocalToUtc } from '@/lib/offers/berlin-time';
 import { centsToEuroInput, utcToBerlinInput, type OfferFormValues } from '@/lib/offers/form';
 
@@ -37,10 +38,9 @@ export interface TemplateFormState {
 export const DURATION_UNITS = ['minuten', 'stunden', 'tage'] as const;
 export type DurationUnit = (typeof DURATION_UNITS)[number];
 
-export const DURATION_UNIT_LABELS: Record<DurationUnit, string> = {
-  minuten: 'Minuten',
-  stunden: 'Stunden',
-  tage: 'Tage',
+export const DURATION_UNIT_LABELS: Record<Locale, Record<DurationUnit, string>> = {
+  de: { minuten: 'Minuten', stunden: 'Stunden', tage: 'Tage' },
+  en: { minuten: 'minutes', stunden: 'hours', tage: 'days' },
 };
 
 const UNIT_MINUTES: Record<DurationUnit, number> = { minuten: 1, stunden: 60, tage: 1440 };
@@ -59,15 +59,19 @@ export function minutesToDuration(minutes: number): { value: string; unit: Durat
   return { value: String(minutes), unit: 'minuten' };
 }
 
-/** Dauer zum Anzeigen: „3 Std.“, „1 Std. 30 Min.“, „2 Tage“. */
-export function formatDuration(minutes: number): string {
+/** Dauer zum Anzeigen: „3 Std.“, „1 Std. 30 Min.“, „2 Tage“ (englisch „3 hrs“, „2 days“). */
+export function formatDuration(minutes: number, locale: Locale = DEFAULT_LOCALE): string {
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
   const mins = minutes % 60;
   const parts: string[] = [];
-  if (days > 0) parts.push(days === 1 ? '1 Tag' : `${days} Tage`);
-  if (hours > 0) parts.push(`${hours} Std.`);
-  if (mins > 0) parts.push(`${mins} Min.`);
+  const en = locale === 'en';
+  if (days > 0)
+    parts.push(
+      en ? `${days} ${days === 1 ? 'day' : 'days'}` : days === 1 ? '1 Tag' : `${days} Tage`,
+    );
+  if (hours > 0) parts.push(en ? `${hours} ${hours === 1 ? 'hr' : 'hrs'}` : `${hours} Std.`);
+  if (mins > 0) parts.push(en ? `${mins} min` : `${mins} Min.`);
   return parts.join(' ');
 }
 

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { OfferForm } from '@/components/offers/offer-form';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
 import { getMinDiscountPercent, getMyLocationAddress } from '@/lib/offers/queries';
 import { formatDuration, templateToOfferValues } from '@/lib/templates/form';
 import { getMyTemplate, listMyTemplates } from '@/lib/templates/queries';
@@ -10,7 +11,10 @@ import { bookingMode } from '@repo/shared';
 import { getLocationStripeAccount, getPaymentSettings } from '@/lib/zahlungen/queries';
 import { createOfferAction } from '../actions';
 
-export const metadata: Metadata = { title: 'Neues Angebot' };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t.offers.newOffer };
+}
 
 interface PageProps {
   /** `vorlage`: Angebot aus dieser Vorlage erstellen (alles vorausgefüllt bis auf die Zeit). */
@@ -18,13 +22,16 @@ interface PageProps {
 }
 
 async function NewOfferForm({ searchParams }: PageProps) {
-  const [{ location }, { vorlage }] = await Promise.all([requireAccount(), searchParams]);
+  const [{ location }, { vorlage }, { locale, t }] = await Promise.all([
+    requireAccount(),
+    searchParams,
+    getT(),
+  ]);
 
   if (location.status !== 'approved') {
     return (
       <p className="rounded-card bg-accent-subtle px-4 py-3 text-callout text-accent-on-subtle">
-        Dein Standort ist noch nicht freigeschaltet. Sobald wir ihn geprüft haben, kannst du hier
-        Angebote anlegen.
+        {t.offers.notApproved}
       </p>
     );
   }
@@ -43,13 +50,12 @@ async function NewOfferForm({ searchParams }: PageProps) {
     bookingMode(paymentSettings) === 'bezahlung' && stripeAccount?.is_ready !== true;
   const payoutSetupNotice = needsPayoutSetup ? (
     <p className="mb-5 rounded-card bg-status-warning-subtle px-4 py-3 text-callout text-status-warning-on-subtle">
-      Richte zuerst dein Stripe-Konto ein, damit neue Angebote bei aktivierter Bezahlung buchbar
-      sind.{' '}
+      {t.offers.payoutSetupNotice}{' '}
       <Link
         href="/auszahlungen"
         className="font-semibold text-text-link underline underline-offset-2"
       >
-        Auszahlungen einrichten
+        {t.offers.payoutSetupLink}
       </Link>
     </p>
   ) : null;
@@ -79,24 +85,26 @@ async function NewOfferForm({ searchParams }: PageProps) {
           role="alert"
           className="mb-5 rounded-card bg-status-error-subtle px-4 py-3 text-subhead text-status-error-on-subtle"
         >
-          Diese Vorlage gibt es nicht (mehr). Du kannst das Angebot hier von Hand anlegen.
+          {t.offers.templateMissing}
         </p>
       ) : null}
       {payoutSetupNotice}
       {templates.length > 0 ? (
         <section aria-labelledby="aus-vorlage" className="mb-6">
           <h2 id="aus-vorlage" className="text-subhead text-text-secondary">
-            Schneller geht es mit einer Vorlage:
+            {t.offers.fasterWithTemplate}
           </h2>
           <ul className="mt-2 flex flex-wrap gap-2">
-            {templates.map((t) => (
-              <li key={t.id}>
+            {templates.map((tpl) => (
+              <li key={tpl.id}>
                 <Link
-                  href={`/angebote/neu?vorlage=${t.id}`}
+                  href={`/angebote/neu?vorlage=${tpl.id}`}
                   className="inline-flex min-h-11 items-center gap-2 rounded-button border border-border-default bg-surface-default px-4 text-subhead text-text-primary transition-colors duration-150 hover:border-accent-vivid hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                 >
-                  <span className="font-semibold">{t.name}</span>
-                  <span className="text-text-tertiary">{formatDuration(t.duration_minutes)}</span>
+                  <span className="font-semibold">{tpl.name}</span>
+                  <span className="text-text-tertiary">
+                    {formatDuration(tpl.duration_minutes, locale)}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -114,15 +122,16 @@ async function NewOfferForm({ searchParams }: PageProps) {
   );
 }
 
-export default function NewOfferPage(props: PageProps) {
+export default async function NewOfferPage(props: PageProps) {
+  const { t } = await getT();
   return (
     <>
       <Link href="/angebote" className="text-subhead text-text-link hover:underline">
-        ← Zurück zur Übersicht
+        {t.common.backToOverview}
       </Link>
-      <h1 className="mb-6 mt-2 text-title2 text-text-primary">Neues Angebot</h1>
+      <h1 className="mb-6 mt-2 text-title2 text-text-primary">{t.offers.newOffer}</h1>
       <Suspense
-        fallback={<p className="text-callout text-text-tertiary">Formular wird geladen …</p>}
+        fallback={<p className="text-callout text-text-tertiary">{t.offers.formLoading}</p>}
       >
         <NewOfferForm {...props} />
       </Suspense>

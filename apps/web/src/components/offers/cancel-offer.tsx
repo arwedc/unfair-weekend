@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import type { CancelOfferState } from '@/app/(portal)/angebote/actions';
 import { Button, Card, Field, inputClass } from '@/components/ui';
+import { useT } from '@/lib/i18n/context';
 
 interface CancelOfferProps {
   action: (prev: CancelOfferState, formData: FormData) => Promise<CancelOfferState>;
@@ -11,30 +12,25 @@ interface CancelOfferProps {
 
 /** Angebot absagen (cancel_offer). Zweistufig, damit niemand aus Versehen absagt. */
 export function CancelOffer({ action, seatsTaken }: CancelOfferProps) {
+  const { t } = useT();
+  const m = t.offers.cancel;
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(action, {});
 
   return (
     <Card className="mt-8 border-status-error-subtle p-6">
-      <h2 className="text-headline text-text-primary">Angebot absagen</h2>
+      <h2 className="text-headline text-text-primary">{m.title}</h2>
       <p className="mt-1 text-callout text-text-secondary">
-        {seatsTaken > 0
-          ? `Alle aktiven Codes (${seatsTaken} Plätze vergeben) werden storniert und die Inhaber benachrichtigt.`
-          : 'Das Angebot verschwindet sofort aus der App.'}{' '}
-        Das lässt sich nicht rückgängig machen.
+        {seatsTaken > 0 ? m.withCodes(seatsTaken) : m.withoutCodes} {m.irreversible}
       </p>
 
       {!open ? (
         <Button type="button" variant="secondary" className="mt-4" onClick={() => setOpen(true)}>
-          Angebot absagen …
+          {m.open}
         </Button>
       ) : (
         <form action={formAction} className="mt-4 space-y-4">
-          <Field
-            id="cancel-reason"
-            label="Grund (optional)"
-            hint="Wird den Code-Inhabern angezeigt. Höchstens 500 Zeichen."
-          >
+          <Field id="cancel-reason" label={m.reason} hint={m.reasonHint}>
             <textarea
               id="cancel-reason"
               name="reason"
@@ -54,10 +50,10 @@ export function CancelOffer({ action, seatsTaken }: CancelOfferProps) {
               disabled={pending}
               className="inline-flex min-h-11 items-center rounded-button bg-status-error-solid px-5 text-body-strong text-status-error-on-solid disabled:opacity-60"
             >
-              {pending ? 'Wird abgesagt …' : 'Endgültig absagen'}
+              {pending ? m.confirming : m.confirm}
             </button>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
-              Abbrechen
+              {t.common.cancel}
             </Button>
           </div>
         </form>

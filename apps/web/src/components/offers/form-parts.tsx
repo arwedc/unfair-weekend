@@ -1,12 +1,10 @@
+'use client';
+
 import type { ReactNode } from 'react';
-import { OFFER_TYPE_LABELS, OFFER_TYPES, type Enums } from '@repo/shared';
+import { OFFER_TYPES, type Enums } from '@repo/shared';
+import { useT } from '@/lib/i18n/context';
 
 export type OfferType = Enums<'offer_type'>;
-
-const TYPE_HINTS: Record<OfferType, string> = {
-  einzeltermin: 'Ein fester Termin, z. B. ein Kochkurs am Freitagabend.',
-  zeitraum: 'Einlösbar in einem Zeitraum, z. B. eine Massage bis Sonntag.',
-};
 
 /** Hinweisbox für Fehler oder Erfolg in Formularen. */
 export function Notice({ tone, children }: { tone: 'error' | 'success'; children: ReactNode }) {
@@ -34,9 +32,12 @@ export function TypePicker({
   onChange: (type: OfferType) => void;
   disabled?: boolean;
 }) {
+  const { t: msg, labels } = useT();
   return (
     <fieldset className="sm:col-span-2" disabled={disabled}>
-      <legend className="mb-1.5 text-subhead text-text-primary">Art des Angebots</legend>
+      <legend className="mb-1.5 text-subhead text-text-primary">
+        {msg.offers.form.typeLegend}
+      </legend>
       <div className="grid gap-3 sm:grid-cols-2">
         {OFFER_TYPES.map((t) => (
           <label
@@ -64,10 +65,10 @@ export function TypePicker({
               {value === t ? <span className="h-2.5 w-2.5 rounded-full bg-accent-solid" /> : null}
             </span>
             <span className="block pr-8 text-body-strong text-text-primary">
-              {OFFER_TYPE_LABELS[t]}
+              {labels.offerType[t]}
             </span>
             <span className="mt-0.5 block pr-8 text-footnote text-text-secondary">
-              {TYPE_HINTS[t]}
+              {msg.offers.form.typeHints[t]}
             </span>
           </label>
         ))}

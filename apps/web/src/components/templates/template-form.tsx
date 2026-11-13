@@ -2,16 +2,12 @@
 
 import Link from 'next/link';
 import { useActionState, useEffect, useRef, useState } from 'react';
-import {
-  OFFER_CATEGORIES,
-  OFFER_CATEGORY_LABELS,
-  OFFER_LIMITS,
-  OFFER_TEMPLATE_LIMITS,
-} from '@repo/shared';
+import { OFFER_CATEGORIES, OFFER_LIMITS, OFFER_TEMPLATE_LIMITS } from '@repo/shared';
 import { discountPercent, formatDiscount, formatPrice } from '@repo/shared/utils';
 import { Notice, TypePicker, type OfferType } from '@/components/offers/form-parts';
 import { ImagePicker } from '@/components/offers/image-picker';
 import { Button, buttonClass, Card, Field, inputClass } from '@/components/ui';
+import { useT } from '@/lib/i18n/context';
 import { parseEuroToCents } from '@/lib/offers/form';
 import {
   DURATION_UNIT_LABELS,
@@ -40,6 +36,9 @@ export function TemplateForm({
   initialValues,
   minDiscountPercent,
 }: TemplateFormProps) {
+  const { locale, t, labels } = useT();
+  const f = t.offers.form;
+  const tf = t.templates.form;
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
     values: initialValues,
@@ -78,13 +77,8 @@ export function TemplateForm({
   return (
     <form ref={formRef} action={formAction} className="space-y-5" noValidate>
       <Card className="p-5 sm:p-6">
-        <h2 className="mb-4 text-headline text-text-primary">Vorlage</h2>
-        <Field
-          id="name"
-          label="Name der Vorlage"
-          hint="Nur für dich sichtbar, z. B. „Kochkurs Standard“ oder „Mittagstisch“."
-          error={err('name')}
-        >
+        <h2 className="mb-4 text-headline text-text-primary">{tf.sectionTemplate}</h2>
+        <Field id="name" label={tf.name} hint={tf.nameHint} error={err('name')}>
           <input
             id="name"
             name="name"
@@ -97,12 +91,12 @@ export function TemplateForm({
       </Card>
 
       <Card className="p-5 sm:p-6">
-        <h2 className="mb-4 text-headline text-text-primary">Worum geht es?</h2>
+        <h2 className="mb-4 text-headline text-text-primary">{tf.sectionWhat}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="title"
-            label="Titel"
-            hint="So heißt das Angebot später in der App."
+            label={f.title}
+            hint={tf.titleHint}
             error={err('title')}
             className="sm:col-span-2"
           >
@@ -117,8 +111,8 @@ export function TemplateForm({
           </Field>
           <Field
             id="description"
-            label="Beschreibung"
-            hint="Was erwartet die Leute? Was ist inklusive, was sollen sie mitbringen?"
+            label={f.description}
+            hint={f.descriptionHint}
             error={err('description')}
             className="sm:col-span-2"
           >
@@ -132,7 +126,7 @@ export function TemplateForm({
               {...aria('description')}
             />
           </Field>
-          <Field id="category" label="Kategorie" error={err('category')}>
+          <Field id="category" label={f.category} error={err('category')}>
             <select
               id="category"
               name="category"
@@ -141,11 +135,11 @@ export function TemplateForm({
               {...aria('category')}
             >
               <option value="" disabled>
-                Bitte wählen
+                {f.pleaseChoose}
               </option>
               {OFFER_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {OFFER_CATEGORY_LABELS[c]}
+                  {labels.offerCategory[c]}
                 </option>
               ))}
             </select>
@@ -161,13 +155,13 @@ export function TemplateForm({
       </Card>
 
       <Card className="p-5 sm:p-6">
-        <h2 className="mb-4 text-headline text-text-primary">Art und Dauer</h2>
+        <h2 className="mb-4 text-headline text-text-primary">{tf.sectionDuration}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <TypePicker value={type} onChange={setType} />
           <Field
             id="duration_value"
-            label={type === 'einzeltermin' ? 'Dauer des Termins' : 'Einlösbar für'}
-            hint={`Den Beginn wählst du erst beim Anlegen des Angebots. Höchstens ${OFFER_LIMITS.maxDurationDays} Tage.`}
+            label={type === 'einzeltermin' ? tf.durationSingle : tf.durationPeriod}
+            hint={tf.durationHint(OFFER_LIMITS.maxDurationDays)}
             error={err('duration_value')}
             className="sm:col-span-2"
           >
@@ -184,13 +178,13 @@ export function TemplateForm({
               />
               <select
                 name="duration_unit"
-                aria-label="Einheit der Dauer"
+                aria-label={tf.durationUnit}
                 defaultValue={val('duration_unit') ?? 'stunden'}
                 className={`${inputClass} max-w-44`}
               >
                 {DURATION_UNITS.map((u) => (
                   <option key={u} value={u}>
-                    {DURATION_UNIT_LABELS[u]}
+                    {DURATION_UNIT_LABELS[locale][u]}
                   </option>
                 ))}
               </select>
@@ -200,14 +194,14 @@ export function TemplateForm({
       </Card>
 
       <Card className="p-5 sm:p-6">
-        <h2 className="mb-4 text-headline text-text-primary">Preis und Plätze</h2>
+        <h2 className="mb-4 text-headline text-text-primary">{tf.sectionPrice}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="original_price" label="Originalpreis (€)" error={err('original_price')}>
+          <Field id="original_price" label={f.originalPrice} error={err('original_price')}>
             <input
               id="original_price"
               name="original_price"
               inputMode="decimal"
-              placeholder="69,00"
+              placeholder={f.pricePlaceholderOriginal}
               value={originalPrice}
               onChange={(e) => setOriginalPrice(e.target.value)}
               className={inputClass}
@@ -216,17 +210,17 @@ export function TemplateForm({
           </Field>
           <Field
             id="deal_price"
-            label="Deal-Preis (€)"
+            label={f.dealPrice}
             hint={
               discount !== null ? (
                 <span className={discountTooLow ? 'text-status-error-text' : 'text-text-accent'}>
-                  {formatDiscount(discount)} Rabatt
-                  {discountTooLow ? ` (mindestens ${minDiscountPercent} %)` : ''}
+                  {f.discountLabel(formatDiscount(discount, locale))}
+                  {discountTooLow ? f.discountMin(minDiscountPercent) : ''}
                 </span>
               ) : originalCents ? (
-                `Mindestens ${minDiscountPercent} % unter ${formatPrice(originalCents)}.`
+                f.discountBelow(minDiscountPercent, formatPrice(originalCents, { locale }))
               ) : (
-                `Mindestens ${minDiscountPercent} % Rabatt.`
+                f.discountMinOnly(minDiscountPercent)
               )
             }
             error={err('deal_price')}
@@ -235,14 +229,14 @@ export function TemplateForm({
               id="deal_price"
               name="deal_price"
               inputMode="decimal"
-              placeholder="39,00"
+              placeholder={f.pricePlaceholderDeal}
               value={dealPrice}
               onChange={(e) => setDealPrice(e.target.value)}
               className={inputClass}
               {...aria('deal_price')}
             />
           </Field>
-          <Field id="capacity" label="Plätze insgesamt" error={err('capacity')}>
+          <Field id="capacity" label={f.capacity} error={err('capacity')}>
             <input
               id="capacity"
               name="capacity"
@@ -256,8 +250,8 @@ export function TemplateForm({
           </Field>
           <Field
             id="max_per_user"
-            label="Max. Plätze pro Person"
-            hint="Wie viele Plätze eine Person mit einem Code höchstens holen darf."
+            label={f.maxPerUser}
+            hint={f.maxPerUserHint}
             error={err('max_per_user')}
           >
             <input
@@ -275,7 +269,7 @@ export function TemplateForm({
       </Card>
 
       {state.formError ? <Notice tone="error">{state.formError}</Notice> : null}
-      {state.saved ? <Notice tone="success">Vorlage gespeichert.</Notice> : null}
+      {state.saved ? <Notice tone="success">{t.templates.saved}</Notice> : null}
 
       <div className="flex items-center justify-between gap-3">
         <Link
@@ -285,14 +279,10 @@ export function TemplateForm({
             'border border-border-default hover:border-border-strong',
           )}
         >
-          {mode === 'create' ? 'Abbrechen' : 'Zurück'}
+          {mode === 'create' ? t.common.cancel : t.common.back}
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending
-            ? 'Wird gespeichert …'
-            : mode === 'create'
-              ? 'Vorlage speichern'
-              : 'Änderungen speichern'}
+          {pending ? t.common.saving : mode === 'create' ? tf.save : t.common.saveChanges}
         </Button>
       </div>
     </form>
