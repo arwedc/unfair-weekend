@@ -8,6 +8,7 @@ import type { OfferCategory } from '@repo/shared';
 
 import type { OfferPlace } from '../offers/feed-logic';
 
+import type { CitySummary } from './map-logic';
 import { PIN_ICON_PATHS, placeCategory } from './pin-icons';
 
 /**
@@ -118,6 +119,25 @@ export function toScriptJson(value: unknown): string {
 }
 
 /** Befehl für die WebView: Pins ersetzen. */
+/**
+ * Bis zu dieser Zoomstufe (weite Ansicht, z. B. Europa) zeigt die Karte eine Nadel pro
+ * Stadt statt der einzelnen Angebote. Ein Tipp darauf zoomt in die Stadt.
+ */
+export const CITY_PIN_MAX_ZOOM = 8;
+
+/** Befehl für die WebView: Sammelnadeln der Städte ersetzen. */
+export function setCitiesScript(cities: readonly CitySummary[]): string {
+  const geojson = {
+    type: 'FeatureCollection',
+    features: cities.map((city) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [city.lng, city.lat] },
+      properties: { id: city.id, name: city.name, count: city.count },
+    })),
+  };
+  return `window.setCities && window.setCities(${toScriptJson(geojson)}); true;`;
+}
+
 export function setPlacesScript(places: readonly OfferPlace[]): string {
   return `window.setPlaces && window.setPlaces(${toScriptJson(placesToGeoJson(places))}); true;`;
 }
@@ -179,6 +199,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     styleUrl: options.styleUrl,
     center: [MUENSTER_CENTER.lng, MUENSTER_CENTER.lat],
     zoom: DEFAULT_ZOOM,
+    cityPinMaxZoom: CITY_PIN_MAX_ZOOM,
     colors: options.colors,
     palette: MAP_PALETTE,
     icons: PIN_ICON_PATHS,
@@ -258,6 +279,12 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
   }
 
+  var pendingCities = null;
+  window.setCities = function (geojson) {
+    if (!loaded) { pendingCities = geojson; return; }
+    map.getSource('cities').setData(geojson);
+  };
+
   window.setPlaces = function (geojson) {
     current = geojson;
     if (!loaded) { pending = geojson; return; }
@@ -335,6 +362,25 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
+  // Nadel für eine ganze Stadt (weite Ansicht): größer, ohne Symbol, die Anzahl steht darin.
+  function makeCityPin(fill) {
+    var ratio = 3, w = 44, h = 56, cx = 22, cy = 20, r = 17.5, tip = 52;
+    var canvas = document.createElement('canvas');
+    canvas.width = w * ratio; canvas.height = h * ratio;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    var beta = Math.acos(r / (tip - cy));
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI / 2 + beta, Math.PI / 2 - beta + Math.PI * 2, false);
+    ctx.lineTo(cx, tip);
+    ctx.closePath();
+    ctx.shadowColor = 'rgba(10, 10, 10, 0.3)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
+  }
+
   // Farben statt Grautönen: Parks grün, Wasser blau, große Straßen gelblich.
   // Jede Änderung einzeln abgesichert, damit ein anderer Stil die Karte nicht zerbricht.
   function paint(id, prop, value) {
@@ -390,9 +436,29 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     map.addSource('places', { type: 'geojson', data: pending || empty });
 
     // Nadelspitze sitzt genau auf der Adresse.
-    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', layout: {
+    map.addLayer({ id: 'pins', type: 'symbol', source: 'places', minzoom: config.cityPinMaxZoom, layout: {
       'icon-image': pinImage, 'icon-anchor': 'bottom',
       'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+
+    // Weite Ansicht: eine Nadel pro Stadt mit der Anzahl der Angebote darin.
+    var cityPin = makeCityPin(config.colors.pin);
+    map.addImage('pin-city', cityPin.image, { pixelRatio: cityPin.ratio });
+    map.addSource('cities', { type: 'geojson', data: pendingCities || empty });
+    map.addLayer({ id: 'city-pins', type: 'symbol', source: 'cities', maxzoom: config.cityPinMaxZoom, layout: {
+      'icon-image': 'pin-city', 'icon-anchor': 'bottom',
+      'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      'text-field': ['to-string', ['get', 'count']], 'text-font': ['Noto Sans Bold'], 'text-size': 15,
+      'text-anchor': 'center', 'text-offset': [0, -2.15],
+      'text-allow-overlap': true, 'text-ignore-placement': true },
+      paint: { 'text-color': config.colors.pinDot } });
+
+    // Tipp auf eine Stadt: hineinzoomen, dann erscheinen die einzelnen Angebote.
+    map.on('click', 'city-pins', function (event) {
+      var feature = event.features && event.features[0];
+      if (!feature) return;
+      send({ type: 'dismiss' });
+      map.flyTo({ center: feature.geometry.coordinates, zoom: config.zoom, duration: 1200, essential: true });
+    });
 
     // Die Auswahl übernimmt die App (Kachel unten). Die Karte meldet nur den Tipp.
     map.on('click', 'pins', function (event) {
@@ -400,12 +466,13 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
       if (feature) send({ type: 'place', key: feature.properties.key });
     });
     map.on('click', function (event) {
-      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins'] });
+      var hits = map.queryRenderedFeatures(event.point, { layers: ['pins', 'city-pins'] });
       if (hits.length === 0) send({ type: 'dismiss' });
     });
 
     loaded = true;
     pending = null;
+    pendingCities = null;
     applySelection();
     send({ type: 'ready' });
   });

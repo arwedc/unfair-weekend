@@ -4,6 +4,7 @@
  */
 // Relativ statt '@/…': Vitest kennt den Pfad-Alias nicht, reine Logik soll ohne Extra-Konfiguration testbar bleiben.
 import { placeKeyOf } from '../offers/feed-logic';
+import { CITIES, cityOfOffer, type CityId } from '../offers/cities';
 import type { Offer } from '../offers/types';
 
 /**
@@ -64,4 +65,36 @@ export function recenteredPosition(virtual: number, count: number): number | nul
   if (count <= 1) return null;
   if (virtual >= count && virtual < count * 2) return null;
   return count + realIndex(virtual, count);
+}
+
+/** Ein Sammelpunkt pro Stadt für die weite Ansicht (Europa): Stadtmitte und Anzahl. */
+export interface CitySummary {
+  id: CityId;
+  name: string;
+  lat: number;
+  lng: number;
+  count: number;
+}
+
+/** Fasst die Kartenangebote je Stadt zusammen. Städte ohne Angebot fehlen. */
+export function citySummaries(offers: readonly Offer[]): CitySummary[] {
+  const counts = new Map<CityId, number>();
+  for (const offer of offers) {
+    const id = cityOfOffer(offer);
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return CITIES.filter((city) => counts.has(city.id)).map((city) => ({
+    id: city.id,
+    name: city.name,
+    lat: city.center.lat,
+    lng: city.center.lng,
+    count: counts.get(city.id) ?? 0,
+  }));
+}
+
+/** Die Angebote, durch die man unten wischt: alle aus der Stadt des gezeigten Angebots. */
+export function sameCityOffers<T extends Offer>(offers: readonly T[], offer: T | undefined): T[] {
+  if (!offer) return [];
+  const city = cityOfOffer(offer);
+  return offers.filter((other) => cityOfOffer(other) === city);
 }

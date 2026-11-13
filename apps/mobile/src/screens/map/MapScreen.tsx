@@ -25,10 +25,16 @@ import {
   parseMapMessage,
   selectPlaceScript,
   setCenterScript,
+  setCitiesScript,
   setPlacesScript,
   showUserScript,
 } from '@/features/map/map-html';
-import { firstIndexAtPlace, mapOffers } from '@/features/map/map-logic';
+import {
+  citySummaries,
+  firstIndexAtPlace,
+  mapOffers,
+  sameCityOffers,
+} from '@/features/map/map-logic';
 import { getCity, nearestCityId, offersInCity } from '@/features/offers/cities';
 import { filterOffers, groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
@@ -89,14 +95,21 @@ export function MapScreen() {
 
   const city = getCity(cityId);
   const cityOffers = offersInCity(data ?? [], cityId);
+  // Für Hinweise („In Vilnius gibt es noch nichts …“) zählt nur die gewählte Stadt.
   const visible = filterOffers(cityOffers, filters);
+  const cityPinned = mapOffers(visible);
+  // Auf der Karte stehen die Nadeln aller Städte (Filter gelten, die Stadtwahl nicht).
   // Nur buchbare Angebote, von West nach Ost. Ausgebuchte erscheinen gar nicht.
-  const offers = mapOffers(visible);
+  const offers = mapOffers(filterOffers(data ?? [], filters));
   const placesScript = setPlacesScript(groupByPlace(offers));
+  // Weite Ansicht: eine Sammelnadel pro Stadt.
+  const citiesScript = setCitiesScript(citySummaries(offers));
 
   // Fällt das gezeigte Angebot durch einen Filter weg, verschwindet auch die Kachel.
-  const selectedIndex = selectedId ? offers.findIndex((offer) => offer.id === selectedId) : -1;
-  const selected = selectedIndex >= 0 ? offers[selectedIndex] : undefined;
+  const selected = selectedId ? offers.find((offer) => offer.id === selectedId) : undefined;
+  // Gewischt wird durch die Angebote der Stadt, in der die gezeigte Nadel steht.
+  const carouselOffers = sameCityOffers(offers, selected);
+  const selectedIndex = selected ? carouselOffers.indexOf(selected) : -1;
   const selectedKey = selected ? placeKeyOf(selected) : null;
   const padding = {
     top: topInset + space[4],
@@ -108,6 +121,9 @@ export function MapScreen() {
   useEffect(() => {
     if (mapReady) webview.current?.injectJavaScript(placesScript);
   }, [mapReady, placesScript]);
+  useEffect(() => {
+    if (mapReady) webview.current?.injectJavaScript(citiesScript);
+  }, [mapReady, citiesScript]);
 
   // Auf die gewählte Stadt springen (beim Start und nach jedem Wechsel, auch aus „Entdecken“).
   // Kam der Wechsel vom Standort-Knopf, danach gleich zum eigenen Standort weiter.
@@ -232,7 +248,7 @@ export function MapScreen() {
       ? `In ${city.name} gibt es gerade noch keine Angebote.`
       : visible.length === 0
         ? 'Für diese Auswahl gibt es gerade kein Angebot.'
-        : offers.length === 0
+        : cityPinned.length === 0
           ? allSoldOut
             ? 'Für diese Auswahl ist gerade alles ausgebucht.'
             : 'Für diese Angebote fehlt noch die genaue Adresse. Du findest sie unter „Entdecken“.'
@@ -338,11 +354,11 @@ export function MapScreen() {
             >
               <MapOfferCarousel
                 // Neue Trefferliste (Filter geändert): Kacheln frisch aufbauen.
-                key={offers.map((offer) => offer.id).join(',')}
-                offers={offers}
+                key={carouselOffers.map((offer) => offer.id).join(',')}
+                offers={carouselOffers}
                 index={selectedIndex}
                 onIndexChange={(index) => {
-                  const offer = offers[index];
+                  const offer = carouselOffers[index];
                   if (!offer) return;
                   void Haptics.selectionAsync();
                   setSelectedId(offer.id);

@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { Offer } from '@/features/offers/types';
 
 import {
+  citySummaries,
   countAtPlace,
   firstIndexAtPlace,
   mapOffers,
   nearestLoopPosition,
   realIndex,
   recenteredPosition,
+  sameCityOffers,
   snappedIndex,
 } from './map-logic';
 
@@ -86,5 +88,33 @@ describe('Endlos-Wischen', () => {
     expect(recenteredPosition(3, 4)).toBe(7);
     expect(recenteredPosition(5, 4)).toBeNull();
     expect(recenteredPosition(0, 1)).toBeNull();
+  });
+});
+
+describe('citySummaries', () => {
+  it('zählt je Stadt und setzt den Punkt in die Stadtmitte', () => {
+    const offers = [offer('m1', 7.62, 51.96), offer('m2', 7.64, 51.95), offer('v1', 25.28, 54.68)];
+    const summaries = citySummaries(offers);
+    expect(summaries.map((city) => [city.id, city.count])).toEqual([
+      ['muenster', 2],
+      ['vilnius', 1],
+    ]);
+    expect(summaries[0]?.lat).toBeCloseTo(51.9607);
+  });
+
+  it('lässt Städte ohne Angebot weg', () => {
+    expect(citySummaries([offer('m1', 7.62, 51.96)]).map((city) => city.id)).toEqual(['muenster']);
+    expect(citySummaries([])).toEqual([]);
+  });
+});
+
+describe('sameCityOffers', () => {
+  it('wischt nur durch die Angebote derselben Stadt', () => {
+    const m1 = offer('m1', 7.62, 51.96);
+    const v1 = offer('v1', 25.28, 54.68);
+    const m2 = offer('m2', 7.64, 51.95);
+    expect(sameCityOffers([m1, v1, m2], m2).map((o) => o.id)).toEqual(['m1', 'm2']);
+    expect(sameCityOffers([m1, v1, m2], v1).map((o) => o.id)).toEqual(['v1']);
+    expect(sameCityOffers([m1], undefined)).toEqual([]);
   });
 });
