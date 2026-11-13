@@ -28,6 +28,11 @@ export const env = {
   ),
   mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE_URL,
   /**
+   * Publishable Key von Stripe (pk_test_… bzw. pk_live_…). Optional: Ohne ihn kann die App
+   * nicht bezahlen und zeigt das an, solange das Flag payments_enabled an ist.
+   */
+  stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || null,
+  /**
    * Adresse der Partner-Website, ohne Slash am Ende. Der QR-Code enthält dann einen Link
    * auf deren Einlöse-Seite. Leer = der QR-Code enthält nur den Token.
    */
