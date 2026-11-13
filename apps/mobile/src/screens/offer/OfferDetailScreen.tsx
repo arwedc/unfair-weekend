@@ -30,6 +30,8 @@ import { MiniMap } from '@/components/offers/MiniMap';
 import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { PriceRow } from '@/components/offers/PriceRow';
+import { ReviewsSection } from '@/components/reviews/ReviewsSection';
+import { Stars } from '@/components/reviews/Stars';
 import {
   Appear,
   Badge,
@@ -55,6 +57,8 @@ import {
 } from '@/features/offers/feed-logic';
 import { useLocationOffers, useOffer, useOffers, useSettings } from '@/features/offers/queries';
 import type { Offer, OfferDetail } from '@/features/offers/types';
+import { useLocationRating } from '@/features/reviews/queries';
+import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic';
 import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
@@ -181,6 +185,7 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
   const { data: locationOffers } = useLocationOffers(offer?.location_id ?? '', {
     enabled: Boolean(offer),
   });
+  const { data: rating } = useLocationRating(offer?.location_id ?? '', { enabled: Boolean(offer) });
   const { userId, account } = useAuth();
   const myVoucher = useActiveVoucherForOffer(offerId);
   const [expanded, setExpanded] = useState(false);
@@ -291,6 +296,17 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
             <Text variant="callout" color="secondary">
               von {offer.company_name}
             </Text>
+            {rating ? (
+              <View style={styles.ratingLine}>
+                <Stars value={rating.average_rating} size={16} />
+                <Text variant="subhead" style={styles.semibold}>
+                  {formatRating(rating.average_rating)}
+                </Text>
+                <Text variant="subhead" color="secondary">
+                  · {reviewCountLabel(rating.review_count)}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Deal-Karte */}
@@ -445,6 +461,8 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
               </View>
             </Card>
           </View>
+
+          <ReviewsSection locationId={offer.location_id} locationName={offer.location_name} />
         </View>
 
         {/* Ähnliche Angebote */}
@@ -549,6 +567,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   semibold: { fontFamily: fonts.semibold },
   titleBlock: { gap: space[2] },
+  ratingLine: { flexDirection: 'row', alignItems: 'center', gap: space[1.5] },
   categoryPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
