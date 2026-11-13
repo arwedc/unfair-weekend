@@ -90,6 +90,7 @@ Alle Regeln laufen serverseitig (SPEC.md). Die App zeigt sie verständlich an un
 - Versand über die Edge Function (siehe Abschnitt 3). Status in der Outbox pflegen, ungültige Tokens löschen.
 - Arten: neues Angebot eines Favoriten, Erinnerung vor Start (Zeitpunkt aus `reminder_hours_before`, Standard 2 Std.), Absage.
 - Ein Tipp auf einen Push öffnet den passenden Screen (Deep Link auf Angebot bzw. Code, Schema `unfairweekend://`).
+- **Umsetzung:** Die App fragt nach dem ersten geholten Code einmal nach der Erlaubnis. Im Profil gibt es einen Schalter „Push-Nachrichten“. Ausschalten meldet das Gerät beim Server ab und merkt sich die Wahl auf dem Gerät. Wurde die Erlaubnis im System verweigert, führt die Zeile in die Handy-Einstellungen. Ein Tap öffnet `data.url` aus dem Push (`/angebot/<id>` oder `/code/<id>`).
 
 ## 8. Design
 
@@ -154,3 +155,5 @@ Getroffen, wo nichts festgelegt war. Wer etwas anders will, ändert es hier und 
 10. **„Neu dabei“** sind die zuletzt veröffentlichten Angebote. Das Veröffentlichungsdatum kommt aus `list_offer_created_at`, weil `list_offers` es nicht liefert und bestehende RPCs unverändert bleiben.
 11. **Ort fest auf Münster.** Die Ortszeile oben ist eine Überschrift, kein Auswahlmenü. Es gibt nur Münster.
 12. **Schriftgröße begrenzt.** Dynamische Schriftgrößen des Systems werden bis Faktor 1,6 übernommen (Badges bis 1,3), damit Karten nicht zerbrechen.
+13. **Push-Schalter liegt auf dem Gerät.** Das Backend hat keine Push-Einstellung pro Nutzer. „Aus“ heißt deshalb: Das Gerät meldet seinen Token beim Server ab und merkt sich die Wahl lokal. Auf anderen Geräten desselben Kontos bleibt Push an. Eine Einstellung pro Konto (z. B. nur Erinnerungen) wäre eine neue Spalte samt RPC.
+14. **Push nur mit EAS-Projekt.** Ohne `extra.eas.projectId` (kommt mit `eas init`) gibt es keinen Expo-Push-Token. Bis dahin meldet sich die App nicht an und erklärt im Profil, warum. In Expo Go gilt dasselbe.

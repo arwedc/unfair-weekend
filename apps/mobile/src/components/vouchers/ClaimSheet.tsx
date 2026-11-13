@@ -11,6 +11,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { cancelPolicyText } from '@/features/offers/feed-logic';
 import { useSettings } from '@/features/offers/queries';
 import type { OfferDetail } from '@/features/offers/types';
+import { askForPushAfterClaim } from '@/features/push/push';
 import { useClaimVoucher } from '@/features/vouchers/queries';
 import { maxSelectableSeats, seatsText } from '@/features/vouchers/voucher-logic';
 import { errorMessage } from '@/lib/api-error';
@@ -44,6 +45,8 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
           ref.current?.dismiss();
           if (voucherId) router.push({ pathname: '/code/[id]', params: { id: voucherId } });
           else router.navigate('/codes');
+          // Guter Moment für die Push-Erlaubnis: jetzt geht es um die Erinnerung vor dem Start.
+          void askForPushAfterClaim();
         },
         onError: () => {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
