@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: 'Anmelden' };
 const REASONS: Record<string, string> = {
   'kein-standort':
     'Dieses Konto gehört zu keinem Standort. Die Website ist nur für Partner. Bitte mit dem Standort-Zugang anmelden.',
+  'kein-admin': 'Dieses Konto hat keinen Zugriff auf den Admin-Bereich.',
 };
 
 async function ReasonNotice({ searchParams }: { searchParams: Promise<{ grund?: string }> }) {
