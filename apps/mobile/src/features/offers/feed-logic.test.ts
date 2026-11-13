@@ -174,7 +174,7 @@ describe('buildSections', () => {
     expect(titles([offer({ starts_at: at(0, '19:00') })])[0]).toBe('Heute in Münster');
   });
 
-  it('macht aus Kategorien eigene Abschnitte, ohne ausgebuchte und ohne „Sonstiges“', () => {
+  it('macht aus jeder Kategorie einen Abschnitt, ohne ausgebuchte, „Sonstiges“ am Ende', () => {
     const offers = [
       offer({ id: 'pasta', category: 'kochen_essen' }),
       offer({ id: 'yoga', category: 'sport_bewegung' }),
@@ -186,6 +186,7 @@ describe('buildSections', () => {
     expect(categories.map((s) => [s.category, s.title, s.offers.map((o) => o.id)])).toEqual([
       ['kochen_essen', 'Kochen & Essen', ['pasta']],
       ['sport_bewegung', 'Sport & Bewegung', ['yoga']],
+      ['sonstiges', 'Noch mehr entdecken', ['rad']],
     ]);
   });
 
