@@ -91,6 +91,14 @@ export const partsDe = {
     starsAria: (rating: string) => `${rating} von 5 Sternen`,
     stars: 'Sterne',
   },
+  categoryShort: {
+    kochen_essen: 'Essen',
+    sport_bewegung: 'Sport',
+    kreativ_workshops: 'Kreativ',
+    wellness_beauty: 'Wellness',
+    kultur_events: 'Kultur',
+    sonstiges: 'Mehr',
+  },
   card: {
     priceAria: (deal: string, original: string) => `${deal} statt ${original}`,
     cheaper: (percent: number) => `${percent} Prozent günstiger`,
@@ -189,6 +197,14 @@ export const partsEn: Widen<typeof partsDe> = {
     showAll: 'All reviews',
     starsAria: (rating) => `${rating} out of 5 stars`,
     stars: 'Stars',
+  },
+  categoryShort: {
+    kochen_essen: 'Food',
+    sport_bewegung: 'Sport',
+    kreativ_workshops: 'Creative',
+    wellness_beauty: 'Wellness',
+    kultur_events: 'Culture',
+    sonstiges: 'More',
   },
   card: {
     priceAria: (deal, original) => `${deal} instead of ${original}`,

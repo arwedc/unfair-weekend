@@ -9,7 +9,6 @@ import {
   formatDateRange,
   formatDay,
   formatDiscount,
-  formatPrice,
   formatTimeRange,
   isFewSeatsLeft,
   OFFER_CATEGORIES,
@@ -189,126 +188,104 @@ export interface FeedSection {
 }
 
 const SECTION_LIMIT = 8;
-const STARTING_SOON_DAYS = 3;
-/** Ab dieser Stunde (Berliner Zeit) gilt ein Termin als „nach Feierabend“. */
-const EVENING_FROM_HOUR = 17;
-const BIG_DISCOUNT_PERCENT = 50;
-export const BUDGET_PRICE_CENTS = 1500;
-/** Themen-Abschnitte erscheinen erst ab so vielen Angeboten, damit der Feed nicht zerfasert. */
-const THEME_MIN_OFFERS = 2;
+/** Ab so vielen Sternen im Schnitt gilt ein Anbieter als Community-Liebling. */
+export const HIGHLIGHT_MIN_RATING = 4.5;
+/** „Bring deine Crew“: Angebote, bei denen man mindestens so viele Plätze holen kann. */
+export const CREW_MIN_SEATS = 2;
+/** Mega-Rabatte und Schnäppchen erscheinen erst ab so vielen Angeboten, sonst wirken sie leer. */
+const RANKING_MIN_OFFERS = 2;
+
+/** Bewertung eines Anbieters (aus `get_location_ratings`). */
+export interface LocationRatingSummary {
+  average: number;
+  count: number;
+}
 
 interface SectionDraft {
   section: FeedSection;
   minOffers: number;
 }
 
+/** Wie viele Plätze schon vergeben sind. Ersatz für „Trending“, bis es echte Aufrufzahlen gibt. */
+function seatsTaken(offer: Pick<Offer, 'capacity' | 'free_seats'>): number {
+  return Math.max(0, offer.capacity - offer.free_seats);
+}
+
 /**
- * Abschnitte für den Feed, im Wechsel aus Zeit, Themen und Kategorien.
- * Die Angebote kommen schon nach „als Nächstes relevant“ sortiert und sind bereits
- * auf Stadt und Zeitfilter eingegrenzt. Leere Abschnitte fallen weg.
+ * Reihen für „Entdecken“: Gerade angesagt, Community-Lieblinge, Mega-Rabatte,
+ * Frisch reingekommen, Bring deine Crew, Schnäppchen. Ein Angebot darf in mehreren
+ * Reihen stehen. Nur buchbare Angebote; leere Reihen fallen weg.
  */
 export function buildSections(
   offers: readonly FeedOffer[],
   options: {
-    cityName: string;
-    now?: DateInput;
-    favoriteIds?: readonly string[];
     locale?: Locale;
-  },
+    /** Bewertungen je Standort (`location_id`). Ohne sie fällt „Community-Lieblinge“ weg. */
+    ratings?: ReadonlyMap<string, LocationRatingSummary>;
+  } = {},
 ): FeedSection[] {
-  const now = options.now ?? new Date();
   const locale = options.locale ?? DEFAULT_LOCALE;
   const m = getMessages(locale).logic.sections;
-  const categoryLabels = getLabels(locale).offerCategory;
+  const ratings = options.ratings ?? new Map<string, LocationRatingSummary>();
   const available = offers.filter((offer) => offer.free_seats > 0);
 
-  const time = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
+  const draft = (key: string, title: string, items: FeedOffer[], minOffers = 1): SectionDraft => ({
     section: { key, title, offers: items },
-    minOffers: 1,
+    minOffers,
   });
-  const theme = (key: string, title: string, items: FeedOffer[]): SectionDraft => ({
-    section: { key, title, offers: items },
-    minOffers: THEME_MIN_OFFERS,
-  });
-  // Jede Kategorie hat eine Reihe, so taucht jedes holbare Angebot mindestens einmal auf.
-  const category = (value: OfferCategory, title: string = categoryLabels[value]): SectionDraft => ({
-    section: {
-      key: `kategorie-${value}`,
-      title,
-      offers: available.filter((offer) => offer.category === value),
-      category: value,
-    },
-    minOffers: 1,
-  });
-
-  // Favoriten in der gemerkten Reihenfolge (auch ausgebuchte, die will man ja im Blick behalten)
-  const byId = new Map(offers.map((offer) => [offer.id, offer]));
-  const favorites = (options.favoriteIds ?? []).flatMap((id) => {
-    const offer = byId.get(id);
-    return offer ? [offer] : [];
-  });
+  const ratingOf = (offer: FeedOffer) => ratings.get(offer.location_id);
 
   const drafts: SectionDraft[] = [
-    time('favoriten', m.favorites, favorites),
-    time(
-      'heute',
-      m.today(options.cityName),
-      available.filter((offer) => matchesTimeFilter(offer, 'heute', now)),
-    ),
-    time(
-      'bald',
-      m.soon,
-      available.filter((offer) => {
-        if (offer.type !== 'einzeltermin') return false;
-        const days = calendarDaysBetween(now, offer.starts_at);
-        return days >= 1 && days <= STARTING_SOON_DAYS;
-      }),
-    ),
-    time(
-      'knapp',
-      m.almostFull,
-      available.filter((offer) => isFewSeatsLeft(offer.free_seats)),
-    ),
-    theme(
-      'halber-preis',
-      m.halfPrice,
+    // Wo gerade am meisten Plätze weggehen
+    draft(
+      'trending',
+      m.trending,
       available
-        .filter((offer) => offer.discount_percent >= BIG_DISCOUNT_PERCENT)
-        .sort((a, b) => b.discount_percent - a.discount_percent),
+        .filter((offer) => seatsTaken(offer) > 0)
+        .sort((a, b) => seatsTaken(b) - seatsTaken(a)),
     ),
-    time(
+    // Am besten bewertete Anbieter
+    draft(
+      'highlights',
+      m.highlights,
+      available
+        .filter((offer) => (ratingOf(offer)?.average ?? 0) >= HIGHLIGHT_MIN_RATING)
+        .sort(
+          (a, b) =>
+            (ratingOf(b)?.average ?? 0) - (ratingOf(a)?.average ?? 0) ||
+            (ratingOf(b)?.count ?? 0) - (ratingOf(a)?.count ?? 0),
+        ),
+    ),
+    // Höchster Rabatt in Prozent zuerst
+    draft(
+      'rabatt',
+      m.deals,
+      [...available].sort((a, b) => b.discount_percent - a.discount_percent),
+      RANKING_MIN_OFFERS,
+    ),
+    // Zuletzt veröffentlicht
+    draft(
       'neu',
       m.new,
-      offers
+      available
         .filter((offer): offer is FeedOffer & { createdAt: string } => offer.createdAt !== null)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     ),
-    category('kochen_essen'),
-    category('sport_bewegung'),
-    theme(
-      'feierabend',
-      m.evening,
+    // Für mehrere Leute buchbar
+    draft(
+      'crew',
+      m.crew,
       available.filter(
-        (offer) =>
-          offer.type === 'einzeltermin' && berlinParts(offer.starts_at).hour >= EVENING_FROM_HOUR,
+        (offer) => offer.max_per_user >= CREW_MIN_SEATS && offer.free_seats >= CREW_MIN_SEATS,
       ),
     ),
-    category('kreativ_workshops'),
-    theme(
-      'budget',
-      m.budget(formatPrice(BUDGET_PRICE_CENTS, { omitZeroCents: true, locale })),
-      available
-        .filter((offer) => offer.deal_price_cents <= BUDGET_PRICE_CENTS)
-        .sort((a, b) => a.deal_price_cents - b.deal_price_cents),
+    // Günstigster Deal-Preis zuerst
+    draft(
+      'guenstig',
+      m.budget,
+      [...available].sort((a, b) => a.deal_price_cents - b.deal_price_cents),
+      RANKING_MIN_OFFERS,
     ),
-    category('wellness_beauty'),
-    category('kultur_events'),
-    theme(
-      'flexibel',
-      m.flexible,
-      available.filter((offer) => offer.type === 'zeitraum'),
-    ),
-    category('sonstiges', m.more),
   ];
 
   return drafts

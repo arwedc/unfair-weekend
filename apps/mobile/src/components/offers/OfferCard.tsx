@@ -7,7 +7,8 @@ import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, radius, space } from '@/theme';
+import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
+import { badge, colors, fonts, radii, radius, space } from '@/theme';
 
 import { OfferImage } from './OfferImage';
 import { PriceRow } from './PriceRow';
@@ -72,6 +73,14 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
               onImage
             />
           ))}
+        </View>
+        <View style={styles.categoryTag} accessible={false}>
+          <Text style={styles.categoryEmoji} maxFontSizeMultiplier={1.2}>
+            {CATEGORY_EMOJIS[offer.category].emoji}
+          </Text>
+          <Text variant="caption" style={styles.categoryText} maxFontSizeMultiplier={1.3}>
+            {t.parts.categoryShort[offer.category]}
+          </Text>
         </View>
       </View>
 
@@ -138,6 +147,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: space[1.5],
   },
+  categoryTag: {
+    position: 'absolute',
+    left: badge.inset,
+    bottom: badge.inset,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
+    paddingHorizontal: space[2],
+    paddingVertical: space[1],
+    borderRadius: radii.full,
+    backgroundColor: colors.badge.neutral.background,
+  },
+  categoryEmoji: { fontSize: 14, lineHeight: 18 },
+  categoryText: { fontFamily: fonts.bold, color: colors.badge.neutral.foreground },
   body: { paddingTop: space[3], gap: space[1] },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   metaText: { flexShrink: 1 },

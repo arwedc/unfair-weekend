@@ -12,6 +12,9 @@ export const screensDe = {
     search: 'Angebote durchsuchen',
     searchPlaceholder: 'Kochkurs, Yoga, Keramik …',
     count: (n: number) => (n === 1 ? '1 Angebot' : `${n} Angebote`),
+    dealCount: (n: number) => (n === 1 ? '1 Deal am Start 🔥' : `${n} Deals am Start 🔥`),
+    categoryHintOn: 'Zeigt nur diese Kategorie',
+    categoryHintOff: 'Hebt den Filter auf',
     comingSoonTitle: (city: string) => `Bald auch in ${city} ✨`,
     comingSoonText:
       'Hier suchen wir gerade die ersten Partner. Bis dahin findest du Angebote in den anderen Städten.',
@@ -115,6 +118,9 @@ export const screensEn: Widen<typeof screensDe> = {
     search: 'Search offers',
     searchPlaceholder: 'Cooking class, yoga, pottery …',
     count: (n) => (n === 1 ? '1 offer' : `${n} offers`),
+    dealCount: (n) => (n === 1 ? '1 deal ready 🔥' : `${n} deals ready 🔥`),
+    categoryHintOn: 'Shows only this category',
+    categoryHintOff: 'Removes the filter',
     comingSoonTitle: (city) => `Coming soon to ${city} ✨`,
     comingSoonText:
       "We're looking for the first partners here. Until then, you'll find offers in the other cities.",

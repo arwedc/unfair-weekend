@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategoryCircles } from '@/components/feed/CategoryCircles';
 import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
 import { FilterBar } from '@/components/offers/FilterBar';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
@@ -21,6 +22,7 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { useCityFromLocation } from '@/features/offers/use-location-city';
 import type { FeedOffer } from '@/features/offers/types';
+import { useLocationRatings } from '@/features/reviews/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, space } from '@/theme';
@@ -100,6 +102,8 @@ export function FeedScreen() {
   const listMode = isListMode(filters);
   const filtering = hasActiveFilters(filters);
   const visible = filterOffers(cityOffers, filters);
+  // Für „Community-Lieblinge“: Bewertungen der Anbieter in dieser Stadt.
+  const { data: ratings } = useLocationRatings(cityOffers.map((offer) => offer.location_id));
   // Mehrere Kategorien (ohne Suche): je Kategorie eine Reihe zum Wischen, untereinander.
   const byCategory = filters.categories.length > 1 && filters.query.trim() === '';
   // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.
@@ -113,7 +117,7 @@ export function FeedScreen() {
         }))
       : listMode
         ? []
-        : buildSections(visible, { cityName: city.name, locale });
+        : buildSections(visible, { locale, ratings });
   // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
   // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
   const listItems = isPending || byCategory || !listMode ? [] : visible;
@@ -189,6 +193,15 @@ export function FeedScreen() {
 
   const header = (
     <View style={styles.header}>
+      <View style={styles.intro}>
+        {cityOffers.length > 0 ? (
+          <Text variant="headline" numberOfLines={1} style={styles.inset}>
+            {m.dealCount(cityOffers.length)}
+          </Text>
+        ) : null}
+        <CategoryCircles />
+      </View>
+
       {isPending ? <LoadingState /> : null}
 
       {sections.map((section) => (
@@ -311,6 +324,7 @@ const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: colors.background.default },
   content: { paddingTop: space[5], paddingBottom: space[12] },
   header: { gap: space[6], paddingBottom: space[4] },
+  intro: { gap: space[3] },
   inset: { paddingHorizontal: layout.screenPaddingX },
   section: { gap: space[3] },
   carousel: { flexDirection: 'row', paddingHorizontal: layout.screenPaddingX, gap: space[3] },
