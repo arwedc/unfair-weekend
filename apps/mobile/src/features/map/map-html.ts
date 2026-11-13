@@ -207,7 +207,8 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     style: config.styleUrl,
     center: config.center,
     zoom: config.zoom,
-    minZoom: 9,
+    // Weit raus bis ganz Europa (der Kartenstil hat ab Zoom 0 Daten).
+    minZoom: 3,
     maxZoom: 18,
     attributionControl: false,
     dragRotate: false,

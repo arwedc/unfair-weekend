@@ -1,11 +1,12 @@
-import { formatDiscount, formatPrice, isFewSeatsLeft, seatsLabel } from '@repo/shared';
+import { formatPrice, isFewSeatsLeft, seatsLabel } from '@repo/shared';
 import { useRouter } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
+import { DiscountTag } from '@/components/offers/DiscountTag';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { PriceRow } from '@/components/offers/PriceRow';
-import { Badge, PressableScale, Text } from '@/components/ui';
+import { PressableScale, Text } from '@/components/ui';
 import { offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { colors, radius, shadow, space } from '@/theme';
@@ -33,6 +34,7 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
         offer.location_name,
         when,
         `${formatPrice(offer.deal_price_cents)} statt ${formatPrice(offer.original_price_cents)}`,
+        `${offer.discount_percent} Prozent günstiger`,
         seatsLabel(offer.free_seats),
         position,
       ].join(', ')}
@@ -41,15 +43,7 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
       onPress={() => router.push({ pathname: '/angebot/[id]', params: { id: offer.id } })}
       style={[styles.tile, { width }]}
     >
-      <View>
-        <OfferImage path={offer.cover_image_path} priority="high" style={styles.image} />
-        <Badge
-          label={formatDiscount(offer.discount_percent)}
-          variant="deal"
-          onImage
-          style={styles.badge}
-        />
-      </View>
+      <OfferImage path={offer.cover_image_path} priority="high" style={styles.image} />
 
       <View style={styles.body}>
         <Text variant="bodyStrong" numberOfLines={2}>
@@ -63,17 +57,18 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
         </View>
         <Text variant="caption" color="secondary" numberOfLines={1}>
           {when}
+          {fewSeats ? (
+            <Text variant="caption" color="accent">
+              {` · ${seatsLabel(offer.free_seats)}`}
+            </Text>
+          ) : null}
         </Text>
         <View style={styles.bottomRow}>
           <PriceRow
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
           />
-          {fewSeats ? (
-            <Text variant="caption" color="accent" numberOfLines={1}>
-              {seatsLabel(offer.free_seats)}
-            </Text>
-          ) : null}
+          <DiscountTag percent={offer.discount_percent} />
         </View>
       </View>
     </PressableScale>
@@ -99,14 +94,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.image,
     borderCurve: 'continuous',
   },
-  badge: { position: 'absolute', top: space[1.5], left: space[1.5] },
   body: { flex: 1, justifyContent: 'center', gap: space[0.5], paddingRight: space[1] },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
   shrink: { flexShrink: 1 },
+  // Preis und Rabatt direkt nebeneinander, mittig auf einer Linie.
   bottomRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: space[2],
     marginTop: space[1],
   },
