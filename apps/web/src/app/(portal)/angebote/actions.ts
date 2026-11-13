@@ -54,10 +54,7 @@ const RPC_CODE_TO_FIELD: Partial<Record<string, OfferFormField>> = {
 function readValues(formData: FormData): OfferFormValues {
   const values: OfferFormValues = {};
   for (const field of OFFER_FORM_FIELDS) values[field] = String(formData.get(field) ?? '').trim();
-  values.image_paths = formData
-    .getAll('image_paths')
-    .map(String)
-    .filter((p) => p.length > 0);
+  values.image_paths = [];
   return values;
 }
 

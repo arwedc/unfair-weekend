@@ -14,7 +14,6 @@ import { OFFER_CATEGORIES, OFFER_LIMITS } from '@repo/shared';
 import { discountPercent, formatDiscount, formatPrice } from '@repo/shared/utils';
 import { Button, buttonClass, Card, Field, inputClass } from '@/components/ui';
 import { Notice, TypePicker, type OfferType } from '@/components/offers/form-parts';
-import { ImagePicker } from '@/components/offers/image-picker';
 import { StepProgress } from '@/components/offers/step-progress';
 import {
   LOCKED_WHEN_CODES,
@@ -58,7 +57,6 @@ function ArrowIcon({ direction }: { direction: 'left' | 'right' }) {
 export interface OfferFormProps {
   action: (prev: OfferFormState, formData: FormData) => Promise<OfferFormState>;
   mode: 'create' | 'edit';
-  locationId: string;
   initialValues: OfferFormValues;
   minDiscountPercent: number;
   /** Es gibt schon Codes: Zeit, Adresse und Preise sind gesperrt. */
@@ -87,7 +85,6 @@ const TEMPLATE_STEP_ORDER = [
 export function OfferForm({
   action,
   mode,
-  locationId,
   initialValues,
   minDiscountPercent,
   hasCodes = false,
@@ -289,13 +286,6 @@ export function OfferForm({
             ))}
           </select>
         </Field>
-        <div className="sm:col-span-2">
-          <ImagePicker
-            locationId={locationId}
-            initialPaths={values.image_paths ?? []}
-            error={err('image_paths')}
-          />
-        </div>
       </>
     ),
     wann: (
