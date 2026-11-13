@@ -5,7 +5,6 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { OFFER_CATEGORIES, OFFER_LIMITS, OFFER_TEMPLATE_LIMITS } from '@repo/shared';
 import { discountPercent, formatDiscount, formatPrice } from '@repo/shared/utils';
 import { Notice, TypePicker, type OfferType } from '@/components/offers/form-parts';
-import { ImagePicker } from '@/components/offers/image-picker';
 import { Button, buttonClass, Card, Field, inputClass } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
 import { parseEuroToCents } from '@/lib/offers/form';
@@ -20,7 +19,6 @@ import {
 export interface TemplateFormProps {
   action: (prev: TemplateFormState, formData: FormData) => Promise<TemplateFormState>;
   mode: 'create' | 'edit';
-  locationId: string;
   initialValues: TemplateFormValues;
   minDiscountPercent: number;
 }
@@ -32,7 +30,6 @@ export interface TemplateFormProps {
 export function TemplateForm({
   action,
   mode,
-  locationId,
   initialValues,
   minDiscountPercent,
 }: TemplateFormProps) {
@@ -144,13 +141,6 @@ export function TemplateForm({
               ))}
             </select>
           </Field>
-          <div className="sm:col-span-2">
-            <ImagePicker
-              locationId={locationId}
-              initialPaths={values.image_paths ?? []}
-              error={err('image_paths')}
-            />
-          </div>
         </div>
       </Card>
 

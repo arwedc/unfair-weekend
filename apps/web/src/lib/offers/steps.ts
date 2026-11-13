@@ -58,10 +58,7 @@ export function readFormValues(form: HTMLFormElement): OfferFormValues {
     street: get('street'),
     postal_code: get('postal_code'),
     city: get('city'),
-    image_paths: data
-      .getAll('image_paths')
-      .map(String)
-      .filter((p) => p.length > 0),
+    image_paths: [],
   };
 }
 

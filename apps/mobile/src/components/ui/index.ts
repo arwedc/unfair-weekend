@@ -11,6 +11,7 @@ export { IconButton, type IconButtonProps } from './IconButton';
 export { Input, type InputProps } from './Input';
 export { ListRow, type ListRowProps } from './ListRow';
 export { PressableScale, type PressableScaleProps } from './PressableScale';
+export { ProgressBar, type ProgressBarProps } from './ProgressBar';
 export { Screen, type ScreenProps } from './Screen';
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader';
 export { SegmentedTabs, type SegmentedTab, type SegmentedTabsProps } from './SegmentedTabs';

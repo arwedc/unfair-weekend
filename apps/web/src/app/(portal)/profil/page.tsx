@@ -2,11 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { CompanyForm } from '@/components/company/company-form';
+import { LocationImages } from '@/components/company/location-images';
 import { requireAccount } from '@/lib/auth';
 import { getT } from '@/lib/i18n/locale';
 import { companyToFormValues } from '@/lib/company/form';
-import { getMyCompany } from '@/lib/company/queries';
-import { updateCompanyAction } from './actions';
+import { getMyCompany, getMyLocationImages } from '@/lib/company/queries';
+import { updateCompanyAction, updateLocationImagesAction } from './actions';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -15,15 +16,26 @@ export async function generateMetadata(): Promise<Metadata> {
 
 async function CompanyProfile() {
   const { location } = await requireAccount();
-  const company = await getMyCompany(location.company_id);
+  const [company, imagePaths] = await Promise.all([
+    getMyCompany(location.company_id),
+    getMyLocationImages(location.id),
+  ]);
   if (!company) notFound();
 
   return (
-    <CompanyForm
-      action={updateCompanyAction}
-      companyId={company.id}
-      initialValues={companyToFormValues(company)}
-    />
+    <>
+      <CompanyForm
+        action={updateCompanyAction}
+        companyId={company.id}
+        initialValues={companyToFormValues(company)}
+      />
+      <LocationImages
+        key={imagePaths.join('|')}
+        locationId={location.id}
+        initialPaths={imagePaths}
+        action={updateLocationImagesAction}
+      />
+    </>
   );
 }
 
