@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation';
 import { emailSchema } from '@repo/shared';
-import { getAccount } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
 export interface LoginState {
@@ -30,9 +29,13 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     };
   }
 
-  // Die Website ist nur für Standorte. Nutzer- und Admin-Konten direkt wieder abmelden.
-  const account = await getAccount();
-  if (!account) {
+  const { data: accountData, error: accountError } = await supabase.rpc('get_my_account');
+  const account = accountData as unknown as { role?: string; location?: unknown } | null;
+
+  if (!accountError && account?.role === 'admin') redirect('/admin/zahlungen');
+
+  // Die Website ist für Standorte und Admins. Nutzerkonten werden wieder abgemeldet.
+  if (accountError || account?.role !== 'standort' || !account.location) {
     await supabase.auth.signOut();
     return { error: 'Dieses Konto gehört zu keinem Standort.', email };
   }
