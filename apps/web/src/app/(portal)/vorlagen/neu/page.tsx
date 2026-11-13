@@ -3,11 +3,15 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { TemplateForm } from '@/components/templates/template-form';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
 import { getMinDiscountPercent, getMyOffer } from '@/lib/offers/queries';
 import { offerToTemplateValues, type TemplateFormValues } from '@/lib/templates/form';
 import { createTemplateAction } from '../actions';
 
-export const metadata: Metadata = { title: 'Neue Vorlage' };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t.templates.newTemplate };
+}
 
 interface PageProps {
   /** `angebot`: bestehendes Angebot als Ausgangspunkt („Als Vorlage speichern“). */
@@ -15,13 +19,16 @@ interface PageProps {
 }
 
 async function NewTemplateForm({ searchParams }: PageProps) {
-  const [{ location }, { angebot }] = await Promise.all([requireAccount(), searchParams]);
+  const [{ location }, { angebot }, { t }] = await Promise.all([
+    requireAccount(),
+    searchParams,
+    getT(),
+  ]);
 
   if (location.status !== 'approved') {
     return (
       <p className="rounded-card bg-accent-subtle px-4 py-3 text-callout text-accent-on-subtle">
-        Dein Standort ist noch nicht freigeschaltet. Sobald wir ihn geprüft haben, kannst du hier
-        Vorlagen anlegen.
+        {t.templates.notApproved}
       </p>
     );
   }
@@ -38,7 +45,7 @@ async function NewTemplateForm({ searchParams }: PageProps) {
     <>
       {offer ? (
         <p className="mb-5 rounded-card bg-accent-subtle px-4 py-3 text-subhead text-accent-on-subtle">
-          Vorausgefüllt mit den Angaben aus „{offer.title}“. Gib der Vorlage noch einen Namen.
+          {t.templates.prefilledFrom(offer.title)}
         </p>
       ) : null}
       <TemplateForm
@@ -52,15 +59,16 @@ async function NewTemplateForm({ searchParams }: PageProps) {
   );
 }
 
-export default function NewTemplatePage(props: PageProps) {
+export default async function NewTemplatePage(props: PageProps) {
+  const { t } = await getT();
   return (
     <>
       <Link href="/vorlagen" className="text-subhead text-text-link hover:underline">
-        ← Zurück zu den Vorlagen
+        {t.templates.backToTemplates}
       </Link>
-      <h1 className="mb-6 mt-2 text-title2 text-text-primary">Neue Vorlage</h1>
+      <h1 className="mb-6 mt-2 text-title2 text-text-primary">{t.templates.newTemplate}</h1>
       <Suspense
-        fallback={<p className="text-callout text-text-tertiary">Formular wird geladen …</p>}
+        fallback={<p className="text-callout text-text-tertiary">{t.offers.formLoading}</p>}
       >
         <NewTemplateForm {...props} />
       </Suspense>

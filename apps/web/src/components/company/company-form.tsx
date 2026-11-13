@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import { Button, Card, Field, inputClass } from '@/components/ui';
 import { LogoPicker } from '@/components/company/logo-picker';
+import { useT } from '@/lib/i18n/context';
 import type { CompanyFormField, CompanyFormState, CompanyFormValues } from '@/lib/company/form';
 
 const DESCRIPTION_MAX = 2000;
@@ -16,6 +17,8 @@ export function CompanyForm({
   companyId: string;
   initialValues: CompanyFormValues;
 }) {
+  const { t } = useT();
+  const p = t.profile;
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
     values: initialValues,
@@ -43,12 +46,7 @@ export function CompanyForm({
           savedPath={initialValues.logo_path ?? ''}
           error={err('logo_path')}
         />
-        <Field
-          id="name"
-          label="Name des Unternehmens"
-          hint="So erscheint ihr in der App bei allen Angeboten."
-          error={err('name')}
-        >
+        <Field id="name" label={p.name} hint={p.nameHint} error={err('name')}>
           <input
             id="name"
             name="name"
@@ -62,8 +60,8 @@ export function CompanyForm({
         </Field>
         <Field
           id="description"
-          label="Beschreibung"
-          hint={`Wer seid ihr, was macht euch aus? ${description.length} / ${DESCRIPTION_MAX} Zeichen.`}
+          label={p.description}
+          hint={p.descriptionHint(description.length, DESCRIPTION_MAX)}
           error={err('description')}
         >
           <textarea
@@ -92,13 +90,13 @@ export function CompanyForm({
           role="status"
           className="rounded-card bg-status-success-subtle px-4 py-3 text-subhead text-status-success-on-subtle"
         >
-          Profil gespeichert.
+          {p.saved}
         </p>
       ) : null}
 
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Wird gespeichert …' : 'Änderungen speichern'}
+          {pending ? t.common.saving : t.common.saveChanges}
         </Button>
       </div>
     </form>

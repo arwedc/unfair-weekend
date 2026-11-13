@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { companySchema, parseRpcError, STORAGE_BUCKETS } from '@repo/shared';
+import { translateValidationMessage } from '@repo/shared/i18n';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
 import {
   COMPANY_FORM_FIELDS,
   type CompanyFormField,
@@ -27,25 +29,25 @@ export async function updateCompanyAction(
   _prev: CompanyFormState,
   formData: FormData,
 ): Promise<CompanyFormState> {
-  const { location } = await requireAccount();
+  const [{ location }, { locale, t }] = await Promise.all([requireAccount(), getT()]);
   const values = readValues(formData);
   const existing = await getMyCompany(location.company_id);
-  if (!existing) return { errors: {}, formError: 'Dein Unternehmen wurde nicht gefunden.', values };
+  if (!existing) return { errors: {}, formError: t.profile.notFound, values };
 
   const parsed = companySchema.safeParse(values);
   if (!parsed.success) {
     const errors: CompanyFormState['errors'] = {};
     for (const issue of parsed.error.issues) {
       const key = String(issue.path[0] ?? '') as CompanyFormField;
-      errors[key] ??= issue.message;
+      errors[key] ??= translateValidationMessage(issue.message, locale);
     }
-    return { errors, values, formError: 'Bitte die markierten Felder prüfen.' };
+    return { errors, values, formError: t.common.checkFields };
   }
 
   // Neues Logo nur aus dem eigenen Ordner. Ein unverändertes (z. B. Seed-URL) bleibt erlaubt.
   const logoPath = parsed.data.logo_path;
   if (logoPath && logoPath !== existing.logo_path && !isOwnLogoPath(logoPath, existing.id)) {
-    return { errors: { logo_path: 'Bitte das Logo erneut hochladen.' }, values };
+    return { errors: { logo_path: t.profile.logo.reupload }, values };
   }
 
   const supabase = await createClient();
@@ -55,8 +57,8 @@ export async function updateCompanyAction(
     ...(logoPath ? { p_logo_path: logoPath } : {}),
   });
   if (error || !data) {
-    const rpc = parseRpcError(error);
-    return { errors: {}, values, formError: rpc?.message ?? 'Speichern hat nicht geklappt.' };
+    const rpc = parseRpcError(error, locale);
+    return { errors: {}, values, formError: rpc?.message ?? t.common.saveFailed };
   }
 
   // Altes Logo aufräumen, wenn es ersetzt oder entfernt wurde. Klappt das nicht, ist es unkritisch.

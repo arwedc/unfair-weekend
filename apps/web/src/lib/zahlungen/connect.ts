@@ -1,10 +1,6 @@
 import 'server-only';
-import {
-  FUNCTION_ERROR_MESSAGES,
-  RPC_ERROR_MESSAGES,
-  UNKNOWN_ERROR_MESSAGE,
-  isRpcErrorCode,
-} from '@repo/shared';
+import { FUNCTION_ERROR_MESSAGES, getErrorMessages, isRpcErrorCode } from '@repo/shared';
+import { getLocale } from '@/lib/i18n/locale';
 import { createClient } from '@/lib/supabase/server';
 
 type ConnectRequest =
@@ -17,13 +13,14 @@ interface ConnectResponse {
   error?: { code?: string };
 }
 
-function errorMessage(code: string | undefined): string {
-  if (!code) return UNKNOWN_ERROR_MESSAGE;
-  if (isRpcErrorCode(code)) return RPC_ERROR_MESSAGES[code];
+async function errorMessage(code: string | undefined): Promise<string> {
+  const messages = getErrorMessages(await getLocale());
+  if (!code) return messages.unknown;
+  if (isRpcErrorCode(code)) return messages.rpc[code];
   if (Object.hasOwn(FUNCTION_ERROR_MESSAGES, code)) {
-    return FUNCTION_ERROR_MESSAGES[code as keyof typeof FUNCTION_ERROR_MESSAGES];
+    return messages.functions[code as keyof typeof FUNCTION_ERROR_MESSAGES];
   }
-  return UNKNOWN_ERROR_MESSAGE;
+  return messages.unknown;
 }
 
 /** Ruft die Connect-Function mit der aktuellen Standort-Session auf. */
@@ -47,7 +44,7 @@ export async function invokeConnect(request: ConnectRequest): Promise<{
     }
   }
 
-  if (error || result?.error) return { result, error: errorMessage(result?.error?.code) };
+  if (error || result?.error) return { result, error: await errorMessage(result?.error?.code) };
   return { result };
 }
 

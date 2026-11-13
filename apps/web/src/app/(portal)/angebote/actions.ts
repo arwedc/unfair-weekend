@@ -10,7 +10,10 @@ import {
   toRpcArgs,
   type OfferInput,
 } from '@repo/shared';
+import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
+import type { Messages } from '@/lib/i18n/messages';
 import { berlinLocalToUtc } from '@/lib/offers/berlin-time';
 import {
   joinAddress,
@@ -70,25 +73,27 @@ async function buildInput(
   values: OfferFormValues,
   context: { existing?: Offer; minDiscountPercent: number; strict: boolean },
 ): Promise<{ input?: OfferInput; errors: Errors }> {
+  const { locale, t } = await getT();
+  const m = t.offers.validation;
   const errors: Errors = {};
   const v = (field: (typeof OFFER_FORM_FIELDS)[number]) => values[field] ?? '';
 
   const originalCents = parseEuroToCents(v('original_price'));
   const dealCents = parseEuroToCents(v('deal_price'));
-  if (originalCents === null) errors.original_price = 'Bitte einen Preis eingeben, z. B. 69,00.';
-  if (dealCents === null) errors.deal_price = 'Bitte einen Preis eingeben, z. B. 39,00.';
+  if (originalCents === null) errors.original_price = m.priceOriginal;
+  if (dealCents === null) errors.deal_price = m.priceDeal;
 
   const startsAt = berlinLocalToUtc(v('starts_at'));
   const endsAt = berlinLocalToUtc(v('ends_at'));
-  if (!startsAt) errors.starts_at = 'Bitte Datum und Uhrzeit wählen.';
-  if (!endsAt) errors.ends_at = 'Bitte Datum und Uhrzeit wählen.';
+  if (!startsAt) errors.starts_at = m.dateTime;
+  if (!endsAt) errors.ends_at = m.dateTime;
 
   const street = v('street');
   const postalCode = v('postal_code');
   const city = v('city');
-  if (street.length < 2) errors.street = 'Bitte Straße und Hausnummer eingeben.';
-  if (!/^\d{5}$/.test(postalCode)) errors.postal_code = 'Fünfstellige Postleitzahl.';
-  if (city.length < 2) errors.city = 'Bitte den Ort eingeben.';
+  if (street.length < 2) errors.street = m.street;
+  if (!/^\d{5}$/.test(postalCode)) errors.postal_code = m.postalCode;
+  if (city.length < 2) errors.city = m.city;
   const address = joinAddress(street, postalCode, city);
 
   // Koordinaten: unveränderte Adresse behält ihre Koordinaten, sonst Geocoding.
@@ -100,7 +105,7 @@ async function buildInput(
       lng = context.existing.lng;
     } else {
       const supabase = await createClient();
-      const result = await geocode(supabase, street, postalCode, city);
+      const result = await geocode(supabase, street, postalCode, city, locale);
       if (result.ok) {
         lat = result.lat;
         lng = result.lng;
@@ -136,7 +141,7 @@ async function buildInput(
     for (const issue of parsed.error.issues) {
       const key = String(issue.path[0] ?? '');
       const field = SCHEMA_FIELD_TO_FORM[key] ?? (key as OfferFormField);
-      errors[field] ??= issue.message;
+      errors[field] ??= translateValidationMessage(issue.message, locale);
     }
     return { errors };
   }
@@ -146,9 +151,11 @@ async function buildInput(
 function rpcFailure(
   error: Parameters<typeof parseRpcError>[0],
   values: OfferFormValues,
+  locale: Locale,
+  t: Messages,
 ): OfferFormState {
-  const parsed = parseRpcError(error);
-  const message = parsed?.message ?? 'Speichern hat nicht geklappt.';
+  const parsed = parseRpcError(error, locale);
+  const message = parsed?.message ?? t.common.saveFailed;
   const field = parsed ? RPC_CODE_TO_FIELD[parsed.code] : undefined;
   return field
     ? { errors: { [field]: message }, values }
@@ -160,14 +167,15 @@ export async function createOfferAction(
   formData: FormData,
 ): Promise<OfferFormState> {
   await requireAccount();
+  const { locale, t } = await getT();
   const values = readValues(formData);
   const minDiscountPercent = await getMinDiscountPercent();
   const { input, errors } = await buildInput(values, { minDiscountPercent, strict: true });
-  if (!input) return { errors, values, formError: 'Bitte die markierten Felder prüfen.' };
+  if (!input) return { errors, values, formError: t.common.checkFields };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('create_offer', toRpcArgs(input));
-  if (error || !data) return rpcFailure(error, values);
+  if (error || !data) return rpcFailure(error, values, locale, t);
 
   revalidatePath('/angebote');
   redirect(`/angebote/${data.id}?neu=1`);
@@ -179,8 +187,9 @@ export async function updateOfferAction(
   formData: FormData,
 ): Promise<OfferFormState> {
   await requireAccount();
+  const { locale, t } = await getT();
   const existing = await getMyOffer(offerId);
-  if (!existing) return { errors: {}, formError: 'Dieses Angebot gibt es nicht (mehr).' };
+  if (!existing) return { errors: {}, formError: t.offers.notFound };
 
   const values = readValues(formData);
   const locked = await offerHasCodes(offerId);
@@ -203,14 +212,14 @@ export async function updateOfferAction(
     minDiscountPercent,
     strict: changedPriceOrTime,
   });
-  if (!input) return { errors, values, formError: 'Bitte die markierten Felder prüfen.' };
+  if (!input) return { errors, values, formError: t.common.checkFields };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc('update_offer', {
     p_offer_id: offerId,
     ...toRpcArgs(input),
   });
-  if (error) return rpcFailure(error, values);
+  if (error) return rpcFailure(error, values, locale, t);
 
   revalidatePath('/angebote');
   revalidatePath(`/angebote/${offerId}`);
@@ -227,16 +236,22 @@ export async function cancelOfferAction(
   formData: FormData,
 ): Promise<CancelOfferState> {
   await requireAccount();
+  const { locale, t } = await getT();
   const reasonRaw = String(formData.get('reason') ?? '').trim();
   const parsed = offerReasonSchema.safeParse({ reason: reasonRaw || undefined });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Begründung zu lang.' };
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]?.message;
+    return {
+      error: issue ? translateValidationMessage(issue, locale) : t.offers.cancel.reasonTooLong,
+    };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('cancel_offer', {
     p_offer_id: offerId,
     ...(parsed.data.reason ? { p_reason: parsed.data.reason } : {}),
   });
-  if (error) return { error: parseRpcError(error)?.message ?? 'Absagen hat nicht geklappt.' };
+  if (error) return { error: parseRpcError(error, locale)?.message ?? t.offers.cancel.failed };
 
   const cancelled = (data as { cancelled_vouchers?: number } | null)?.cancelled_vouchers ?? 0;
   revalidatePath('/angebote');

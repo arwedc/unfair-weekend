@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { emailSchema } from '@repo/shared';
+import { getT } from '@/lib/i18n/locale';
 import { createClient } from '@/lib/supabase/server';
 
 export interface LoginState {
@@ -10,11 +11,12 @@ export interface LoginState {
 }
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const { t } = await getT();
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
 
   if (!emailSchema.safeParse(email).success || !password) {
-    return { error: 'Bitte E-Mail und Passwort eingeben.', email };
+    return { error: t.common.login.missing, email };
   }
 
   const supabase = await createClient();
@@ -22,9 +24,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (error) {
     return {
       error:
-        error.code === 'email_not_confirmed'
-          ? 'Bitte bestätige zuerst deine E-Mail-Adresse.'
-          : 'E-Mail oder Passwort stimmt nicht.',
+        error.code === 'email_not_confirmed' ? t.common.login.notConfirmed : t.common.login.wrong,
       email,
     };
   }
@@ -37,7 +37,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   // Die Website ist für Standorte und Admins. Nutzerkonten werden wieder abgemeldet.
   if (accountError || account?.role !== 'standort' || !account.location) {
     await supabase.auth.signOut();
-    return { error: 'Dieses Konto gehört zu keinem Standort.', email };
+    return { error: t.common.login.noLocation, email };
   }
 
   redirect('/angebote');

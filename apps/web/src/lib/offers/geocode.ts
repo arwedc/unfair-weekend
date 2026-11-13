@@ -1,6 +1,7 @@
 import 'server-only';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { FUNCTION_ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE } from '@repo/shared';
+import { FUNCTION_ERROR_MESSAGES, getErrorMessages } from '@repo/shared';
+import type { Locale } from '@repo/shared/i18n';
 import type { createClient } from '@/lib/supabase/server';
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -13,7 +14,9 @@ export async function geocode(
   street: string,
   postalCode: string,
   city: string,
+  locale: Locale,
 ): Promise<GeocodeResult> {
+  const messages = getErrorMessages(locale);
   const { data, error } = await supabase.functions.invoke<{ lat: number; lng: number }>('geocode', {
     body: { street, postal_code: postalCode, city },
   });
@@ -27,10 +30,12 @@ export async function geocode(
     if (code && code in FUNCTION_ERROR_MESSAGES) {
       return {
         ok: false,
-        message: FUNCTION_ERROR_MESSAGES[code as keyof typeof FUNCTION_ERROR_MESSAGES],
+        message: messages.functions[code as keyof typeof FUNCTION_ERROR_MESSAGES],
       };
     }
-    if (body?.error?.message) return { ok: false, message: body.error.message };
+    if (body?.error?.message && locale === 'de') return { ok: false, message: body.error.message };
   }
-  return { ok: false, message: `Adresse konnte nicht geprüft werden. ${UNKNOWN_ERROR_MESSAGE}` };
+  const prefix =
+    locale === 'en' ? 'The address could not be checked.' : 'Adresse konnte nicht geprüft werden.';
+  return { ok: false, message: `${prefix} ${messages.unknown}` };
 }

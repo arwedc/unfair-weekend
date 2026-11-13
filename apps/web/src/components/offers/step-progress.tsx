@@ -1,5 +1,7 @@
 'use client';
 
+import { useT } from '@/lib/i18n/context';
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden className="h-3.5 w-3.5">
@@ -30,14 +32,16 @@ export function StepProgress({
   reached: number;
   onSelect: (index: number) => void;
 }) {
+  const { t } = useT();
+  const p = t.offers.progress;
   const total = steps.length;
   const percent = Math.round(((current + 1) / total) * 100);
   const currentTitle = steps[current]?.title ?? '';
 
   return (
-    <nav aria-label="Fortschritt">
+    <nav aria-label={p.label}>
       <p className="text-footnote font-semibold uppercase tracking-wider text-text-accent">
-        Schritt {current + 1} von {total}
+        {p.stepOf(current + 1, total)}
       </p>
 
       <div
@@ -45,7 +49,7 @@ export function StepProgress({
         aria-valuemin={1}
         aria-valuemax={total}
         aria-valuenow={current + 1}
-        aria-valuetext={`Schritt ${current + 1} von ${total}: ${currentTitle}`}
+        aria-valuetext={p.stepOfTitle(current + 1, total, currentTitle)}
         className="mt-2.5 h-2 overflow-hidden rounded-full bg-background-muted"
       >
         <div
@@ -66,8 +70,8 @@ export function StepProgress({
                 onClick={() => onSelect(i)}
                 disabled={!selectable}
                 aria-current={active ? 'step' : undefined}
-                aria-label={`Schritt ${i + 1}: ${s.title}${done ? ' (erledigt)' : ''}`}
-                title={selectable ? `Zu „${s.title}“ wechseln` : undefined}
+                aria-label={p.stepLabel(i + 1, s.title, done)}
+                title={selectable ? p.goTo(s.title) : undefined}
                 className="group flex w-full min-w-0 items-center gap-2 rounded-input py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus enabled:cursor-pointer disabled:cursor-default"
               >
                 <span

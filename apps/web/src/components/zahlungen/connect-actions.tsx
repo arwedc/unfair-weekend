@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { Button } from '@/components/ui';
+import { useT } from '@/lib/i18n/context';
 import {
   openStripeDashboardAction,
   startOnboardingAction,
@@ -11,11 +12,12 @@ import {
 const INITIAL_STATE: ConnectActionState = {};
 
 export function OnboardingButton() {
+  const { t } = useT();
   const [state, action, pending] = useActionState(startOnboardingAction, INITIAL_STATE);
   return (
     <form action={action}>
       <Button type="submit" disabled={pending}>
-        {pending ? 'Stripe wird geöffnet …' : 'Auszahlungen einrichten'}
+        {pending ? t.payments.opening : t.payments.setup}
       </Button>
       {state.error ? (
         <p role="alert" className="mt-3 text-footnote text-status-error-text">
@@ -27,11 +29,12 @@ export function OnboardingButton() {
 }
 
 export function StripeDashboardButton() {
+  const { t } = useT();
   const [state, action, pending] = useActionState(openStripeDashboardAction, INITIAL_STATE);
   return (
     <form action={action}>
       <Button type="submit" variant="secondary" disabled={pending}>
-        {pending ? 'Stripe wird geöffnet …' : 'Stripe-Dashboard öffnen'}
+        {pending ? t.payments.opening : t.payments.dashboard}
       </Button>
       {state.error ? (
         <p role="alert" className="mt-3 text-footnote text-status-error-text">

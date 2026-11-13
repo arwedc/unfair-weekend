@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_LIMITS } from '@repo/shared';
+import { OFFER_CATEGORIES, OFFER_LIMITS } from '@repo/shared';
 import { discountPercent, formatDiscount, formatPrice } from '@repo/shared/utils';
 import { Button, buttonClass, Card, Field, inputClass } from '@/components/ui';
 import { Notice, TypePicker, type OfferType } from '@/components/offers/form-parts';
@@ -31,6 +31,7 @@ import {
   type OfferStepId,
   type StepErrors,
 } from '@/lib/offers/steps';
+import { useT } from '@/lib/i18n/context';
 import { addMinutesToBerlinInput, formatDuration } from '@/lib/templates/form';
 
 const LAST_STEP = OFFER_STEPS.length - 1;
@@ -93,6 +94,9 @@ export function OfferForm({
   seatsTaken = 0,
   template,
 }: OfferFormProps) {
+  const { locale, t, labels } = useT();
+  const f = t.offers.form;
+  const stepText = t.offers.steps;
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
     values: initialValues,
@@ -166,7 +170,10 @@ export function OfferForm({
   function checkStep(index: number): boolean {
     const def = OFFER_STEPS[index];
     if (!def || !formRef.current) return true;
-    const found = validateStep(def.id, readFormValues(formRef.current), { minDiscountPercent });
+    const found = validateStep(def.id, readFormValues(formRef.current), {
+      minDiscountPercent,
+      messages: t.offers.validation,
+    });
     setErrors((prev) => {
       const next = { ...prev };
       for (const f of def.fields) delete next[f];
@@ -233,8 +240,8 @@ export function OfferForm({
       <>
         <Field
           id="title"
-          label="Titel"
-          hint="Kurz und eindeutig, z. B. „Sushi-Kurs für Einsteiger“."
+          label={f.title}
+          hint={f.titleHint}
           error={err('title')}
           className="sm:col-span-2"
         >
@@ -249,8 +256,8 @@ export function OfferForm({
         </Field>
         <Field
           id="description"
-          label="Beschreibung"
-          hint="Was erwartet die Leute? Was ist inklusive, was sollen sie mitbringen?"
+          label={f.description}
+          hint={f.descriptionHint}
           error={err('description')}
           className="sm:col-span-2"
         >
@@ -264,7 +271,7 @@ export function OfferForm({
             {...aria('description')}
           />
         </Field>
-        <Field id="category" label="Kategorie" error={err('category')}>
+        <Field id="category" label={f.category} error={err('category')}>
           <select
             id="category"
             name="category"
@@ -273,11 +280,11 @@ export function OfferForm({
             {...aria('category')}
           >
             <option value="" disabled>
-              Bitte wählen
+              {f.pleaseChoose}
             </option>
             {OFFER_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {OFFER_CATEGORY_LABELS[c]}
+                {labels.offerCategory[c]}
               </option>
             ))}
           </select>
@@ -296,7 +303,7 @@ export function OfferForm({
         <TypePicker value={type} onChange={setType} disabled={locked('type')} />
         <Field
           id="starts_at"
-          label={type === 'einzeltermin' ? 'Beginn' : 'Einlösbar ab'}
+          label={type === 'einzeltermin' ? f.start : f.redeemFrom}
           error={err('starts_at')}
         >
           <input
@@ -313,11 +320,11 @@ export function OfferForm({
         </Field>
         <Field
           id="ends_at"
-          label={type === 'einzeltermin' ? 'Ende' : 'Einlösbar bis'}
+          label={type === 'einzeltermin' ? f.end : f.redeemUntil}
           hint={
             template
-              ? `Aus der Vorlage: ${formatDuration(template.durationMinutes)} nach dem Beginn. Du kannst es anpassen.`
-              : `Uhrzeiten in deutscher Zeit, höchstens ${OFFER_LIMITS.maxDurationDays} Tage.`
+              ? f.fromTemplateEnd(formatDuration(template.durationMinutes, locale))
+              : f.timeHint(OFFER_LIMITS.maxDurationDays)
           }
           error={err('ends_at')}
         >
@@ -336,12 +343,12 @@ export function OfferForm({
     ),
     preis: (
       <>
-        <Field id="original_price" label="Originalpreis (€)" error={err('original_price')}>
+        <Field id="original_price" label={f.originalPrice} error={err('original_price')}>
           <input
             id="original_price"
             name="original_price"
             inputMode="decimal"
-            placeholder="69,00"
+            placeholder={f.pricePlaceholderOriginal}
             value={originalPrice}
             onChange={(e) => setOriginalPrice(e.target.value)}
             disabled={locked('original_price')}
@@ -351,17 +358,17 @@ export function OfferForm({
         </Field>
         <Field
           id="deal_price"
-          label="Deal-Preis (€)"
+          label={f.dealPrice}
           hint={
             discount !== null ? (
               <span className={discountTooLow ? 'text-status-error-text' : 'text-text-accent'}>
-                {formatDiscount(discount)} Rabatt
-                {discountTooLow ? ` (mindestens ${minDiscountPercent} %)` : ''}
+                {f.discountLabel(formatDiscount(discount, locale))}
+                {discountTooLow ? f.discountMin(minDiscountPercent) : ''}
               </span>
             ) : originalCents ? (
-              `Mindestens ${minDiscountPercent} % unter ${formatPrice(originalCents)}.`
+              f.discountBelow(minDiscountPercent, formatPrice(originalCents, { locale }))
             ) : (
-              `Mindestens ${minDiscountPercent} % Rabatt.`
+              f.discountMinOnly(minDiscountPercent)
             )
           }
           error={err('deal_price')}
@@ -370,7 +377,7 @@ export function OfferForm({
             id="deal_price"
             name="deal_price"
             inputMode="decimal"
-            placeholder="39,00"
+            placeholder={f.pricePlaceholderDeal}
             value={dealPrice}
             onChange={(e) => setDealPrice(e.target.value)}
             disabled={locked('deal_price')}
@@ -381,19 +388,21 @@ export function OfferForm({
         {wizard && discount !== null && !discountTooLow && originalCents && dealCents !== null ? (
           <div className="flex items-center gap-3 rounded-input bg-accent-subtle px-4 py-3 sm:col-span-2">
             <span className="rounded-badge bg-badge-deal-background px-2 py-1 text-subhead font-semibold text-badge-deal-foreground">
-              {formatDiscount(discount)}
+              {formatDiscount(discount, locale)}
             </span>
             <p className="text-subhead text-accent-on-subtle">
-              Statt <span className="line-through">{formatPrice(originalCents)}</span> nur{' '}
-              <span className="font-semibold">{formatPrice(dealCents)}</span>. Man spart{' '}
-              {formatPrice(originalCents - dealCents)}.
+              {f.savingsBefore}{' '}
+              <span className="line-through">{formatPrice(originalCents, { locale })}</span>{' '}
+              {f.savingsMiddle}{' '}
+              <span className="font-semibold">{formatPrice(dealCents, { locale })}</span>
+              {f.savingsAfter(formatPrice(originalCents - dealCents, { locale }))}
             </p>
           </div>
         ) : null}
         <Field
           id="capacity"
-          label="Plätze insgesamt"
-          hint={seatsTaken > 0 ? `${seatsTaken} schon vergeben, nicht weniger möglich.` : undefined}
+          label={f.capacity}
+          hint={seatsTaken > 0 ? f.capacityTaken(seatsTaken) : undefined}
           error={err('capacity')}
         >
           <input
@@ -409,8 +418,8 @@ export function OfferForm({
         </Field>
         <Field
           id="max_per_user"
-          label="Max. Plätze pro Person"
-          hint="Wie viele Plätze eine Person mit einem Code höchstens holen darf."
+          label={f.maxPerUser}
+          hint={f.maxPerUserHint}
           error={err('max_per_user')}
         >
           <input
@@ -430,8 +439,8 @@ export function OfferForm({
       <>
         <Field
           id="street"
-          label="Straße und Hausnummer"
-          hint={mode === 'create' ? 'Vorausgefüllt mit deinem Standort.' : undefined}
+          label={f.street}
+          hint={mode === 'create' ? f.streetHint : undefined}
           error={err('street')}
           className="sm:col-span-2"
         >
@@ -445,7 +454,7 @@ export function OfferForm({
             {...aria('street')}
           />
         </Field>
-        <Field id="postal_code" label="PLZ" error={err('postal_code')}>
+        <Field id="postal_code" label={f.postalCode} error={err('postal_code')}>
           <input
             id="postal_code"
             name="postal_code"
@@ -458,7 +467,7 @@ export function OfferForm({
             {...aria('postal_code')}
           />
         </Field>
-        <Field id="city" label="Ort" error={err('city')}>
+        <Field id="city" label={f.city} error={err('city')}>
           <input
             id="city"
             name="city"
@@ -484,14 +493,12 @@ export function OfferForm({
       >
         {template ? (
           <p className="rounded-card bg-accent-subtle px-4 py-3 text-subhead text-accent-on-subtle">
-            Vorlage „{template.name}“: Alles ist vorausgefüllt. Wähle nur noch den Beginn, dann ist
-            das Angebot sofort in der App sichtbar.
+            {f.fromTemplate(template.name)}
           </p>
         ) : null}
         {hasCodes ? (
           <p className="rounded-card bg-accent-subtle px-4 py-3 text-subhead text-accent-on-subtle">
-            Es haben sich schon Leute Codes geholt. Zeit, Adresse und Preise sind deshalb gesperrt.
-            Titel, Beschreibung, Bilder, Kategorie und Plätze kannst du weiter ändern.
+            {f.lockedNotice}
           </p>
         ) : null}
 
@@ -499,7 +506,7 @@ export function OfferForm({
           <section key={s.id} aria-labelledby={`step-${s.id}`}>
             <Card className="p-5 sm:p-6">
               <h2 id={`step-${s.id}`} className="mb-4 text-headline text-text-primary">
-                {s.title}
+                {stepText[s.id].title}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">{content[s.id]}</div>
             </Card>
@@ -507,7 +514,7 @@ export function OfferForm({
         ))}
 
         {state.formError ? <Notice tone="error">{state.formError}</Notice> : null}
-        {state.saved ? <Notice tone="success">Änderungen gespeichert.</Notice> : null}
+        {state.saved ? <Notice tone="success">{t.common.changesSaved}</Notice> : null}
 
         {fromTemplate ? (
           <div className="flex items-center justify-between gap-3">
@@ -518,16 +525,16 @@ export function OfferForm({
                 'border border-border-default hover:border-border-strong',
               )}
             >
-              Abbrechen
+              {t.common.cancel}
             </Link>
             <Button type="submit" disabled={pending} className="min-w-44">
-              {pending ? 'Wird veröffentlicht …' : 'Angebot veröffentlichen'}
+              {pending ? f.publishing : f.publish}
             </Button>
           </div>
         ) : (
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
-              {pending ? 'Wird gespeichert …' : 'Änderungen speichern'}
+              {pending ? t.common.saving : t.common.saveChanges}
             </Button>
           </div>
         )}
@@ -548,7 +555,12 @@ export function OfferForm({
     >
       <Card>
         <div className="border-b border-border-subtle px-5 pb-5 pt-5 sm:px-8 sm:pt-6">
-          <StepProgress steps={OFFER_STEPS} current={step} reached={reached} onSelect={goTo} />
+          <StepProgress
+            steps={OFFER_STEPS.map((s) => ({ id: s.id, title: stepText[s.id].title }))}
+            current={step}
+            reached={reached}
+            onSelect={goTo}
+          />
         </div>
 
         <div className="px-5 py-6 sm:px-8 sm:py-8">
@@ -572,9 +584,11 @@ export function OfferForm({
                   tabIndex={-1}
                   className="text-title3 text-text-primary outline-none"
                 >
-                  {s.title}
+                  {stepText[s.id].title}
                 </h2>
-                <p className="mt-1 text-callout text-text-secondary">{s.description}</p>
+                <p className="mt-1 text-callout text-text-secondary">
+                  {stepText[s.id].description}
+                </p>
               </header>
               <div className="grid gap-5 sm:grid-cols-2">{content[s.id]}</div>
             </section>
@@ -597,7 +611,7 @@ export function OfferForm({
                   'border border-border-default hover:border-border-strong',
                 )}
               >
-                Abbrechen
+                {t.common.cancel}
               </Link>
             ) : (
               <Button
@@ -608,7 +622,7 @@ export function OfferForm({
                 disabled={pending}
               >
                 <ArrowIcon direction="left" />
-                Zurück
+                {t.common.back}
               </Button>
             )}
 
@@ -616,11 +630,11 @@ export function OfferForm({
                 während der Klick noch läuft (sonst würde das Formular sofort abgeschickt). */}
             {isLast ? (
               <Button key="submit" type="submit" disabled={pending} className="min-w-44">
-                {pending ? 'Wird veröffentlicht …' : 'Angebot veröffentlichen'}
+                {pending ? f.publishing : f.publish}
               </Button>
             ) : (
               <Button key="next" type="button" onClick={goNext} className="min-w-32">
-                Weiter
+                {t.common.next}
                 <ArrowIcon direction="right" />
               </Button>
             )}

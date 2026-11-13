@@ -1,8 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { UNKNOWN_ERROR_MESSAGE } from '@repo/shared';
+import { getErrorMessages } from '@repo/shared';
 import { requireAccount } from '@/lib/auth';
+import { getLocale } from '@/lib/i18n/locale';
 import { invokeConnect, paymentReturnUrls } from '@/lib/zahlungen/connect';
 
 export interface ConnectActionState {
@@ -18,7 +19,7 @@ export async function startOnboardingAction(
   await requireAccount();
   const result = await invokeConnect({ action: 'onboarding', ...paymentReturnUrls() });
   if (result.error) return { error: result.error };
-  if (!result.result?.url) return { error: UNKNOWN_ERROR_MESSAGE };
+  if (!result.result?.url) return { error: getErrorMessages(await getLocale()).unknown };
   redirect(result.result.url);
 }
 
@@ -31,6 +32,6 @@ export async function openStripeDashboardAction(
   await requireAccount();
   const result = await invokeConnect({ action: 'dashboard' });
   if (result.error) return { error: result.error };
-  if (!result.result?.url) return { error: UNKNOWN_ERROR_MESSAGE };
+  if (!result.result?.url) return { error: getErrorMessages(await getLocale()).unknown };
   redirect(result.result.url);
 }
