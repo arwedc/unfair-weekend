@@ -9,11 +9,18 @@ export interface ImageGalleryProps {
   paths: readonly string[];
   /** Für Screenreader: wozu die Bilder gehören. */
   title: string;
+  width?: number;
+  labels: {
+    gallery: (title: string) => string;
+    image: (position: number, total: number) => string;
+    singleImage: (title: string) => string;
+  };
 }
 
 /** Bildergalerie über die volle Breite, zum Wischen, mit Punkten als Positionsanzeige. */
-export function ImageGallery({ paths, title }: ImageGalleryProps) {
-  const { width } = useWindowDimensions();
+export function ImageGallery({ paths, title, width: contentWidth, labels }: ImageGalleryProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const width = contentWidth ?? windowWidth;
   const [index, setIndex] = useState(0);
   const height = Math.round(width * 0.82);
   const images = paths.length > 0 ? paths : [null];
@@ -28,7 +35,7 @@ export function ImageGallery({ paths, title }: ImageGalleryProps) {
         onMomentumScrollEnd={(event) =>
           setIndex(Math.round(event.nativeEvent.contentOffset.x / width))
         }
-        accessibilityLabel={`Bilder zu ${title}`}
+        accessibilityLabel={labels.gallery(title)}
       >
         {images.map((path, position) => (
           <OfferImage
@@ -37,7 +44,9 @@ export function ImageGallery({ paths, title }: ImageGalleryProps) {
             priority={position === 0 ? 'high' : 'low'}
             style={{ width, height }}
             accessibilityLabel={
-              images.length > 1 ? `Bild ${position + 1} von ${images.length}` : `Bild zu ${title}`
+              images.length > 1
+                ? labels.image(position + 1, images.length)
+                : labels.singleImage(title)
             }
           />
         ))}

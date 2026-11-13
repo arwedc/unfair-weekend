@@ -57,6 +57,9 @@ export const screensDe = {
     noOfferText:
       'Hier gibt es im Moment nichts zu holen. Merk dir den Ort mit dem Herz oben, dann sagen wir Bescheid, wenn es etwas Neues gibt.',
     offersHere: (n: number) => `Angebote hier (${n})`,
+    imageGalleryLabel: (title: string) => `Bilder zu ${title}`,
+    imageLabel: (position: number, total: number) => `Bild ${position} von ${total}`,
+    singleImageLabel: (title: string) => `Bild zu ${title}`,
     about: (name: string) => `Über ${name}`,
     logoOf: (name: string) => `Logo von ${name}`,
     route: 'Route',
@@ -158,6 +161,9 @@ export const screensEn: Widen<typeof screensDe> = {
     noOfferText:
       "There's nothing here at the moment. Save this place with the heart above and we'll let you know when there's something new.",
     offersHere: (n) => `Offers here (${n})`,
+    imageGalleryLabel: (title) => `Photos for ${title}`,
+    imageLabel: (position, total) => `Photo ${position} of ${total}`,
+    singleImageLabel: (title) => `Photo for ${title}`,
     about: (name) => `About ${name}`,
     logoOf: (name) => `Logo of ${name}`,
     route: 'Directions',
