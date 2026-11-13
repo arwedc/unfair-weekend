@@ -29,7 +29,7 @@ src/
   features/         Daten und Logik ohne Oberfläche, nach Bereich:
     offers/           api.ts (RPC-Aufrufe), queries.ts (TanStack-Query-Hooks),
                       feed-logic.ts (Filter, Abschnitte, Badges; mit Tests), filters-context.tsx
-    map/              map-html.ts (Karte als Webseite für die WebView), map-logic.ts (Nadeln, Reihenfolge der Kacheln); mit Tests
+    map/              map-html.ts (Karte als Webseite für die WebView), map-logic.ts (Nadeln, Reihenfolge der Kacheln), pin-icons.ts (Kategorie-Symbol in der Nadel, Pfade passend zu category-icons.ts); mit Tests
     push/             push.ts (Berechtigung, Token, An-/Abmelden), use-push.ts (Hooks),
                       push-logic.ts (Deep-Link-Ziel, Profilzeile; mit Tests)
   components/ui/    Komponentenbibliothek: Text, Button, IconButton, Card, Chip, Badge, Input,

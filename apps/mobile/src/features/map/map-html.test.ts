@@ -1,3 +1,4 @@
+import { OFFER_CATEGORIES } from '@repo/shared';
 import { describe, expect, it } from 'vitest';
 
 import type { OfferPlace } from '@/features/offers/feed-logic';
@@ -46,8 +47,29 @@ describe('placesToGeoJson', () => {
     );
   });
 
+  it('gibt jeder Nadel die Kategorie für das Symbol mit', () => {
+    const offer = { free_seats: 3, category: 'sport_bewegung' } as OfferPlace['offers'][number];
+    expect(placesToGeoJson([place({ offers: [offer] })]).features[0]?.properties.category).toBe(
+      'sport_bewegung',
+    );
+  });
+
   it('liefert ohne Standorte eine leere Sammlung', () => {
     expect(placesToGeoJson([]).features).toEqual([]);
+  });
+});
+
+describe('Nadeln mit Kategorie-Symbol', () => {
+  const html = buildMapHtml({ styleUrl: 'https://tiles.openfreemap.org/styles/positron', colors });
+
+  it('legt pro Kategorie eine normale und eine gewählte Nadel an', () => {
+    expect(html).toContain("'pin-' + category");
+    expect(html).toContain("'-active'");
+    expect(html).toContain('new Path2D(d)');
+  });
+
+  it('bettet die Symbol-Pfade aller Kategorien ein', () => {
+    for (const category of OFFER_CATEGORIES) expect(html).toContain(`"${category}":[`);
   });
 });
 

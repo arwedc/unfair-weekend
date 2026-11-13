@@ -4,7 +4,11 @@
  * Warum WebView: Die native MapLibre-Bibliothek läuft nicht in Expo Go (siehe docs/SPEC-APP.md, Annahmen).
  * Kacheln und Stil kommen von OpenFreeMap, ohne API-Key. Die Seite spricht per postMessage mit der App.
  */
-import type { OfferPlace } from '@/features/offers/feed-logic';
+import type { OfferCategory } from '@repo/shared';
+
+import type { OfferPlace } from '../offers/feed-logic';
+
+import { PIN_ICON_PATHS, placeCategory } from './pin-icons';
 
 /**
  * MapLibre GL JS aus der 5er-Reihe (wird weiter gepflegt, npm-Tag `latest-5`).
@@ -31,7 +35,7 @@ export interface MapColors {
   pin: string;
   /** Nadel des gerade gezeigten Angebots. */
   pinActive: string;
-  /** Punkt in der Nadel. */
+  /** Kategorie-Symbol in der Nadel. */
   pinDot: string;
   user: string;
   background: string;
@@ -80,10 +84,10 @@ export function parseMapMessage(raw: string): MapMessage | null {
 interface PlaceFeature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: { key: string; count: number };
+  properties: { key: string; count: number; category: OfferCategory };
 }
 
-/** Standorte als GeoJSON für die Nadeln (eine Nadel pro Adresse, keine Gruppen). */
+/** Standorte als GeoJSON für die Nadeln (eine Nadel pro Adresse, keine Gruppen, Symbol nach Kategorie). */
 export function placesToGeoJson(places: readonly OfferPlace[]): {
   type: 'FeatureCollection';
   features: PlaceFeature[];
@@ -93,7 +97,11 @@ export function placesToGeoJson(places: readonly OfferPlace[]): {
     features: places.map((place) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [place.lng, place.lat] },
-      properties: { key: place.key, count: place.offers.length },
+      properties: {
+        key: place.key,
+        count: place.offers.length,
+        category: placeCategory(place),
+      },
     })),
   };
 }
@@ -158,6 +166,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     zoom: DEFAULT_ZOOM,
     colors: options.colors,
     palette: MAP_PALETTE,
+    icons: PIN_ICON_PATHS,
   });
   const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
@@ -222,11 +231,14 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
   var current = empty;
   var selectedKey = null;
 
-  // Ausgewählte Nadel: dunkler, etwas größer und immer obenauf.
+  // Bildname der Nadel: pin-<kategorie>, für die gewählte pin-<kategorie>-active.
+  var pinImage = ['concat', 'pin-', ['get', 'category']];
+
+  // Ausgewählte Nadel: heller Markenton, etwas größer und immer obenauf.
   function applySelection() {
     if (!loaded) return;
     var isSelected = ['==', ['get', 'key'], selectedKey || ''];
-    map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, 'unfair-pin-active', 'unfair-pin']);
+    map.setLayoutProperty('pins', 'icon-image', ['case', isSelected, ['concat', pinImage, '-active'], pinImage]);
     map.setLayoutProperty('pins', 'icon-size', ['case', isSelected, 1.2, 1]);
     map.setLayoutProperty('pins', 'symbol-sort-key', ['case', isSelected, 1, 0]);
   }
@@ -267,10 +279,10 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     if (!loaded) send({ type: 'error', message: event && event.error ? String(event.error.message) : '' });
   });
 
-  // Kartennadel (Tropfenform mit weißem Rand und Punkt), gezeichnet statt als Bilddatei.
-  // Maße in Punkten; gezeichnet in dreifacher Auflösung, damit sie scharf bleibt.
-  function makePin(fill) {
-    var ratio = 3, w = 34, h = 46, cx = 17, cy = 16, r = 13, tip = 42;
+  // Kartennadel (Tropfenform mit weißem Rand) mit dem Symbol der Kategorie im Kopf,
+  // gezeichnet statt als Bilddatei. Maße in Punkten, dreifache Auflösung für scharfe Kanten.
+  function makePin(fill, iconPaths) {
+    var ratio = 3, w = 38, h = 50, cx = 19, cy = 18, r = 15, tip = 46, icon = 17;
     var canvas = document.createElement('canvas');
     canvas.width = w * ratio; canvas.height = h * ratio;
     var ctx = canvas.getContext('2d');
@@ -284,8 +296,16 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     ctx.fillStyle = fill; ctx.fill();
     ctx.shadowColor = 'transparent';
     ctx.lineWidth = 2.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = config.colors.pinDot; ctx.fill();
+    // Symbol: Lucide-Pfade im 24er-Raster, mittig in den Kopf skaliert.
+    ctx.save();
+    ctx.translate(cx - icon / 2, cy - icon / 2);
+    ctx.scale(icon / 24, icon / 24);
+    ctx.lineWidth = 2.25; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = config.colors.pinDot;
+    (iconPaths || []).forEach(function (d) {
+      try { ctx.stroke(new Path2D(d)); } catch (e) {}
+    });
+    ctx.restore();
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
@@ -332,17 +352,20 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
 
   map.on('load', function () {
     colorize();
-    var pin = makePin(config.colors.pin);
-    var pinActive = makePin(config.colors.pinActive);
-    map.addImage('unfair-pin', pin.image, { pixelRatio: pin.ratio });
-    map.addImage('unfair-pin-active', pinActive.image, { pixelRatio: pinActive.ratio });
+    // Pro Kategorie zwei Nadeln: normal und gewählt.
+    Object.keys(config.icons).forEach(function (category) {
+      var pin = makePin(config.colors.pin, config.icons[category]);
+      var pinActive = makePin(config.colors.pinActive, config.icons[category]);
+      map.addImage('pin-' + category, pin.image, { pixelRatio: pin.ratio });
+      map.addImage('pin-' + category + '-active', pinActive.image, { pixelRatio: pinActive.ratio });
+    });
 
     // Jede Adresse bekommt eine eigene Nadel, auch wenn sie nah beieinanderliegen (keine Gruppen).
     map.addSource('places', { type: 'geojson', data: pending || empty });
 
     // Nadelspitze sitzt genau auf der Adresse.
     map.addLayer({ id: 'pins', type: 'symbol', source: 'places', layout: {
-      'icon-image': 'unfair-pin', 'icon-anchor': 'bottom',
+      'icon-image': pinImage, 'icon-anchor': 'bottom',
       'icon-allow-overlap': true, 'icon-ignore-placement': true } });
 
     // Die Auswahl übernimmt die App (Kachel unten). Die Karte meldet nur den Tipp.
