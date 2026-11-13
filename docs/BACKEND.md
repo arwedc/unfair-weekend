@@ -369,49 +369,49 @@ const { data, error } = await supabase.functions.invoke('geocode', {
 - **Last:** Beide Dienste sind für wenig Last gedacht. Formulare deshalb erst beim Speichern bzw. auf Knopfdruck geocoden, nicht bei jedem Tastendruck.
 - **Deploy:** `pnpm supabase functions deploy geocode --use-api` (ohne Docker, nur nach Bestätigung).
 
+### `send-push`
+
+Verschickt fällige Einträge der `notification_outbox` über die Expo-Push-API (iOS und Android). Nicht für Clients.
+
+- **Aufruf:** nur durch pg_cron (`private.invoke_push_worker()`, jede Minute, nur wenn etwas fällig ist) per `pg_net` mit dem Secret Key im `apikey`-Header. `verify_jwt = false`, die Function prüft den Key selbst mit `withSupabase({ auth: 'secret' })`.
+- **Ablauf:** `claim_push_batch(100)` → Texte bauen → Expo in Paketen zu 100 → `finish_push_batch(...)`. Bis zu 5 Runden pro Aufruf.
+- **Fehler:** `DeviceNotRegistered` löscht den Token. `MessageTooBig`, `InvalidCredentials`, `MismatchSenderId` sind endgültig (`failed`). Alles andere wird mit Backoff (Versuche² Minuten) wiederholt, ab 5 Versuchen `failed`.
+- **Deep Links** stehen in `data.url`: `/angebot/<id>` (neues Angebot), `/code/<voucher_id>` (Erinnerung, Absage).
+- **Optional:** Ist in Expo „Enhanced Security for Push“ aktiv, das Access Token als Function-Secret `EXPO_ACCESS_TOKEN` hinterlegen.
+- **Einrichtung pro Projekt** (einmalig, nur nach Bestätigung):
+  1. Migrationen `push_typ` und `push_versand` per `db push`.
+  2. `pnpm db:push-secrets` legt die Vault-Secrets `project_url` und `push_worker_key` aus der Root-`.env` an. Ohne sie ruft der Cron-Job nichts auf.
+  3. `pnpm supabase functions deploy send-push --use-api --no-verify-jwt`.
+
 ## 10. Cron und Benachrichtigungen (Outbox)
 
-**Cron-Jobs** (pg_cron, alle 5 Minuten):
+**Cron-Jobs** (pg_cron):
 
-| Job                        | Funktion                      | Wirkung                                                                                                                                                         |
-| -------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unfair-expire-vouchers`   | `private.expire_vouchers()`   | aktive Codes → `abgelaufen`: Zeitraum nach dem Ende, Einzeltermin 48 Std. nach dem Ende (bis dahin sind No-Shows möglich). Keine Strafe.                        |
-| `unfair-enqueue-reminders` | `private.enqueue_reminders()` | Einzeltermine: `reminder_hours_before` vor Beginn ein Eintrag `erinnerung` pro aktivem Code. Nicht für Codes, die erst innerhalb dieses Fensters geholt wurden. |
+| Job                        | Takt   | Funktion                       | Wirkung                                                                                                                                                         |
+| -------------------------- | ------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unfair-expire-vouchers`   | 5 Min. | `private.expire_vouchers()`    | aktive Codes → `abgelaufen`: Zeitraum nach dem Ende, Einzeltermin 48 Std. nach dem Ende (bis dahin sind No-Shows möglich). Keine Strafe.                        |
+| `unfair-enqueue-reminders` | 5 Min. | `private.enqueue_reminders()`  | Einzeltermine: `reminder_hours_before` vor Beginn ein Eintrag `erinnerung` pro aktivem Code. Nicht für Codes, die erst innerhalb dieses Fensters geholt wurden. |
+| `unfair-send-push`         | 1 Min. | `private.invoke_push_worker()` | ruft die Edge Function `send-push` auf, wenn Einträge fällig sind und die Vault-Secrets existieren                                                              |
+
+**Neue Angebote an Favoriten:** Ein Trigger auf `offers` (nach `insert`, nur `aktiv` an einem freigegebenen Standort) legt `neues_angebot` für jeden Nutzer an, der den Standort oder die Kategorie favorisiert hat. Höchstens ein Eintrag pro Nutzer und Angebot (Unique-Index auf `recipient_user_id, offer_id` für diesen Typ). Wer beides favorisiert hat, bekommt den Grund `standort`.
 
 ### Outbox-Vertrag (für den Push-Versand der App-Session)
 
-`notification_outbox` enthält eine Zeile pro Benachrichtigung. Eindeutig ist die Kombination aus `type` und `voucher_id`.
+`notification_outbox` enthält eine Zeile pro Benachrichtigung. Eindeutig ist die Kombination aus `type` und `voucher_id`, bei `neues_angebot` (ohne Code) die Kombination aus Empfänger und Angebot.
 
-| Spalte                                                 | Bedeutung                                                                                                                                                                                                    |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `type`                                                 | `angebot_abgesagt` (Absage oder Entfernen eines Angebots, Sperre des Standorts) oder `erinnerung`                                                                                                            |
-| `recipient_user_id`                                    | Empfänger. Seine Geräte stehen in `push_tokens`.                                                                                                                                                             |
-| `offer_id`, `voucher_id`                               | Bezug                                                                                                                                                                                                        |
-| `payload`                                              | `angebot_abgesagt`: `offer_title, offer_type, starts_at, ends_at, location_name, message` (Begründung oder null). `erinnerung`: `offer_title, starts_at, ends_at, address, location_name, short_code, seats` |
-| `status`                                               | `pending` → `processing` → `sent` bzw. `failed`                                                                                                                                                              |
-| `attempts`, `last_error`, `next_attempt_at`, `sent_at` | für Wiederholungen                                                                                                                                                                                           |
+| Spalte                                                 | Bedeutung                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                                                 | `angebot_abgesagt` (Absage oder Entfernen eines Angebots, Sperre des Standorts), `erinnerung` oder `neues_angebot` (Favorit hat ein neues Angebot)                                                                                                                                                                                                  |
+| `recipient_user_id`                                    | Empfänger. Seine Geräte stehen in `push_tokens`.                                                                                                                                                                                                                                                                                                    |
+| `offer_id`, `voucher_id`                               | Bezug                                                                                                                                                                                                                                                                                                                                               |
+| `payload`                                              | `angebot_abgesagt`: `offer_title, offer_type, starts_at, ends_at, location_name, message` (Begründung oder null). `erinnerung`: `offer_title, starts_at, ends_at, address, location_name, short_code, seats`. `neues_angebot`: `offer_title, offer_type, starts_at, ends_at, location_name, discount_percent, reason` (`standort` oder `kategorie`) |
+| `status`                                               | `pending` → `processing` → `sent` bzw. `failed`                                                                                                                                                                                                                                                                                                     |
+| `attempts`, `last_error`, `next_attempt_at`, `sent_at` | für Wiederholungen                                                                                                                                                                                                                                                                                                                                  |
 
-**Vorgeschlagener Worker** (Aufgabe der App-Session):
+**Worker-RPCs** (nur `service_role`, genutzt von `send-push`):
 
-- eine Edge Function mit `auth: 'secret'`, aufgerufen per Cron
-- Sie holt einen Stapel mit `FOR UPDATE SKIP LOCKED` und sendet über den Expo Push Service. Der Code dafür steht unten.
-- **Erfolg:** `status = 'sent'`, `sent_at = now()`
-- **Fehler:** zurück auf `pending` mit `next_attempt_at` als Backoff und `last_error`. Ab 5 Versuchen `failed`.
-- Ungültige Expo-Tokens (`DeviceNotRegistered`) aus `push_tokens` löschen.
-
-```sql
--- als RPC nur für service_role (neue Migration, siehe Regel)
-update public.notification_outbox
-set status = 'processing', attempts = attempts + 1
-where id in (
-  select id from public.notification_outbox
-  where status = 'pending' and next_attempt_at <= now()
-  order by created_at
-  limit 50
-  for update skip locked
-)
-returning *;
-```
+- `claim_push_batch(p_limit = 100)` → Einträge mit den Push-Tokens des Empfängers (`tokens text[]`). Holt fällige `pending`-Einträge und hängengebliebene `processing`-Einträge mit `FOR UPDATE SKIP LOCKED`, setzt sie auf `processing`, zählt `attempts` hoch und reserviert sie 10 Minuten. Sortiert vorher aus (`failed`): ohne Gerät (`KEIN_GERAET`), Erinnerung nach Beginn oder neues Angebot älter als 24 Std. (`ZU_SPAET`), fünfmal abgeholt ohne Rückmeldung (`ABGEBROCHEN`).
+- `finish_push_batch(p_sent_ids bigint[], p_failed jsonb, p_invalid_tokens text[])` → void. `p_failed` ist ein Array aus `{ id, error, permanent }`. Erfolg: `sent`, `sent_at`. Fehler: zurück auf `pending` mit Backoff, endgültig oder ab 5 Versuchen `failed`. Ungültige Tokens werden gelöscht.
 
 ## 11. Seed und Testzugänge
 
@@ -484,6 +484,6 @@ Bestehende Migrationen nie ändern. Umbenennen oder Löschen nur nach Absprache.
 3. Migrationen einspielen: `pnpm db:check`, dann `db push`, **nur mit Bens ausdrücklichem OK**.
 4. **Keinen** Seed einspielen. Ersten Admin per SQL setzen.
 5. Auth-Checkliste aus [Abschnitt 3](#auth-einstellungen-im-dashboard-checkliste) umsetzen (eigenes SMTP ist Pflicht).
-6. Edge Function `geocode` deployen. Für mehr Last einen Geocoding-Anbieter mit Schlüssel einbauen.
+6. Edge Functions `geocode` und `send-push` deployen, `pnpm db:push-secrets` mit den Live-Werten ausführen. Für mehr Last einen Geocoding-Anbieter mit Schlüssel einbauen.
 7. App und Website auf die neuen Werte umstellen (eigene `.env`/Build-Profile).
 8. Legacy-API-Keys (`anon`/`service_role`) deaktiviert lassen. Wir nutzen nur Publishable- und Secret-Keys.
