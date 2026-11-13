@@ -6,6 +6,8 @@ import { requireAccount } from '@/lib/auth';
 import { getMinDiscountPercent, getMyLocationAddress } from '@/lib/offers/queries';
 import { formatDuration, templateToOfferValues } from '@/lib/templates/form';
 import { getMyTemplate, listMyTemplates } from '@/lib/templates/queries';
+import { bookingMode } from '@repo/shared';
+import { getLocationStripeAccount, getPaymentSettings } from '@/lib/zahlungen/queries';
 import { createOfferAction } from '../actions';
 
 export const metadata: Metadata = { title: 'Neues Angebot' };
@@ -27,25 +29,46 @@ async function NewOfferForm({ searchParams }: PageProps) {
     );
   }
 
-  const [address, minDiscountPercent, template, templates] = await Promise.all([
-    getMyLocationAddress(location.id),
-    getMinDiscountPercent(),
-    vorlage ? getMyTemplate(vorlage) : null,
-    vorlage ? [] : listMyTemplates(),
-  ]);
+  const [address, minDiscountPercent, template, templates, paymentSettings, stripeAccount] =
+    await Promise.all([
+      getMyLocationAddress(location.id),
+      getMinDiscountPercent(),
+      vorlage ? getMyTemplate(vorlage) : null,
+      vorlage ? [] : listMyTemplates(),
+      getPaymentSettings(),
+      getLocationStripeAccount(location.id),
+    ]);
+
+  const needsPayoutSetup =
+    bookingMode(paymentSettings) === 'bezahlung' && stripeAccount?.is_ready !== true;
+  const payoutSetupNotice = needsPayoutSetup ? (
+    <p className="mb-5 rounded-card bg-status-warning-subtle px-4 py-3 text-callout text-status-warning-on-subtle">
+      Richte zuerst dein Stripe-Konto ein, damit neue Angebote bei aktivierter Bezahlung buchbar
+      sind.{' '}
+      <Link
+        href="/auszahlungen"
+        className="font-semibold text-text-link underline underline-offset-2"
+      >
+        Auszahlungen einrichten
+      </Link>
+    </p>
+  ) : null;
 
   if (template) {
     return (
-      <OfferForm
-        // Eigener key: Beim Wechsel der Vorlage beginnt das Formular frisch.
-        key={template.id}
-        mode="create"
-        action={createOfferAction}
-        locationId={location.id}
-        minDiscountPercent={minDiscountPercent}
-        initialValues={{ ...address, ...templateToOfferValues(template) }}
-        template={{ name: template.name, durationMinutes: template.duration_minutes }}
-      />
+      <>
+        {payoutSetupNotice}
+        <OfferForm
+          // Eigener key: Beim Wechsel der Vorlage beginnt das Formular frisch.
+          key={template.id}
+          mode="create"
+          action={createOfferAction}
+          locationId={location.id}
+          minDiscountPercent={minDiscountPercent}
+          initialValues={{ ...address, ...templateToOfferValues(template) }}
+          template={{ name: template.name, durationMinutes: template.duration_minutes }}
+        />
+      </>
     );
   }
 
@@ -59,6 +82,7 @@ async function NewOfferForm({ searchParams }: PageProps) {
           Diese Vorlage gibt es nicht (mehr). Du kannst das Angebot hier von Hand anlegen.
         </p>
       ) : null}
+      {payoutSetupNotice}
       {templates.length > 0 ? (
         <section aria-labelledby="aus-vorlage" className="mb-6">
           <h2 id="aus-vorlage" className="text-subhead text-text-secondary">

@@ -51,7 +51,7 @@ export function OfferFavoriteButton({
       <Heart
         size={small ? 18 : 22}
         strokeWidth={2.25}
-        color={favorite ? colors.accent.solid : colors.text.primary}
+        color={favorite ? colors.accent.strong : colors.text.primary}
         fill={favorite ? colors.accent.solid : 'transparent'}
       />
     </PressableScale>

@@ -136,7 +136,7 @@ export function LoginScreen() {
   if (!ready || done || (userId !== null && accountLoading)) {
     body = (
       <View style={styles.centered}>
-        <ActivityIndicator color={colors.accent.solid} />
+        <ActivityIndicator color={colors.accent.strong} />
       </View>
     );
   } else if (userId !== null && !account) {

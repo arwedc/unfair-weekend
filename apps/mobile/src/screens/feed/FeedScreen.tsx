@@ -151,7 +151,7 @@ export function FeedScreen() {
               {city.name}
             </Text>
             <View style={styles.chevron}>
-              <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.solid} />
+              <ChevronDown size={16} strokeWidth={2.75} color={colors.accent.strong} />
             </View>
           </View>
         </CityMenu>
@@ -267,8 +267,8 @@ export function FeedScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={() => void refetch()}
-            tintColor={colors.accent.solid}
-            colors={[colors.accent.solid]}
+            tintColor={colors.accent.strong}
+            colors={[colors.accent.strong]}
           />
         }
       />

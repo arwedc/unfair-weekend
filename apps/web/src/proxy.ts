@@ -36,11 +36,23 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(data?.claims);
   const path = request.nextUrl.pathname;
 
-  if (!signedIn && (path.startsWith('/angebote') || path.startsWith('/bewertungen'))) {
+  const protectedPath =
+    path.startsWith('/angebote') ||
+    path.startsWith('/bewertungen') ||
+    path.startsWith('/auszahlungen') ||
+    path.startsWith('/admin');
+  if (!signedIn && protectedPath) {
     return redirectKeepingCookies(new URL('/login', request.url), response);
   }
   if (signedIn && path === '/login') {
-    return redirectKeepingCookies(new URL('/angebote', request.url), response);
+    // Rollen stehen nicht im JWT. Der DB-Vertrag liefert die aktuelle Rolle fürs Login-Routing;
+    // die Zielseiten prüfen sie selbst erneut.
+    const { data: accountData, error } = await supabase.rpc('get_my_account');
+    const account = accountData as unknown as { role?: string } | null;
+    if (!error && account) {
+      const destination = account.role === 'admin' ? '/admin/zahlungen' : '/angebote';
+      return redirectKeepingCookies(new URL(destination, request.url), response);
+    }
   }
   return response;
 }
@@ -56,5 +68,11 @@ function redirectKeepingCookies(url: URL, from: NextResponse) {
 }
 
 export const config = {
-  matcher: ['/angebote/:path*', '/bewertungen/:path*', '/login'],
+  matcher: [
+    '/angebote/:path*',
+    '/bewertungen/:path*',
+    '/auszahlungen/:path*',
+    '/admin/:path*',
+    '/login',
+  ],
 };

@@ -29,7 +29,7 @@ export function IconButton({
   loading = false,
   style,
 }: IconButtonProps) {
-  const color = active ? colors.accent.solid : colors.text.primary;
+  const color = active ? colors.accent.strong : colors.text.primary;
   return (
     <PressableScale
       accessibilityRole="button"
@@ -41,9 +41,14 @@ export function IconButton({
       style={[styles.base, variant === 'floating' && styles.floating, style]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={colors.accent.solid} />
+        <ActivityIndicator size="small" color={colors.accent.strong} />
       ) : (
-        <Icon size={22} color={color} fill={active ? color : 'none'} strokeWidth={2.25} />
+        <Icon
+          size={22}
+          color={color}
+          fill={active ? colors.accent.solid : 'none'}
+          strokeWidth={2.25}
+        />
       )}
     </PressableScale>
   );

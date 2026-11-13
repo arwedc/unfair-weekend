@@ -122,7 +122,7 @@ function InfoRow({
 }) {
   const content = (
     <>
-      <Icon size={22} color={colors.accent.solid} strokeWidth={2} />
+      <Icon size={22} color={colors.accent.strong} strokeWidth={2} />
       <View style={styles.flexText}>{children}</View>
       {onPress ? <ChevronRight size={20} color={colors.text.tertiary} /> : null}
     </>
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     backgroundColor: colors.surface.raised,
   },
-  choiceSelected: { borderColor: colors.accent.solid, backgroundColor: soft.warm },
+  choiceSelected: { borderColor: colors.accent.strong, backgroundColor: soft.warm },
   choiceImage: { width: space[20], height: space[16], borderRadius: radii.md },
   choicePrice: { flexDirection: 'row', alignItems: 'baseline', gap: space[2] },
   choiceBadge: {

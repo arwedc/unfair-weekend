@@ -54,7 +54,7 @@ const MAP_HTML = buildMapHtml({
   styleUrl: env.mapStyleUrl,
   colors: {
     pin: colors.accent.solid,
-    // Gewählte Nadel: sanftes Koralle (und etwas größer). Eigener Standort: blauer Punkt.
+    // Gewählte Nadel: dunkleres Gold (und etwas größer). Eigener Standort: blauer Punkt.
     pinActive: MAP_PALETTE.pinSelected,
     pinDot: colors.accent.onSolid,
     user: MAP_PALETTE.userLocation,

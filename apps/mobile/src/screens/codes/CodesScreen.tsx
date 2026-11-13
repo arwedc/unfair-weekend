@@ -112,8 +112,8 @@ export function CodesScreen() {
         <RefreshControl
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
-          tintColor={colors.accent.solid}
-          colors={[colors.accent.solid]}
+          tintColor={colors.accent.strong}
+          colors={[colors.accent.strong]}
         />
       }
     >
