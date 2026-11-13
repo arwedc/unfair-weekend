@@ -97,7 +97,7 @@ export const partsDe = {
     openHint: 'Öffnet das Angebot',
     openSwipeHint: 'Öffnet das Angebot. Zum nächsten Angebot nach links oder rechts wischen.',
     openAddressHint: 'Öffnet die Adresse in deiner Karten-App',
-    mapLabel: (label: string) => `Karte: ${label}`,
+    mapPreview: (label: string) => `Kartenvorschau: ${label}`,
     position: (n: number, total: number) => `Angebot ${n} von ${total}`,
   },
 };
@@ -196,7 +196,7 @@ export const partsEn: Widen<typeof partsDe> = {
     openHint: 'Opens the offer',
     openSwipeHint: 'Opens the offer. Swipe left or right for the next offer.',
     openAddressHint: 'Opens the address in your maps app',
-    mapLabel: (label) => `Map: ${label}`,
+    mapPreview: (label) => `Map preview: ${label}`,
     position: (n, total) => `Offer ${n} of ${total}`,
   },
 };

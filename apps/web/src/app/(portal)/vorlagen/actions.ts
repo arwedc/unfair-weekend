@@ -8,7 +8,9 @@ import {
   toRpcArgs,
   type OfferTemplateInput,
 } from '@repo/shared';
+import { translateValidationMessage } from '@repo/shared/i18n';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
 import { parseEuroToCents } from '@/lib/offers/form';
 import { getMinDiscountPercent } from '@/lib/offers/queries';
 import { createClient } from '@/lib/supabase/server';
@@ -55,21 +57,25 @@ function toInt(value: string | undefined): number {
 }
 
 /** Wandelt Formularwerte in die Eingabe für create_offer_template/update_offer_template um. */
+type I18n = Awaited<ReturnType<typeof getT>>;
+
 function buildInput(
   values: TemplateFormValues,
   minDiscountPercent: number,
+  { locale, t }: I18n,
 ): { input?: OfferTemplateInput; errors: Errors } {
   const errors: Errors = {};
+  const m = t.offers.validation;
   const v = (field: (typeof TEMPLATE_FORM_FIELDS)[number]) => values[field] ?? '';
 
   const originalCents = parseEuroToCents(v('original_price'));
   const dealCents = parseEuroToCents(v('deal_price'));
-  if (originalCents === null) errors.original_price = 'Bitte einen Preis eingeben, z. B. 69,00.';
-  if (dealCents === null) errors.deal_price = 'Bitte einen Preis eingeben, z. B. 39,00.';
+  if (originalCents === null) errors.original_price = m.priceOriginal;
+  if (dealCents === null) errors.deal_price = m.priceDeal;
 
   const durationMinutes = durationToMinutes(v('duration_value'), v('duration_unit'));
   if (Number.isNaN(durationMinutes)) {
-    errors.duration_value = 'Bitte die Dauer als ganze Zahl angeben.';
+    errors.duration_value = t.templates.validation.duration;
   }
 
   if (Object.keys(errors).length > 0) return { errors };
@@ -92,7 +98,7 @@ function buildInput(
     for (const issue of parsed.error.issues) {
       const key = String(issue.path[0] ?? '');
       const field = SCHEMA_FIELD_TO_FORM[key] ?? (key as TemplateFormField);
-      errors[field] ??= issue.message;
+      errors[field] ??= translateValidationMessage(issue.message, locale);
     }
     return { errors };
   }
@@ -102,12 +108,13 @@ function buildInput(
 function rpcFailure(
   error: Parameters<typeof parseRpcError>[0],
   values: TemplateFormValues,
+  { locale, t }: I18n,
 ): TemplateFormState {
-  const parsed = parseRpcError(error);
-  const message = parsed?.message ?? 'Speichern hat nicht geklappt.';
+  const parsed = parseRpcError(error, locale);
+  const message = parsed?.message ?? t.common.saveFailed;
   const field = parsed ? RPC_CODE_TO_FIELD[parsed.code] : undefined;
   return field
-    ? { errors: { [field]: message }, formError: 'Bitte die markierten Felder prüfen.', values }
+    ? { errors: { [field]: message }, formError: t.common.checkFields, values }
     : { errors: {}, formError: message, values };
 }
 
@@ -116,13 +123,14 @@ export async function createTemplateAction(
   formData: FormData,
 ): Promise<TemplateFormState> {
   await requireAccount();
+  const i18n = await getT();
   const values = readValues(formData);
-  const { input, errors } = buildInput(values, await getMinDiscountPercent());
-  if (!input) return { errors, values, formError: 'Bitte die markierten Felder prüfen.' };
+  const { input, errors } = buildInput(values, await getMinDiscountPercent(), i18n);
+  if (!input) return { errors, values, formError: i18n.t.common.checkFields };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('create_offer_template', toRpcArgs(input));
-  if (error || !data) return rpcFailure(error, values);
+  if (error || !data) return rpcFailure(error, values, i18n);
 
   revalidatePath('/vorlagen');
   redirect('/vorlagen?gespeichert=1');
@@ -134,16 +142,17 @@ export async function updateTemplateAction(
   formData: FormData,
 ): Promise<TemplateFormState> {
   await requireAccount();
+  const i18n = await getT();
   const values = readValues(formData);
-  const { input, errors } = buildInput(values, await getMinDiscountPercent());
-  if (!input) return { errors, values, formError: 'Bitte die markierten Felder prüfen.' };
+  const { input, errors } = buildInput(values, await getMinDiscountPercent(), i18n);
+  if (!input) return { errors, values, formError: i18n.t.common.checkFields };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc('update_offer_template', {
     p_template_id: templateId,
     ...toRpcArgs(input),
   });
-  if (error) return rpcFailure(error, values);
+  if (error) return rpcFailure(error, values, i18n);
 
   revalidatePath('/vorlagen');
   revalidatePath(`/vorlagen/${templateId}`);
@@ -156,9 +165,10 @@ export interface DeleteTemplateState {
 
 export async function deleteTemplateAction(templateId: string): Promise<DeleteTemplateState> {
   await requireAccount();
+  const { locale, t } = await getT();
   const supabase = await createClient();
   const { error } = await supabase.rpc('delete_offer_template', { p_template_id: templateId });
-  if (error) return { error: parseRpcError(error)?.message ?? 'Löschen hat nicht geklappt.' };
+  if (error) return { error: parseRpcError(error, locale)?.message ?? t.templates.delete.failed };
 
   revalidatePath('/vorlagen');
   redirect('/vorlagen?geloescht=1');

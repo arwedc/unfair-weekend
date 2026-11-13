@@ -83,38 +83,18 @@ export async function signInWithPassword(email: string, password: string): Promi
 
 /** Registriert einen Nutzer per E-Mail und Passwort. Gibt zurück, ob direkt eine Session besteht. */
 export async function signUpWithEmail(input: UserSignUpInput): Promise<boolean> {
-  const { data: available, error: availabilityError } = await supabase.rpc(
-    'is_username_available',
-    { p_username: input.username },
-  );
-  if (availabilityError) throw toApiError(availabilityError);
-  if (!available) {
-    throw new ApiError('NUTZERNAME_VERGEBEN', authText().usernameTaken);
-  }
-
   const { data, error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
     options: {
       data: {
-        username: input.username,
         ...(input.age !== undefined ? { age: input.age } : {}),
         interests: input.interests,
       },
       emailRedirectTo: authRedirectUrl(),
     },
   });
-  if (error) {
-    // Der Unique-Index fängt parallele Registrierungen ab; zeige dann den passenden Hinweis.
-    const { data: stillAvailable, error: checkError } = await supabase.rpc(
-      'is_username_available',
-      { p_username: input.username },
-    );
-    if (!checkError && !stillAvailable) {
-      throw new ApiError('NUTZERNAME_VERGEBEN', authText().usernameTaken);
-    }
-    throw toAuthError(error);
-  }
+  if (error) throw toAuthError(error);
   return data.session !== null;
 }
 

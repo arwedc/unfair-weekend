@@ -1,4 +1,10 @@
-import { emailSchema, OFFER_CATEGORIES, userSignUpSchema, type OfferCategory } from '@repo/shared';
+import {
+  emailSchema,
+  OFFER_CATEGORIES,
+  passwordSchema,
+  userSignUpSchema,
+  type OfferCategory,
+} from '@repo/shared';
 import { translateValidationMessage, type Locale } from '@repo/shared/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
@@ -52,9 +58,10 @@ export function LoginScreen() {
 
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
+  const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [age, setAge] = useState('');
   const [interests, setInterests] = useState<OfferCategory[]>([]);
   const [confirmationSent, setConfirmationSent] = useState(false);
@@ -85,7 +92,7 @@ export function LoginScreen() {
     else router.replace('/');
   }, [done, router]);
 
-  /** Führt einen Login-Schritt aus und zeigt Fehler in der gewählten Sprache. Abbrüche bleiben still. */
+  /** Führt einen Login-Schritt aus und zeigt Fehler auf Deutsch. Abbrüche bleiben still. */
   const run = async (kind: Exclude<Busy, null>, action: () => Promise<void>) => {
     setError(null);
     setBusy(kind);
@@ -124,11 +131,29 @@ export function LoginScreen() {
     void run('password', () => signInWithPassword(parsedEmail.data, password));
   };
 
+  const continueRegistration = () => {
+    const parsedEmail = emailSchema.safeParse(email.trim().toLowerCase());
+    if (!parsedEmail.success) {
+      setError(firstIssue(parsedEmail.error, locale, t.common.checkInput));
+      return;
+    }
+    const parsedPassword = passwordSchema.safeParse(password);
+    if (!parsedPassword.success) {
+      setError(firstIssue(parsedPassword.error, locale, t.common.checkInput));
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError(a.passwordMismatch);
+      return;
+    }
+    setError(null);
+    setRegisterStep(2);
+  };
+
   const register = () => {
     const parsed = userSignUpSchema.safeParse({
       email: email.trim().toLowerCase(),
       password,
-      username,
       ...(age.trim() ? { age: Number(age.trim()) } : {}),
       interests,
     });
@@ -215,6 +240,7 @@ export function LoginScreen() {
           onPress={() => {
             setConfirmationSent(false);
             setMode('login');
+            setRegisterStep(1);
             setPassword('');
           }}
         />
@@ -228,9 +254,35 @@ export function LoginScreen() {
             {mode === 'register' ? a.registerTitle : t.common.signIn}
           </Text>
           <Text variant="body" color="secondary">
-            {mode === 'register' ? a.registerIntro : a.loginIntro}
+            {mode === 'register'
+              ? registerStep === 1
+                ? a.registerIntro
+                : a.aboutYouIntro
+              : a.loginIntro}
           </Text>
         </View>
+
+        {mode === 'register' ? (
+          <View style={styles.progress}>
+            <View style={styles.progressLabels}>
+              <Text variant="footnote" color="secondary">
+                {a.stepOf(registerStep, 2)}
+              </Text>
+              <Text variant="footnote" color="tertiary">
+                {registerStep === 1 ? a.stepAccount : a.stepAboutYou}
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, registerStep === 2 && styles.progressComplete]} />
+              <View
+                style={[
+                  styles.progressFill,
+                  registerStep === 2 ? styles.progressComplete : styles.progressEmpty,
+                ]}
+              />
+            </View>
+          </View>
+        ) : null}
 
         {showSocialLogin ? (
           <View style={styles.providers}>
@@ -308,85 +360,108 @@ export function LoginScreen() {
               onPress={() => {
                 setError(null);
                 setMode('register');
+                setRegisterStep(1);
               }}
             />
           </>
         ) : (
           <>
-            <Input
-              label={a.username}
-              value={username}
-              onChangeText={setUsername}
-              placeholder={a.usernamePlaceholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="username"
-              textContentType="username"
-              maxLength={20}
-              hint={a.usernameHint}
-            />
-            <Input
-              label={a.emailLabel}
-              icon={Mail}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={a.emailPlaceholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-            />
-            <Input
-              label={a.password}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              hint={a.passwordHint}
-            />
-            <Input
-              label={a.age}
-              value={age}
-              onChangeText={setAge}
-              keyboardType="number-pad"
-              maxLength={3}
-              autoComplete="off"
-            />
-            <View style={styles.interests}>
-              <Text variant="subhead" color="secondary">
-                {a.interests}
-              </Text>
-              <View style={styles.chips}>
-                {OFFER_CATEGORIES.map((category) => (
-                  <Chip
-                    key={category}
-                    label={labels.offerCategory[category]}
-                    selected={interests.includes(category)}
-                    onPress={() => toggleInterest(category)}
+            {registerStep === 1 ? (
+              <>
+                <Input
+                  label={a.emailLabel}
+                  icon={Mail}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={a.emailPlaceholder}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                />
+                <Input
+                  label={a.password}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  hint={a.passwordHint}
+                />
+                <Input
+                  label={a.passwordRepeat}
+                  value={passwordConfirmation}
+                  onChangeText={setPasswordConfirmation}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={continueRegistration}
+                />
+                <Button label={t.common.next} size="lg" fullWidth onPress={continueRegistration} />
+                <Button
+                  label={a.toSignIn}
+                  variant="ghost"
+                  onPress={() => {
+                    setError(null);
+                    setRegisterStep(1);
+                    setMode('login');
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <View style={styles.interests}>
+                  <Input
+                    label={a.age}
+                    value={age}
+                    onChangeText={setAge}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    autoComplete="off"
                   />
-                ))}
-              </View>
-            </View>
-            <Button
-              label={a.createAccount}
-              size="lg"
-              fullWidth
-              loading={busy === 'register'}
-              disabled={busy !== null && busy !== 'register'}
-              onPress={register}
-            />
-            <Button
-              label={a.toSignIn}
-              variant="ghost"
-              onPress={() => {
-                setError(null);
-                setMode('login');
-              }}
-            />
+                </View>
+                <View style={styles.interests}>
+                  <Text variant="subhead" color="secondary">
+                    {a.interestsQuestion}{' '}
+                    <Text variant="footnote" color="tertiary">
+                      {a.optional}
+                    </Text>
+                  </Text>
+                  <View style={styles.chips}>
+                    {OFFER_CATEGORIES.map((category) => (
+                      <Chip
+                        key={category}
+                        label={labels.offerCategory[category]}
+                        selected={interests.includes(category)}
+                        onPress={() => toggleInterest(category)}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Button
+                  label={a.createAccount}
+                  size="lg"
+                  fullWidth
+                  loading={busy === 'register'}
+                  disabled={busy !== null && busy !== 'register'}
+                  onPress={register}
+                />
+                <Button
+                  label={t.common.back}
+                  variant="ghost"
+                  onPress={() => {
+                    setError(null);
+                    setRegisterStep(1);
+                  }}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -475,6 +550,12 @@ const styles = StyleSheet.create({
   block: { gap: space[4] },
   intro: { gap: space[2], marginBottom: space[2] },
   providers: { gap: space[3] },
+  progress: { gap: space[2] },
+  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  progressTrack: { flexDirection: 'row', gap: space[1], height: 4 },
+  progressFill: { flex: 1, borderRadius: radius.badge, backgroundColor: colors.accent.strong },
+  progressEmpty: { backgroundColor: colors.border.strong },
+  progressComplete: { backgroundColor: colors.accent.strong },
   appleButton: { height: 56, alignSelf: 'stretch' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space[3], marginVertical: space[1] },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border.strong },

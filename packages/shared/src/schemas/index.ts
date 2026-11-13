@@ -69,20 +69,10 @@ export const passwordSchema = z
   .min(8, { error: 'Das Passwort braucht mindestens 8 Zeichen.' })
   .max(72, { error: 'Das Passwort darf höchstens 72 Zeichen haben.' });
 
-/** Nutzername für ein App-Konto (wird kleingeschrieben gespeichert). */
-export const usernameSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .regex(/^[a-z0-9_]{3,20}$/, {
-    error: 'Der Nutzername braucht 3–20 Zeichen: Kleinbuchstaben, Zahlen oder Unterstriche.',
-  });
-
 /** Direkte Registrierung eines Nutzerkontos per E-Mail und Passwort. */
 export const userSignUpSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  username: usernameSchema,
   age: z
     .number({ error: 'Bitte gib ein gültiges Alter an.' })
     .int({ error: 'Das Alter muss eine ganze Zahl sein.' })

@@ -10,7 +10,6 @@ import { getMessages } from '../../lib/i18n/messages';
 export interface Account {
   userId: string;
   role: 'nutzer' | 'standort' | 'admin';
-  username: string | null;
   age: number | null;
   interests: OfferCategory[];
   firstName: string;
@@ -37,7 +36,6 @@ export function parseAccount(json: unknown): Account | null {
   return {
     userId,
     role,
-    username: typeof raw.username === 'string' ? raw.username : null,
     age: typeof raw.age === 'number' ? raw.age : null,
     interests: Array.isArray(raw.interests)
       ? raw.interests.filter((value): value is OfferCategory =>

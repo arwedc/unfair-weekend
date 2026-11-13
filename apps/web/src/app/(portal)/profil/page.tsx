@@ -3,11 +3,15 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { CompanyForm } from '@/components/company/company-form';
 import { requireAccount } from '@/lib/auth';
+import { getT } from '@/lib/i18n/locale';
 import { companyToFormValues } from '@/lib/company/form';
 import { getMyCompany } from '@/lib/company/queries';
 import { updateCompanyAction } from './actions';
 
-export const metadata: Metadata = { title: 'Unternehmensprofil' };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t.profile.title };
+}
 
 async function CompanyProfile() {
   const { location } = await requireAccount();
@@ -23,14 +27,13 @@ async function CompanyProfile() {
   );
 }
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const { t } = await getT();
   return (
     <>
-      <h1 className="text-title2 text-text-primary">Unternehmensprofil</h1>
-      <p className="mb-6 mt-1 text-subhead text-text-secondary">
-        Name, Logo und Beschreibung gelten für alle Standorte deines Unternehmens.
-      </p>
-      <Suspense fallback={<p className="text-callout text-text-tertiary">Profil wird geladen …</p>}>
+      <h1 className="text-title2 text-text-primary">{t.profile.title}</h1>
+      <p className="mb-6 mt-1 text-subhead text-text-secondary">{t.profile.intro}</p>
+      <Suspense fallback={<p className="text-callout text-text-tertiary">{t.profile.loading}</p>}>
         <CompanyProfile />
       </Suspense>
     </>

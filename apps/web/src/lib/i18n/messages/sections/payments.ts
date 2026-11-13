@@ -1,0 +1,91 @@
+import type { PayoutAccountStatus } from '@repo/shared';
+import type { Widen } from '../widen';
+
+export const paymentsDe = {
+  title: 'Auszahlungen',
+  intro: 'Verwalte dein Stripe-Konto und behalte bezahlte Buchungen und Auszahlungen im Blick.',
+  loading: 'Auszahlungsdaten werden geladen …',
+  statusUpdated: 'Dein Stripe-Status wurde aktualisiert.',
+  statusUpdateFailed:
+    'Der Status konnte gerade nicht bei Stripe aktualisiert werden. Bitte versuche es erneut.',
+  onboardingLinkFailed: 'Der neue Stripe-Link konnte nicht erstellt werden.',
+  account: 'Stripe-Konto',
+  accountStatus: {
+    fehlt: 'Noch nicht eingerichtet',
+    angelegt: 'Einrichtung begonnen',
+    in_pruefung: 'Wird von Stripe geprüft',
+    eingeschraenkt: 'Eingeschränkt, Angaben fehlen',
+    aktiv: 'Bereit für Auszahlungen',
+  } satisfies Record<PayoutAccountStatus, string>,
+  accountActive:
+    'Dein Konto kann Auszahlungen empfangen. Öffne dein Stripe-Dashboard, um deine Bankdaten und Auszahlungen zu verwalten.',
+  accountSetup:
+    'Richte dein Stripe-Konto ein, damit Auszahlungen für deine bezahlten Buchungen möglich sind.',
+  requirementsDue:
+    'Stripe benötigt noch Angaben. Öffne die Einrichtung, um die offenen Punkte zu ergänzen.',
+  bookings: 'Bezahlte Buchungen',
+  bookingsIntro: 'Brutto, Provision, dein Auszahlungsbetrag und Erstattungsstatus.',
+  offer: 'Angebot',
+  allOffers: 'Alle Angebote',
+  filter: 'Filtern',
+  emptyTitle: 'Noch keine bezahlten Buchungen',
+  emptyText: 'Sobald Zahlungen über die App eingehen, findest du sie hier.',
+  colBooking: 'Angebot und Buchung',
+  colGross: 'Brutto',
+  colCommission: 'Provision',
+  colNet: 'Netto',
+  colStatus: 'Status',
+  seats: (n: number) => `${n} ${n === 1 ? 'Platz' : 'Plätze'}`,
+  code: (code: string) => `Code ${code}`,
+  noRefund: 'Keine Erstattung',
+  payoutDue: (when: string) => `Auszahlung fällig ${when}`,
+  noPayout: 'Noch keine Auszahlung',
+  footnote:
+    'Zeiten werden in Europe/Berlin angezeigt. Für Fragen zu einer Auszahlung findest du die Buchungsdetails in deinem Stripe-Dashboard.',
+  opening: 'Stripe wird geöffnet …',
+  setup: 'Auszahlungen einrichten',
+  dashboard: 'Stripe-Dashboard öffnen',
+};
+
+export const paymentsEn: Widen<typeof paymentsDe> = {
+  title: 'Payouts',
+  intro: 'Manage your Stripe account and keep track of paid bookings and payouts.',
+  loading: 'Loading payout data …',
+  statusUpdated: 'Your Stripe status has been updated.',
+  statusUpdateFailed: 'The status could not be updated with Stripe right now. Please try again.',
+  onboardingLinkFailed: 'The new Stripe link could not be created.',
+  account: 'Stripe account',
+  accountStatus: {
+    fehlt: 'Not set up yet',
+    angelegt: 'Setup started',
+    in_pruefung: 'Being reviewed by Stripe',
+    eingeschraenkt: 'Restricted, details missing',
+    aktiv: 'Ready for payouts',
+  },
+  accountActive:
+    'Your account can receive payouts. Open your Stripe dashboard to manage your bank details and payouts.',
+  accountSetup: 'Set up your Stripe account so payouts for your paid bookings are possible.',
+  requirementsDue: 'Stripe still needs some details. Open the setup to complete the open items.',
+  bookings: 'Paid bookings',
+  bookingsIntro: 'Gross, commission, your payout amount and refund status.',
+  offer: 'Offer',
+  allOffers: 'All offers',
+  filter: 'Filter',
+  emptyTitle: 'No paid bookings yet',
+  emptyText: 'As soon as payments come in through the app, you will find them here.',
+  colBooking: 'Offer and booking',
+  colGross: 'Gross',
+  colCommission: 'Commission',
+  colNet: 'Net',
+  colStatus: 'Status',
+  seats: (n) => `${n} ${n === 1 ? 'spot' : 'spots'}`,
+  code: (code) => `Code ${code}`,
+  noRefund: 'No refund',
+  payoutDue: (when) => `Payout due ${when}`,
+  noPayout: 'No payout yet',
+  footnote:
+    'Times are shown in Europe/Berlin time. For questions about a payout, you will find the booking details in your Stripe dashboard.',
+  opening: 'Opening Stripe …',
+  setup: 'Set up payouts',
+  dashboard: 'Open Stripe dashboard',
+};

@@ -1,7 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { PressableScale } from '@/components/ui';
 import { buildMiniMapHtml } from '@/features/map/mini-map-html';
 import { env } from '@/lib/env';
 import { useT } from '@/lib/i18n/context';
@@ -12,12 +11,11 @@ export interface MiniMapProps {
   lng: number;
   /** Für Screenreader, z. B. der Name des Ortes. */
   label: string;
-  onPress: () => void;
   height?: number;
 }
 
-/** Kleine Kartenvorschau mit einem Pin. Ein Tipp öffnet die Karten-App. */
-export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps) {
+/** Kleine, nicht antippbare Kartenvorschau mit einem Pin. */
+export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
   const { t } = useT();
   const html = buildMiniMapHtml({
     styleUrl: env.mapStyleUrl,
@@ -28,7 +26,12 @@ export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps
   });
 
   return (
-    <View style={[styles.frame, { height }]}>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={t.parts.card.mapPreview(label)}
+      style={[styles.frame, { height }]}
+    >
       <WebView
         source={{ html }}
         originWhitelist={['*']}
@@ -40,14 +43,6 @@ export function MiniMap({ lat, lng, label, onPress, height = 168 }: MiniMapProps
         pointerEvents="none"
         accessible={false}
         importantForAccessibility="no-hide-descendants"
-      />
-      <PressableScale
-        accessibilityRole="button"
-        accessibilityLabel={t.parts.card.mapLabel(label)}
-        accessibilityHint={t.parts.card.openAddressHint}
-        onPress={onPress}
-        pressedScale={0.99}
-        style={StyleSheet.absoluteFill}
       />
     </View>
   );

@@ -879,7 +879,6 @@ export type Database = {
           no_show_count: number;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
-          username: string | null;
         };
         Insert: {
           age?: number | null;
@@ -891,7 +890,6 @@ export type Database = {
           no_show_count?: number;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
-          username?: string | null;
         };
         Update: {
           age?: number | null;
@@ -903,7 +901,6 @@ export type Database = {
           no_show_count?: number;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
-          username?: string | null;
         };
         Relationships: [];
       };
@@ -1682,7 +1679,6 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      is_username_available: { Args: { p_username: string }; Returns: boolean };
       list_location_reviews: {
         Args: { p_limit?: number; p_location_id: string; p_offset?: number };
         Returns: {
@@ -1994,7 +1990,6 @@ export type Database = {
           no_show_count: number;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
-          username: string | null;
         };
         SetofOptions: {
           from: '*';
