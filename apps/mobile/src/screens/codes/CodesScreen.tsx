@@ -4,6 +4,7 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { OfferImage } from '@/components/offers/OfferImage';
 import {
+  Appear,
   Button,
   Card,
   EmptyState,
@@ -145,8 +146,10 @@ export function CodesScreen() {
           {active.length > 0 ? (
             <View style={styles.list}>
               <SectionHeader title="Aktiv" detail={String(active.length)} />
-              {active.map((voucher) => (
-                <VoucherCard key={voucher.id} voucher={voucher} />
+              {active.map((voucher, index) => (
+                <Appear key={voucher.id} index={index}>
+                  <VoucherCard voucher={voucher} />
+                </Appear>
               ))}
             </View>
           ) : (
@@ -161,8 +164,10 @@ export function CodesScreen() {
           {past.length > 0 ? (
             <View style={styles.list}>
               <SectionHeader title="Vergangen" detail={String(past.length)} />
-              {past.map((voucher) => (
-                <VoucherCard key={voucher.id} voucher={voucher} />
+              {past.map((voucher, index) => (
+                <Appear key={voucher.id} index={active.length + index}>
+                  <VoucherCard voucher={voucher} />
+                </Appear>
               ))}
             </View>
           ) : null}

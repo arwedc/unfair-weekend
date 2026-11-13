@@ -22,6 +22,7 @@ import {
 } from '@/features/auth/api';
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
+import { env } from '@/lib/env';
 import { colors, layout, radius, space } from '@/theme';
 
 type Busy = 'apple' | 'google' | 'email' | 'code' | 'dev' | null;
@@ -55,6 +56,8 @@ export function LoginScreen() {
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const done = userId !== null && account?.profileComplete === true;
+  const showApple = env.auth.apple && appleAvailable;
+  const anyMethod = showApple || env.auth.google || env.auth.emailOtp;
 
   useEffect(() => {
     let active = true;
@@ -227,57 +230,73 @@ export function LoginScreen() {
           </Text>
         </View>
 
-        <View style={styles.providers}>
-          {appleAvailable ? (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-              cornerRadius={radius.button}
-              style={styles.appleButton}
-              onPress={() => void withApple()}
-            />
-          ) : null}
-          <Button
-            label="Weiter mit Google"
-            variant="outline"
-            size="lg"
-            fullWidth
-            loading={busy === 'google'}
-            disabled={busy !== null && busy !== 'google'}
-            onPress={() => void run('google', signInWithGoogle)}
-          />
-        </View>
-
-        <View style={styles.divider}>
-          <View style={styles.line} />
-          <Text variant="footnote" color="tertiary">
-            oder mit E-Mail
+        {!anyMethod && !__DEV__ ? (
+          <Text variant="callout" color="secondary">
+            Die Anmeldung ist in dieser Testversion noch nicht freigeschaltet. Bald geht's los!
           </Text>
-          <View style={styles.line} />
-        </View>
+        ) : null}
 
-        <Input
-          label="E-Mail-Adresse"
-          icon={Mail}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="du@beispiel.de"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="email"
-          textContentType="emailAddress"
-          returnKeyType="send"
-          onSubmitEditing={sendCode}
-        />
-        <Button
-          label="Code per E-Mail schicken"
-          size="lg"
-          fullWidth
-          loading={busy === 'email'}
-          disabled={busy !== null && busy !== 'email'}
-          onPress={sendCode}
-        />
+        {showApple || env.auth.google ? (
+          <View style={styles.providers}>
+            {showApple ? (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={radius.button}
+                style={styles.appleButton}
+                onPress={() => void withApple()}
+              />
+            ) : null}
+            {env.auth.google ? (
+              <Button
+                label="Weiter mit Google"
+                variant="outline"
+                size="lg"
+                fullWidth
+                loading={busy === 'google'}
+                disabled={busy !== null && busy !== 'google'}
+                onPress={() => void run('google', signInWithGoogle)}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
+        {env.auth.emailOtp ? (
+          <>
+            {showApple || env.auth.google ? (
+              <View style={styles.divider}>
+                <View style={styles.line} />
+                <Text variant="footnote" color="tertiary">
+                  oder mit E-Mail
+                </Text>
+                <View style={styles.line} />
+              </View>
+            ) : null}
+
+            <Input
+              label="E-Mail-Adresse"
+              icon={Mail}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="du@beispiel.de"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="send"
+              onSubmitEditing={sendCode}
+            />
+            <Button
+              label="Code per E-Mail schicken"
+              size="lg"
+              fullWidth
+              loading={busy === 'email'}
+              disabled={busy !== null && busy !== 'email'}
+              onPress={sendCode}
+            />
+          </>
+        ) : null}
 
         {__DEV__ ? (
           <View style={styles.dev}>
