@@ -87,6 +87,7 @@ export default function RootLayout() {
                   options={{ headerShown: false, presentation: 'modal' }}
                 />
                 <Stack.Screen name="name" options={{ title: 'Dein Name', presentation: 'modal' }} />
+                <Stack.Screen name="favoriten" options={{ title: 'Favoriten' }} />
                 <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                 <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
               </Stack>

@@ -16,6 +16,7 @@ import {
   isListMode,
   type FeedSection,
 } from '@/features/offers/feed-logic';
+import { useFavoriteOfferIds } from '@/features/favorites/queries';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
@@ -84,6 +85,7 @@ export function FeedScreen() {
   const list = useRef<FlatList<FeedOffer>>(null);
   const { filters, setFilters, resetFilters, cityId, setCityId } = useOfferFilters();
   const { data, error, isPending, isRefetching, refetch } = useOffers();
+  const { data: favoriteIds } = useFavoriteOfferIds();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const city = getCity(cityId);
@@ -92,7 +94,10 @@ export function FeedScreen() {
   const filtering = hasActiveFilters(filters);
   const visible = filterOffers(cityOffers, filters);
   // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.
-  const sections = listMode || isPending ? [] : buildSections(visible, { cityName: city.name });
+  const sections =
+    listMode || isPending
+      ? []
+      : buildSections(visible, { cityName: city.name, favoriteIds: favoriteIds ?? [] });
   const showSearch = searchOpen || filters.query !== '';
 
   const toggleSearch = () => {

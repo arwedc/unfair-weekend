@@ -28,6 +28,7 @@ import { ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
+import { OfferFavoriteButton } from '@/components/favorites/OfferFavoriteButton';
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { ImageGallery } from '@/components/offers/ImageGallery';
 import { MiniMap } from '@/components/offers/MiniMap';
@@ -596,6 +597,12 @@ export function OfferDetailScreen({ offerId }: { offerId: string }) {
       </View>
 
       <BackButton />
+      <OfferFavoriteButton
+        offerId={offer.id}
+        title={offer.title}
+        variant="floating"
+        style={[styles.heart, { top: insets.top + space[2] }]}
+      />
       <IconButton
         icon={Share2}
         accessibilityLabel="Angebot teilen"
@@ -616,6 +623,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
   back: { position: 'absolute', left: layout.screenPaddingX },
   share: { position: 'absolute', right: layout.screenPaddingX },
+  heart: {
+    position: 'absolute',
+    right: layout.screenPaddingX + layout.minTouchTarget + space[2],
+  },
   badges: {
     position: 'absolute',
     left: layout.screenPaddingX,

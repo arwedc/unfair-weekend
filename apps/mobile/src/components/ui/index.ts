@@ -12,6 +12,7 @@ export { ListRow, type ListRowProps } from './ListRow';
 export { PressableScale, type PressableScaleProps } from './PressableScale';
 export { Screen, type ScreenProps } from './Screen';
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader';
+export { SegmentedTabs, type SegmentedTab, type SegmentedTabsProps } from './SegmentedTabs';
 export { Sheet, type SheetProps, type SheetRef } from './Sheet';
 export { Skeleton, type SkeletonProps } from './Skeleton';
 export { StatusPill, type StatusPillProps, type StatusTone } from './StatusPill';
