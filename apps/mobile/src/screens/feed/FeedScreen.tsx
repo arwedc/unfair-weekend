@@ -16,9 +16,11 @@ import {
   SectionHeader,
   Text,
 } from '@/components/ui';
+import { useAuth } from '@/features/auth/auth-context';
 import { getCity, offersInCity } from '@/features/offers/cities';
 import {
   buildSections,
+  dayPart,
   filterOffers,
   hasActiveFilters,
   isListMode,
@@ -107,6 +109,10 @@ export function FeedScreen() {
   useCityFromLocation();
 
   const city = getCity(cityId);
+  // Begrüßung: Vorname aus dem Profil, sonst die Stadt. Tageszeit nach Berliner Uhr.
+  const { account } = useAuth();
+  const firstName = account?.firstName.trim() || null;
+  const part = dayPart();
   const cityOffers = offersInCity(data ?? [], cityId);
   const listMode = isListMode(filters);
   const filtering = hasActiveFilters(filters);
@@ -212,16 +218,20 @@ export function FeedScreen() {
   const header = (
     <View style={styles.header}>
       <View style={styles.intro}>
-        <Text
-          variant="title2"
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
-          accessibilityRole="header"
-          style={styles.inset}
-        >
-          {m.slogan}
-        </Text>
+        <View style={[styles.inset, styles.greeting]}>
+          <Text
+            variant="title2"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            accessibilityRole="header"
+          >
+            {m.greeting(part, firstName, city.name)}
+          </Text>
+          <Text variant="callout" color="secondary" numberOfLines={1}>
+            {m.greetingQuestion(part)}
+          </Text>
+        </View>
         <CategoryCircles />
       </View>
 
@@ -358,6 +368,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: space[12] },
   header: { gap: space[6], paddingBottom: space[4] },
   intro: { gap: space[3] },
+  greeting: { gap: space[0.5] },
   inset: { paddingHorizontal: layout.screenPaddingX },
   section: { gap: space[3] },
   carousel: { flexDirection: 'row', paddingHorizontal: layout.screenPaddingX, gap: space[3] },

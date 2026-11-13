@@ -12,8 +12,19 @@ export const screensDe = {
     search: 'Angebote durchsuchen',
     searchPlaceholder: 'Kochkurs, Yoga, Keramik …',
     count: (n: number) => (n === 1 ? '1 Angebot' : `${n} Angebote`),
-    // Slogan zwischen Stadt und Kategorien. Bewusst ohne Zahl, damit es auch mit wenigen Deals passt.
-    slogan: 'Heute schon was vor?',
+    // Begrüßung zwischen Stadt und Kategorien, je nach Tageszeit. Ohne Konto mit der Stadt statt Name.
+    greeting: (
+      part: 'morning' | 'day' | 'evening' | 'night',
+      name: string | null,
+      city: string,
+    ) => {
+      const who = name ? `, ${name}` : ` in ${city}`;
+      if (part === 'night') return name ? `Noch wach, ${name}? 🌙` : `Noch wach in ${city}? 🌙`;
+      const hello = { morning: 'Guten Morgen', day: 'Hallo', evening: 'Guten Abend' }[part];
+      return `${hello}${who} 👋`;
+    },
+    greetingQuestion: (part: 'morning' | 'day' | 'evening' | 'night'): string =>
+      part === 'night' ? 'Schon Pläne für morgen?' : 'Heute schon was vor?',
     categoryHintOn: 'Zeigt nur diese Kategorie',
     categoryHintOff: 'Hebt den Filter auf',
     comingSoonTitle: (city: string) => `Bald auch in ${city} ✨`,
@@ -119,7 +130,13 @@ export const screensEn: Widen<typeof screensDe> = {
     search: 'Search offers',
     searchPlaceholder: 'Cooking class, yoga, pottery …',
     count: (n) => (n === 1 ? '1 offer' : `${n} offers`),
-    slogan: 'Got plans today?',
+    greeting: (part, name, city) => {
+      const who = name ? `, ${name}` : ` in ${city}`;
+      if (part === 'night') return name ? `Still up, ${name}? 🌙` : `Still up in ${city}? 🌙`;
+      const hello = { morning: 'Good morning', day: 'Hi', evening: 'Good evening' }[part];
+      return `${hello}${who} 👋`;
+    },
+    greetingQuestion: (part) => (part === 'night' ? 'Any plans for tomorrow?' : 'Got plans today?'),
     categoryHintOn: 'Shows only this category',
     categoryHintOff: 'Removes the filter',
     comingSoonTitle: (city) => `Coming soon to ${city} ✨`,

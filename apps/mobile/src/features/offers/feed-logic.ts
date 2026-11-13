@@ -437,3 +437,15 @@ export function groupByPlace(offers: readonly Offer[]): OfferPlace[] {
   }
   return [...places.values()];
 }
+
+/** Tageszeit für die Begrüßung in „Entdecken“ (Berliner Uhrzeit). */
+export type DayPart = 'morning' | 'day' | 'evening' | 'night';
+
+/** 5–11 Uhr Morgen, 11–17 Uhr Tag, 17–22 Uhr Abend, sonst Nacht. */
+export function dayPart(now: DateInput = new Date()): DayPart {
+  const { hour } = berlinParts(now);
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 22) return 'evening';
+  return 'night';
+}

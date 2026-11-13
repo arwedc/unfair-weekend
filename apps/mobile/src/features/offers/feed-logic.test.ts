@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSections,
   countByCategory,
+  dayPart,
   EMPTY_FILTERS,
   filterOffers,
   groupByPlace,
@@ -403,5 +404,17 @@ describe('similarOffers', () => {
     ];
     expect(similarOffers(offers, current).map((o) => o.id)).toEqual(['wein', 'yoga']);
     expect(similarOffers(offers, current, 1).map((o) => o.id)).toEqual(['wein']);
+  });
+});
+
+describe('dayPart', () => {
+  // Berlin ist im November UTC+1.
+  it('wechselt nach Berliner Uhrzeit', () => {
+    expect(dayPart('2026-11-13T05:00:00Z')).toBe('morning'); // 06:00
+    expect(dayPart('2026-11-13T09:59:00Z')).toBe('morning'); // 10:59
+    expect(dayPart('2026-11-13T10:00:00Z')).toBe('day'); // 11:00
+    expect(dayPart('2026-11-13T16:00:00Z')).toBe('evening'); // 17:00
+    expect(dayPart('2026-11-13T21:00:00Z')).toBe('night'); // 22:00
+    expect(dayPart('2026-11-13T03:00:00Z')).toBe('night'); // 04:00
   });
 });
