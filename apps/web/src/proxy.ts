@@ -37,7 +37,10 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   const protectedPath =
-    path.startsWith('/angebote') || path.startsWith('/auszahlungen') || path.startsWith('/admin');
+    path.startsWith('/angebote') ||
+    path.startsWith('/bewertungen') ||
+    path.startsWith('/auszahlungen') ||
+    path.startsWith('/admin');
   if (!signedIn && protectedPath) {
     return redirectKeepingCookies(new URL('/login', request.url), response);
   }
@@ -65,5 +68,11 @@ function redirectKeepingCookies(url: URL, from: NextResponse) {
 }
 
 export const config = {
-  matcher: ['/angebote/:path*', '/auszahlungen/:path*', '/admin/:path*', '/login'],
+  matcher: [
+    '/angebote/:path*',
+    '/bewertungen/:path*',
+    '/auszahlungen/:path*',
+    '/admin/:path*',
+    '/login',
+  ],
 };
