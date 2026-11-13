@@ -1,7 +1,17 @@
+import { formatPrice } from '@repo/shared';
 import * as Brightness from 'expo-brightness';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
-import { CalendarClock, CloudOff, MapPin, SearchX, Star, Ticket, Users } from 'lucide-react-native';
+import {
+  CalendarClock,
+  CloudOff,
+  CreditCard,
+  MapPin,
+  SearchX,
+  Star,
+  Ticket,
+  Users,
+} from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -19,6 +29,8 @@ import {
 import { ReviewSheet } from '@/components/reviews/ReviewSheet';
 import { Stars } from '@/components/reviews/Stars';
 import { useAuth } from '@/features/auth/auth-context';
+import { bookingForVoucher } from '@/features/payments/checkout-logic';
+import { useCancelPaidBooking, useMyPaidBookings } from '@/features/payments/queries';
 import { useMyReviewForLocation } from '@/features/reviews/queries';
 import { useCancelVoucher, useMyVouchers } from '@/features/vouchers/queries';
 import {
@@ -70,7 +82,12 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const cancelSheet = useRef<SheetRef>(null);
   const { ready, userId } = useAuth();
   const { data, error, isPending, isRefetching, refetch } = useMyVouchers();
-  const cancel = useCancelVoucher();
+  const cancelCode = useCancelVoucher();
+  const cancelPaid = useCancelPaidBooking();
+  const { data: paidBookings } = useMyPaidBookings();
+  const paidBooking = bookingForVoucher(paidBookings, voucherId);
+  // Bezahlte Codes storniert die Function: Sie erstattet sofort statt erst per Worker.
+  const cancel = paidBooking ? cancelPaid : cancelCode;
 
   const voucher = data?.find((entry) => entry.id === voucherId) ?? null;
   const reviewSheet = useRef<SheetRef>(null);
@@ -140,8 +157,16 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const status = voucherStatusInfo(voucher, locale);
   const hint = cancelHint(voucher, undefined, locale);
 
+  const paidAmount = paidBooking ? formatPrice(paidBooking.amount_cents, { locale }) : null;
+  const paidLabel =
+    paidBooking && paidAmount
+      ? paidBooking.status === 'erstattet'
+        ? m.refunded(paidAmount)
+        : m.paid(paidAmount)
+      : null;
+
   const confirmCancel = () => {
-    cancel.mutate(voucher.id, {
+    cancel.mutate(paidBooking?.id ?? voucher.id, {
       onSuccess: () => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         cancelSheet.current?.dismiss();
@@ -217,6 +242,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
       <View>
         <ListRow icon={CalendarClock} title={voucherWhenText(voucher, undefined, locale)} />
         <ListRow icon={Users} title={seatsText(voucher.seats, locale)} />
+        {paidLabel ? <ListRow icon={CreditCard} title={paidLabel} /> : null}
         <ListRow
           icon={MapPin}
           title={voucher.location_name || voucher.company_name}
@@ -278,7 +304,8 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
               variant="outline"
               fullWidth
               onPress={() => {
-                cancel.reset();
+                cancelCode.reset();
+                cancelPaid.reset();
                 cancelSheet.current?.present();
               }}
             />
@@ -297,6 +324,7 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
       <Sheet ref={cancelSheet} title={m.cancelTitle}>
         <Text variant="body" color="secondary">
           {m.cancelText(seatsText(voucher.seats, locale), voucher.offer_title, voucher.seats === 1)}
+          {paidAmount ? ` ${m.refundText(paidAmount)}` : ''}
         </Text>
         {cancel.error ? (
           <Text

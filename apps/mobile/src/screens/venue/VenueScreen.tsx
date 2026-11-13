@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Clock,
   CloudOff,
+  CreditCard,
   Euro,
   Globe,
   MapPin,
@@ -71,6 +72,7 @@ import {
 import type { Offer, OfferDetail } from '@/features/offers/types';
 import { useLocationRating } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic';
+import { useBookingMode } from '@/features/payments/queries';
 import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
@@ -243,6 +245,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const { userId, account } = useAuth();
   const myVoucher = useActiveVoucherForOffer(activeId);
   const needsLogin = userId === null || account?.profileComplete !== true;
+  const paid = useBookingMode() === 'bezahlung';
 
   useEffect(() => {
     if (activeId) void logOfferView(activeId);
@@ -483,7 +486,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                       </Text>
                     </View>
                     <Text variant="footnote" color="secondary">
-                      {v.payOnSiteShort}
+                      {paid ? v.payInAppShort : v.payOnSiteShort}
                     </Text>
                   </InfoRow>
                   <InfoRow icon={Users} last>
@@ -518,12 +521,12 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                   </View>
                 ) : (
                   <Button
-                    label={v.getCode}
-                    icon={Ticket}
+                    label={paid ? v.book : v.getCode}
+                    icon={paid ? CreditCard : Ticket}
                     size="lg"
                     fullWidth
                     haptic
-                    accessibilityHint={needsLogin ? v.loginHint : v.claimHint}
+                    accessibilityHint={needsLogin ? v.loginHint : paid ? v.bookHint : v.claimHint}
                     onPress={() => {
                       if (needsLogin) router.push('/anmelden');
                       else claimSheet.current?.present();

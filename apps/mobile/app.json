@@ -49,7 +49,8 @@
         {
           "locationWhenInUsePermission": "Mit deinem Standort zeigen wir dir auf der Karte, welche Angebote in deiner Nähe sind."
         }
-      ]
+      ],
+      ["@stripe/stripe-react-native", { "enableGooglePay": false }]
     ],
     "experiments": {
       "typedRoutes": true,

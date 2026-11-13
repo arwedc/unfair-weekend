@@ -28,6 +28,11 @@ export const env = {
   ),
   mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE_URL,
   /**
+   * Publishable Key von Stripe (pk_test_… bzw. pk_live_…). Optional: Ohne ihn kann die App
+   * nicht bezahlen und zeigt das an, solange das Flag payments_enabled an ist.
+   */
+  stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || null,
+  /**
    * E-Mail/Passwort ist immer verfügbar. Diese Schalter aktivieren optionale E-Mail-OTP-
    * oder OAuth-Methoden, sobald sie im Supabase-Projekt eingerichtet sind.
    */

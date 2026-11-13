@@ -27,6 +27,7 @@ export const commonDe = {
   },
   screens: {
     code: 'Dein Code',
+    checkout: 'Bezahlen',
     name: 'Dein Name',
     favorites: 'Favoriten',
   },
@@ -160,6 +161,7 @@ export const commonEn: Widen<typeof commonDe> = {
     profile: 'Profile',
   },
   screens: {
+    checkout: 'Checkout',
     code: 'Your code',
     name: 'Your name',
     favorites: 'Favourites',
