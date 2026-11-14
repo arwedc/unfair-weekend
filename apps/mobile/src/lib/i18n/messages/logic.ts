@@ -5,7 +5,12 @@ import type { Widen } from './widen';
  * Die deutschen Texte sind genau die, die die Tests erwarten.
  */
 export const logicDe = {
-  timeFilters: { alle: 'Alle', heute: 'Heute', morgen: 'Morgen', wochenende: 'Wochenende' },
+  timeFilters: {
+    heute: 'Heute',
+    morgen: 'Morgen',
+    uebermorgen: 'Übermorgen',
+    wochenende: 'Wochenende',
+  },
   sections: {
     lastMinute: 'Last Minute ⏰',
     trending: 'Gerade angesagt 🔥',
@@ -77,7 +82,12 @@ export const logicDe = {
 };
 
 export const logicEn: Widen<typeof logicDe> = {
-  timeFilters: { alle: 'All', heute: 'Today', morgen: 'Tomorrow', wochenende: 'Weekend' },
+  timeFilters: {
+    heute: 'Today',
+    morgen: 'Tomorrow',
+    uebermorgen: 'In 2 days',
+    wochenende: 'Weekend',
+  },
   sections: {
     lastMinute: 'Last minute ⏰',
     trending: 'Trending now 🔥',

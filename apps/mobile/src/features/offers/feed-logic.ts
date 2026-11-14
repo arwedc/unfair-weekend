@@ -24,7 +24,7 @@ import { getMessages } from '../../lib/i18n/messages';
 
 import type { FeedOffer, Offer } from './types';
 
-export const TIME_FILTERS = ['alle', 'heute', 'morgen', 'wochenende'] as const;
+export const TIME_FILTERS = ['heute', 'morgen', 'uebermorgen', 'wochenende'] as const;
 export type TimeFilter = (typeof TIME_FILTERS)[number];
 
 /** Beschriftung der Zeitfilter in der gewählten Sprache. */
@@ -35,11 +35,20 @@ export function timeFilterLabels(locale: Locale = DEFAULT_LOCALE): Record<TimeFi
 export interface OfferFilters {
   /** Gewählte Kategorien. Leer = alle. Mehrere = Angebote aus irgendeiner davon. */
   categories: OfferCategory[];
-  time: TimeFilter;
+  /** Gewählte Tage. Leer = alle. Mehrere = Angebote an irgendeinem davon. */
+  times: TimeFilter[];
   query: string;
 }
 
-export const EMPTY_FILTERS: OfferFilters = { categories: [], time: 'alle', query: '' };
+export const EMPTY_FILTERS: OfferFilters = { categories: [], times: [], query: '' };
+
+/** Tag an- oder abwählen. Die Reihenfolge folgt immer TIME_FILTERS. */
+export function toggleTime(selected: readonly TimeFilter[], time: TimeFilter): TimeFilter[] {
+  const next = selected.includes(time)
+    ? selected.filter((value) => value !== time)
+    : [...selected, time];
+  return TIME_FILTERS.filter((value) => next.includes(value));
+}
 
 /**
  * Kategorie an- oder abwählen. Die Reihenfolge folgt immer OFFER_CATEGORIES,
@@ -56,15 +65,16 @@ export function toggleCategory(
 }
 
 export function hasActiveFilters(filters: OfferFilters): boolean {
-  return filters.categories.length > 0 || filters.time !== 'alle' || filters.query.trim() !== '';
+  return filters.categories.length > 0 || filters.times.length > 0 || filters.query.trim() !== '';
 }
 
 type Timing = Pick<Offer, 'type' | 'starts_at' | 'ends_at'>;
 
 /** Tage ab heute (0 = heute), die zum Filter gehören. Wochenende = nächster Samstag und Sonntag. */
-function targetDayOffsets(filter: Exclude<TimeFilter, 'alle'>, now: DateInput): number[] {
+function targetDayOffsets(filter: TimeFilter, now: DateInput): number[] {
   if (filter === 'heute') return [0];
   if (filter === 'morgen') return [1];
+  if (filter === 'uebermorgen') return [2];
   const { year, month, day } = berlinParts(now);
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0 = Sonntag
   if (weekday === 6) return [0, 1];
@@ -75,17 +85,20 @@ function targetDayOffsets(filter: Exclude<TimeFilter, 'alle'>, now: DateInput): 
 /**
  * Einzeltermin: zählt am Tag seines Beginns.
  * Zeitraum: zählt an jedem Tag, an dem er einlösbar ist.
+ * Mehrere Tage: Das Angebot passt, wenn es an irgendeinem davon stattfindet. Leer = alle.
  */
 export function matchesTimeFilter(
   offer: Timing,
-  filter: TimeFilter,
+  times: readonly TimeFilter[],
   now: DateInput = new Date(),
 ): boolean {
-  if (filter === 'alle') return true;
+  if (times.length === 0) return true;
   const startOffset = calendarDaysBetween(now, offer.starts_at);
   const endOffset =
     offer.type === 'einzeltermin' ? startOffset : calendarDaysBetween(now, offer.ends_at);
-  return targetDayOffsets(filter, now).some((day) => day >= startOffset && day <= endOffset);
+  return times.some((time) =>
+    targetDayOffsets(time, now).some((day) => day >= startOffset && day <= endOffset),
+  );
 }
 
 /** Kleinbuchstaben ohne Akzente, damit „münster“ auch „Munster“ findet. */
@@ -123,7 +136,7 @@ export function filterOffers<T extends Offer>(
   return offers.filter(
     (offer) =>
       (filters.categories.length === 0 || filters.categories.includes(offer.category)) &&
-      matchesTimeFilter(offer, filters.time, now) &&
+      matchesTimeFilter(offer, filters.times, now) &&
       matchesSearch(offer, filters.query),
   );
 }
@@ -156,7 +169,7 @@ export function similarOffers<T extends Pick<Offer, 'id' | 'category' | 'free_se
 
 /**
  * Kategorie oder Suche aktiv: Der Feed zeigt eine schlichte Trefferliste statt Abschnitten.
- * Der Zeitfilter allein behält die Abschnitte (sie zeigen dann nur diesen Tag).
+ * Der Zeitfilter allein behält die Abschnitte (sie zeigen dann nur die gewählten Tage).
  */
 export function isListMode(filters: OfferFilters): boolean {
   return filters.categories.length > 0 || filters.query.trim() !== '';
@@ -244,7 +257,7 @@ export function buildSections(
       'last-minute',
       m.lastMinute,
       available
-        .filter((offer) => matchesTimeFilter(offer, 'heute', now))
+        .filter((offer) => matchesTimeFilter(offer, ['heute'], now))
         .sort((a, b) => a.relevant_at.localeCompare(b.relevant_at)),
     ),
     // Wo gerade am meisten Plätze weggehen
