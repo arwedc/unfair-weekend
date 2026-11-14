@@ -3,16 +3,18 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { formatDate } from '@repo/shared/utils';
 import { Stars } from '@/components/reviews/stars';
-import { buttonClass, Card } from '@/components/ui';
+import {
+  ReviewListOptions,
+  ReviewsNavigationProvider,
+  ReviewsPending,
+} from '@/components/reviews/list-options';
+import { Card } from '@/components/ui';
 import { requireAccount } from '@/lib/auth';
 import { getT } from '@/lib/i18n/locale';
 import {
   hasActiveFilters,
   parseReviewFilters,
   periodSince,
-  REVIEW_PARAMS,
-  REVIEW_PERIOD_DAYS,
-  REVIEW_SORTS,
   reviewsHref,
   type ReviewFilters,
   type ReviewSearchParams,
@@ -37,9 +39,6 @@ interface PageProps {
 }
 
 const RATINGS = [5, 4, 3, 2, 1] as const;
-
-const selectClass =
-  'mt-1 block min-h-11 rounded-input border border-border-default bg-surface-default px-3 text-body text-text-primary';
 
 function SummaryCard({
   summary,
@@ -106,54 +105,6 @@ function SummaryCard({
         </ul>
       </nav>
     </Card>
-  );
-}
-
-/**
- * Sortierung und Zeitraum als GET-Formular (funktioniert ohne JavaScript).
- * Der Sterne-Filter bleibt über ein verstecktes Feld erhalten, die Seite springt auf 1.
- */
-function ListOptions({ filters, i18n }: { filters: ReviewFilters; i18n: I18n }) {
-  const r = i18n.t.reviews;
-  return (
-    <form
-      method="get"
-      action="/bewertungen"
-      aria-label={r.listOptions}
-      className="flex flex-wrap items-end gap-2"
-    >
-      {filters.rating ? (
-        <input type="hidden" name={REVIEW_PARAMS.rating} value={filters.rating} />
-      ) : null}
-      <label className="text-footnote text-text-secondary">
-        {r.sortLabel}
-        <select name={REVIEW_PARAMS.sort} defaultValue={filters.sort} className={selectClass}>
-          {REVIEW_SORTS.map((sort) => (
-            <option key={sort} value={sort}>
-              {r.sortOptions[sort]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="text-footnote text-text-secondary">
-        {r.periodLabel}
-        <select
-          name={REVIEW_PARAMS.period}
-          defaultValue={filters.period ?? ''}
-          className={selectClass}
-        >
-          <option value="">{r.periodAll}</option>
-          {REVIEW_PERIOD_DAYS.map((days) => (
-            <option key={days} value={days}>
-              {r.periodOption(days)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" className={buttonClass('secondary', 'px-4')}>
-        {r.apply}
-      </button>
-    </form>
   );
 }
 
@@ -226,71 +177,75 @@ async function Reviews({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <SummaryCard summary={summary} filters={filters} i18n={i18n} />
+    <ReviewsNavigationProvider filters={filters}>
+      <div className="space-y-6">
+        <SummaryCard summary={summary} filters={filters} i18n={i18n} />
 
-      {summary.hiddenCount > 0 ? (
-        <p className="text-footnote text-text-tertiary">
-          {r.hiddenCount(summary.hiddenCount)} {r.hiddenExplain}
-        </p>
-      ) : null}
-
-      <section aria-labelledby="reviews-list">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-baseline gap-4">
-            <h2 id="reviews-list" className="text-headline text-text-primary">
-              {rating ? r.stars(rating) : r.all}
-            </h2>
-            {hasActiveFilters(filters) ? (
-              <Link href="/bewertungen" className="text-subhead text-text-link hover:underline">
-                {r.clearFilter}
-              </Link>
-            ) : null}
-          </div>
-          <ListOptions filters={filters} i18n={i18n} />
-        </div>
-
-        {reviews.length === 0 ? (
-          <Card className="p-6 text-center text-callout text-text-secondary">
-            {page > 1 ? r.noMoreOnPage : r.noneForFilters}
-          </Card>
-        ) : (
-          <ul className="space-y-3">
-            {reviews.map((review) => (
-              <li key={review.id}>
-                <ReviewItem review={review} i18n={i18n} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {page > 1 || hasMore ? (
-          <nav aria-label={r.pages} className="mt-5 flex items-center justify-between gap-3">
-            {page > 1 ? (
-              <Link
-                href={reviewsHref(filters, { page: page - 1 })}
-                className="text-subhead text-text-link hover:underline"
-              >
-                {r.previous}
-              </Link>
-            ) : (
-              <span />
-            )}
-            <span className="text-footnote text-text-tertiary">{r.page(page)}</span>
-            {hasMore ? (
-              <Link
-                href={reviewsHref(filters, { page: page + 1 })}
-                className="text-subhead text-text-link hover:underline"
-              >
-                {r.next}
-              </Link>
-            ) : (
-              <span />
-            )}
-          </nav>
+        {summary.hiddenCount > 0 ? (
+          <p className="text-footnote text-text-tertiary">
+            {r.hiddenCount(summary.hiddenCount)} {r.hiddenExplain}
+          </p>
         ) : null}
-      </section>
-    </div>
+
+        <section aria-labelledby="reviews-list">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-baseline gap-4">
+              <h2 id="reviews-list" className="text-headline text-text-primary">
+                {rating ? r.stars(rating) : r.all}
+              </h2>
+              {hasActiveFilters(filters) ? (
+                <Link href="/bewertungen" className="text-subhead text-text-link hover:underline">
+                  {r.clearFilter}
+                </Link>
+              ) : null}
+            </div>
+            <ReviewListOptions />
+          </div>
+
+          <ReviewsPending>
+            {reviews.length === 0 ? (
+              <Card className="p-6 text-center text-callout text-text-secondary">
+                {page > 1 ? r.noMoreOnPage : r.noneForFilters}
+              </Card>
+            ) : (
+              <ul className="space-y-3">
+                {reviews.map((review) => (
+                  <li key={review.id}>
+                    <ReviewItem review={review} i18n={i18n} />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {page > 1 || hasMore ? (
+              <nav aria-label={r.pages} className="mt-5 flex items-center justify-between gap-3">
+                {page > 1 ? (
+                  <Link
+                    href={reviewsHref(filters, { page: page - 1 })}
+                    className="text-subhead text-text-link hover:underline"
+                  >
+                    {r.previous}
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                <span className="text-footnote text-text-tertiary">{r.page(page)}</span>
+                {hasMore ? (
+                  <Link
+                    href={reviewsHref(filters, { page: page + 1 })}
+                    className="text-subhead text-text-link hover:underline"
+                  >
+                    {r.next}
+                  </Link>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            ) : null}
+          </ReviewsPending>
+        </section>
+      </div>
+    </ReviewsNavigationProvider>
   );
 }
 
