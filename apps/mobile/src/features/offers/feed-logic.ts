@@ -469,27 +469,16 @@ export function dayPart(now: DateInput = new Date()): DayPart {
 }
 
 /**
- * „Deal des Tages“ oben im Feed: der höchste Rabatt unter den buchbaren Angeboten,
- * bevorzugt heute oder in den nächsten Tagen. Gleicher Rabatt: das früher stattfindende.
+ * „Deal des Tages“ im Feed: der prozentual höchste Rabatt unter den buchbaren Angeboten.
+ * Gleicher Rabatt: das früher stattfindende.
  */
-export function pickDealOfTheDay<T extends Offer>(
-  offers: readonly T[],
-  now: DateInput = new Date(),
-): T | null {
+export function pickDealOfTheDay<T extends Offer>(offers: readonly T[]): T | null {
   const available = offers.filter((offer) => offer.free_seats > 0);
-  const soon = available.filter((offer) => {
-    const days = calendarDaysBetween(now, offer.relevant_at);
-    return days >= 0 && days <= DEAL_OF_DAY_WINDOW_DAYS;
-  });
-  const pool = soon.length > 0 ? soon : available;
-  const best = [...pool].sort(
+  const best = [...available].sort(
     (a, b) => b.discount_percent - a.discount_percent || a.relevant_at.localeCompare(b.relevant_at),
   )[0];
   return best ?? null;
 }
-
-/** So viele Tage nach vorn sucht der „Deal des Tages“, bevor er auf alle Angebote ausweicht. */
-const DEAL_OF_DAY_WINDOW_DAYS = 3;
 
 /** Entfernung kurz: unter 1 km in Metern (auf 50 gerundet), sonst in km mit einer Stelle. */
 export function formatDistance(km: number, locale: Locale = DEFAULT_LOCALE): string {

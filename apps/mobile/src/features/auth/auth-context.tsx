@@ -15,7 +15,6 @@ export const userKeys = {
   vouchers: (userId: string) => [...userKeys.all, userId, 'vouchers'] as const,
   favoriteLocations: (userId: string) => [...userKeys.all, userId, 'favorite-locations'] as const,
   favoriteCategories: (userId: string) => [...userKeys.all, userId, 'favorite-categories'] as const,
-  favoriteOffers: (userId: string) => [...userKeys.all, userId, 'favorite-offers'] as const,
 };
 
 interface AuthContextValue {

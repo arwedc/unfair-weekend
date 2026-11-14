@@ -6,7 +6,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
-import { useFavoriteOfferIds, useToggleFavoriteOffer } from '@/features/favorites/queries';
+import { useFavoriteLocationIds, useToggleFavoriteLocation } from '@/features/favorites/queries';
 import { useT } from '@/lib/i18n/context';
 import { badge, colors, radii } from '@/theme';
 
@@ -20,24 +20,28 @@ const HIT_SLOP = (44 - SIZE) / 2;
 const VEIL = 'rgba(255, 255, 255, 0.42)';
 
 export interface OfferHeartProps {
-  offerId: string;
-  /** Titel des Angebots, für Screenreader. */
-  title: string;
+  /** Standort des Angebots: gemerkt wird der Ort, wie mit dem Herz auf der Standortseite. */
+  locationId: string;
+  /** Name des Orts, für Screenreader. */
+  name: string;
 }
 
-/** Kleines Herz oben rechts auf dem Foto: Angebot merken. Ohne Konto geht es zur Anmeldung. */
-export function OfferHeart({ offerId, title }: OfferHeartProps) {
+/**
+ * Kleines Herz oben rechts auf dem Foto: den Ort des Angebots merken. Dasselbe Herz wie auf der
+ * Standortseite, der Ort erscheint im Favoriten-Tab. Ohne Konto geht es zur Anmeldung.
+ */
+export function OfferHeart({ locationId, name }: OfferHeartProps) {
   const router = useRouter();
   const { userId } = useAuth();
   const { t } = useT();
-  const { data: ids } = useFavoriteOfferIds();
-  const toggle = useToggleFavoriteOffer();
-  const saved = ids?.includes(offerId) ?? false;
+  const { data: ids } = useFavoriteLocationIds();
+  const toggle = useToggleFavoriteLocation();
+  const saved = ids?.includes(locationId) ?? false;
 
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={saved ? t.parts.card.unsave(title) : t.parts.card.save(title)}
+      accessibilityLabel={saved ? t.parts.card.unsave(name) : t.parts.card.save(name)}
       accessibilityState={{ selected: saved }}
       hitSlop={HIT_SLOP}
       pressedScale={0.85}
@@ -47,7 +51,7 @@ export function OfferHeart({ offerId, title }: OfferHeartProps) {
           return;
         }
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        toggle.mutate({ item: offerId, favorite: !saved });
+        toggle.mutate({ item: locationId, favorite: !saved });
       }}
       style={styles.button}
     >
