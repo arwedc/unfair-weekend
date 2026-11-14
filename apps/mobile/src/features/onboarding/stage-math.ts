@@ -13,10 +13,10 @@ export const PIN_SIZE = 48;
 export const PIN_TAIL = 10;
 /** Gesamthöhe eines Pins, die Spitze zeigt auf den Ort. */
 export const PIN_HEIGHT = PIN_SIZE + PIN_TAIL;
+/** So stark wächst der gewählte Pin. */
+export const PIN_SELECTED_SCALE = 1.18;
 /** So weit ragt der Ort-Sticker über die große Karte hinaus (ungescaled). */
 export const STICKER_OUT = 18;
-/** So weit schiebt sich die Notiz „Was erwartet dich“ unter die große Karte. */
-export const NOTE_OVERLAP = 20;
 /** Kamera-Zoom auf den Ort im zweiten Schritt. */
 export const PLACE_ZOOM = 2.4;
 
@@ -29,7 +29,7 @@ export interface StageGeometry {
   heroX: number;
   heroY: number;
   heroScale: number;
-  /** Wo die Pin-Spitze im Schritt 2 steht (über der Karte). */
+  /** Wo die Pin-Spitze im Schritt 2 steht: frei über Sticker und Karte. */
   placeY: number;
   /** Größe der Vorschau am Pin (Schritt 1). */
   bubbleScale: number;
@@ -48,8 +48,6 @@ export interface GeometryInput {
   height: number;
   cardWidth: number;
   cardHeight: number;
-  /** Höhe der Notiz unter der großen Karte, 0 ohne Beschreibung. */
-  noteHeight: number;
 }
 
 /** Berechnet alle festen Maße der Bühne aus ihrer Größe und der Kartengröße. */
@@ -58,17 +56,18 @@ export function stageGeometry({
   height,
   cardWidth,
   cardHeight,
-  noteHeight,
 }: GeometryInput): StageGeometry {
   const margin = 12;
-  const noteVisible = noteHeight > 0 ? Math.max(0, noteHeight - NOTE_OVERLAP) : 0;
-  const heroBlock = STICKER_OUT + cardHeight + noteVisible;
+  // Oben steht der gewählte Pin in voller Größe, darunter Sticker und Karte (skaliert).
+  const pinTop = PIN_HEIGHT * PIN_SELECTED_SCALE;
+  const pinZone = pinTop + 8;
+  const heroBlock = STICKER_OUT + cardHeight;
   const heroScale = Math.max(
     0.3,
-    Math.min(1, (height - margin * 2) / heroBlock, (width - margin * 2) / cardWidth),
+    Math.min(1, (height - margin * 2 - pinZone) / heroBlock, (width - margin * 2) / cardWidth),
   );
-  const heroTop = (height - heroBlock * heroScale) / 2;
-  const heroY = heroTop + (STICKER_OUT + cardHeight / 2) * heroScale;
+  const top = (height - pinZone - heroBlock * heroScale) / 2;
+  const heroY = top + pinZone + (STICKER_OUT + cardHeight / 2) * heroScale;
 
   const wheelScale = Math.max(
     0.3,
@@ -84,7 +83,7 @@ export function stageGeometry({
     heroX: width / 2,
     heroY,
     heroScale,
-    placeY: Math.max(PIN_HEIGHT + 6, heroTop + STICKER_OUT * heroScale - 4),
+    placeY: top + pinTop,
     bubbleScale: Math.max(0.3, Math.min(0.46, (height * 0.46) / cardHeight)),
     wheelX: width / 2,
     wheelY,
@@ -117,12 +116,11 @@ export interface Camera {
 }
 
 /**
- * Kamera über der Karte. Ohne Auswahl zeigt sie die ganze Karte. Mit Auswahl schwenkt sie
- * leicht zum Pin, im Schritt 2 zoomt sie auf den Ort, im Schritt 3 noch ein Stück weiter.
+ * Kamera über der Karte. Im Schritt 1 steht sie still und zeigt die ganze Karte (ruhig, auch
+ * beim Wechseln des Pins). Im Schritt 2 zoomt sie auf den Ort, im Schritt 3 noch ein Stück weiter.
  */
 export function cameraAt(
   progress: number,
-  selected: number,
   focusX: number,
   focusY: number,
   g: StageGeometry,
@@ -130,15 +128,12 @@ export function cameraAt(
   'worklet';
   const toPlace = clamp01(progress);
   const beyond = clamp01(progress - 1);
-  const overviewScale = 1 + 0.14 * selected;
-  const overviewX = lerp(focusX, g.width / 2, 0.4 * selected);
-  const overviewY = lerp(focusY, g.height * 0.62, 0.4 * selected);
   return {
-    scale: lerp(overviewScale, PLACE_ZOOM, toPlace) * (1 + 0.35 * beyond),
+    scale: lerp(1, PLACE_ZOOM, toPlace) * (1 + 0.35 * beyond),
     focusX,
     focusY,
-    targetX: lerp(overviewX, g.width / 2, toPlace),
-    targetY: lerp(overviewY, g.placeY, toPlace),
+    targetX: lerp(focusX, g.width / 2, toPlace),
+    targetY: lerp(focusY, g.placeY, toPlace),
   };
 }
 
@@ -205,7 +200,7 @@ export function bubbleCenter(
   const h = g.cardHeight * g.bubbleScale;
   const edge = 8;
   const gap = 8;
-  let y = pinY - PIN_HEIGHT * 1.25 - gap - h / 2;
+  let y = pinY - PIN_HEIGHT * PIN_SELECTED_SCALE - gap - h / 2;
   if (y - h / 2 < edge) y = pinY + gap + h / 2;
   y = Math.min(g.height - h / 2 - edge, Math.max(h / 2 + edge, y));
   const x = Math.min(g.width - w / 2 - edge, Math.max(w / 2 + edge, pinX));

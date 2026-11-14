@@ -6,26 +6,25 @@ import {
   leadCardPose,
   mapTransform,
   orbitCardPose,
+  PIN_HEIGHT,
+  PIN_SELECTED_SCALE,
   project,
   stageGeometry,
+  STICKER_OUT,
   wheelPose,
 } from './stage-math';
 
-const g = stageGeometry({
-  width: 340,
-  height: 360,
-  cardWidth: 280,
-  cardHeight: 300,
-  noteHeight: 70,
-});
+const g = stageGeometry({ width: 340, height: 360, cardWidth: 280, cardHeight: 300 });
 
 describe('stageGeometry', () => {
-  it('passt das große Angebot samt Notiz in die Bühne', () => {
+  it('passt Pin, Sticker und großes Angebot untereinander in die Bühne', () => {
     expect(g.heroScale).toBeLessThanOrEqual(1);
-    const top = g.heroY - (g.cardHeight / 2) * g.heroScale;
-    const bottom = g.heroY + (g.cardHeight / 2 + 70 - 20) * g.heroScale;
-    expect(top).toBeGreaterThan(0);
-    expect(bottom).toBeLessThanOrEqual(g.height);
+    const pinTop = g.placeY - PIN_HEIGHT * PIN_SELECTED_SCALE;
+    const stickerTop = g.heroY - (g.cardHeight / 2 + STICKER_OUT) * g.heroScale;
+    const cardBottom = g.heroY + (g.cardHeight / 2) * g.heroScale;
+    expect(pinTop).toBeGreaterThanOrEqual(0);
+    expect(g.placeY).toBeLessThanOrEqual(stickerTop);
+    expect(cardBottom).toBeLessThanOrEqual(g.height);
   });
 
   it('macht die Karten im Kreis kleiner als das große Angebot', () => {
@@ -35,8 +34,8 @@ describe('stageGeometry', () => {
 });
 
 describe('Kamera', () => {
-  it('zeigt ohne Auswahl die Karte unverändert', () => {
-    const camera = cameraAt(0, 0, 50, 80, g);
+  it('steht im Schritt 1 still, egal welcher Pin gewählt ist', () => {
+    const camera = cameraAt(0, 50, 80, g);
     expect(project(120, 200, camera)).toEqual({ x: 120, y: 200 });
     const transform = mapTransform(camera, g);
     expect(transform.scale).toBe(1);
@@ -45,14 +44,14 @@ describe('Kamera', () => {
   });
 
   it('bringt den gewählten Ort im Schritt 2 über die Karte', () => {
-    const camera = cameraAt(1, 1, 60, 300, g);
+    const camera = cameraAt(1, 60, 300, g);
     const pin = project(60, 300, camera);
     expect(pin.x).toBeCloseTo(g.width / 2);
     expect(pin.y).toBeCloseTo(g.placeY);
   });
 
   it('verschiebt die Kartenfläche passend zur Projektion', () => {
-    const camera = cameraAt(0.6, 1, 60, 300, g);
+    const camera = cameraAt(0.6, 60, 300, g);
     const { translateX, translateY, scale } = mapTransform(camera, g);
     // Punkt der Fläche nach RN-Transform: Mitte + Verschiebung + (Punkt − Mitte) · Zoom
     const point = { x: 200, y: 100 };

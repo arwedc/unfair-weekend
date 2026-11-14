@@ -11,14 +11,13 @@ import Animated, {
 
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { OfferImage } from '@/components/offers/OfferImage';
-import { Text } from '@/components/ui';
+import { PressableScale, Text } from '@/components/ui';
 import { offerWhenText } from '@/features/offers/feed-logic';
 import type { FeedOffer } from '@/features/offers/types';
 import {
   cameraAt,
   clamp01,
   leadCardPose,
-  NOTE_OVERLAP,
   orbitCardPose,
   project,
   STICKER_OUT,
@@ -48,18 +47,18 @@ interface StageCardProps {
   geometry: StageGeometry;
   values: StageValues;
   imageHeight: number;
-  /** Nur für Karte 0: Lage des gewählten Pins auf der Karte (px). */
-  pinX?: number;
-  pinY?: number;
-  description?: string;
   onMeasure?: (height: number) => void;
-  onNoteMeasure?: (height: number) => void;
+  /** Nur Karte 0 im Schritt 1: Tipp auf die Vorschau öffnet das Angebot. */
+  onOpen?: () => void;
 }
 
 /**
  * Angebotskarte auf der Onboarding-Bühne. Karte 0 ist erst die Vorschau am Pin, dann das
  * große Angebot und schließlich die vordere Karte im 3D-Kreis. Die anderen Karten liegen
  * bis dahin versteckt dahinter und fächern sich dann in den Kreis auf.
+ *
+ * Die Vorschau hängt am Fokus der Kamera, nicht direkt am Pin: Beim Wechsel des Pins gleitet
+ * sie hinüber, statt zu springen.
  */
 export function StageCard({
   offer,
@@ -68,11 +67,8 @@ export function StageCard({
   geometry: g,
   values,
   imageHeight,
-  pinX = 0,
-  pinY = 0,
-  description = '',
   onMeasure,
-  onNoteMeasure,
+  onOpen,
 }: StageCardProps) {
   const { t, locale } = useT();
   const lead = index === 0;
@@ -82,14 +78,9 @@ export function StageCard({
     const progress = values.progress.get();
     const rotation = values.rotation.get();
     if (!lead) return orbitCardPose(index, count, progress, rotation, g);
-    const camera = cameraAt(
-      progress,
-      values.selected.get(),
-      values.focusU.get() * g.width,
-      values.focusV.get() * g.height,
-      g,
-    );
-    const pin = project(pinX, pinY, camera);
+    const focusX = values.focusU.get() * g.width;
+    const focusY = values.focusV.get() * g.height;
+    const pin = project(focusX, focusY, cameraAt(progress, focusX, focusY, g));
     return leadCardPose(progress, values.pop.get(), pin.x, pin.y, rotation, count, g);
   });
 
@@ -117,7 +108,7 @@ export function StageCard({
     opacity: (1 - pose.get().depth) * 0.55 * clamp01(values.progress.get() - 1),
   }));
 
-  // Nur rund um Schritt 2 sichtbar: Ort-Sticker und Notiz „Was erwartet dich“.
+  // Nur rund um Schritt 2 sichtbar: Ort-Sticker.
   const venueStyle = useAnimatedStyle(() => {
     const visible = 1 - clamp01(Math.abs(values.progress.get() - 1) * 3);
     return {
@@ -125,14 +116,6 @@ export function StageCard({
       transform: [{ translateY: (1 - visible) * 14 }, { rotateZ: '-4deg' }],
     };
   });
-  const noteStyle = useAnimatedStyle(() => {
-    const visible = 1 - clamp01(Math.abs(values.progress.get() - 1) * 3);
-    return {
-      opacity: visible,
-      transform: [{ translateY: (1 - visible) * -32 }, { rotateZ: '1.5deg' }],
-    };
-  });
-
   // Auftritt des großen Angebots: Rabatt-Sticker klebt sich drauf, alter Preis wird durchgestrichen.
   const discountStyle = useAnimatedStyle(() => {
     const intro = values.heroIntro.get();
@@ -162,128 +145,118 @@ export function StageCard({
   }));
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.place, { width: g.cardWidth }, placeStyle]}>
-      <Animated.View style={[styles.face, frontStyle]}>
-        {lead && description ? (
-          <Animated.View
-            onLayout={(event) => onNoteMeasure?.(event.nativeEvent.layout.height)}
-            style={[styles.note, noteStyle]}
+    <Animated.View
+      pointerEvents={onOpen ? 'box-none' : 'none'}
+      style={[styles.place, { width: g.cardWidth }, placeStyle]}
+    >
+      <PressableScale
+        disabled={!onOpen}
+        accessible={Boolean(onOpen)}
+        accessibilityRole="button"
+        accessibilityLabel={t.parts.onboarding.pinLabel(offer.company_name, offer.title)}
+        accessibilityHint={t.parts.card.openHint}
+        pressedScale={0.96}
+        onPress={onOpen}
+      >
+        <Animated.View style={[styles.face, frontStyle]}>
+          <View
+            style={styles.card}
+            onLayout={lead ? (event) => onMeasure?.(event.nativeEvent.layout.height) : undefined}
           >
+            <View style={[styles.image, { height: imageHeight }]}>
+              <View style={[StyleSheet.absoluteFill, styles.imageFallback]}>
+                <CategoryIcon size={44} color={colors.accent.onSubtle} strokeWidth={1.8} />
+              </View>
+              {offer.cover_image_path ? (
+                <OfferImage
+                  path={offer.cover_image_path}
+                  priority={lead ? 'high' : 'normal'}
+                  style={styles.photo}
+                />
+              ) : null}
+              <View style={styles.whenChip}>
+                <Text
+                  variant="caption"
+                  numberOfLines={1}
+                  style={styles.whenText}
+                  maxFontSizeMultiplier={CARD_FONT_SCALE}
+                >
+                  {offerWhenText(offer, undefined, locale)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.info}>
+              <Text
+                variant="title3"
+                numberOfLines={2}
+                style={styles.title}
+                maxFontSizeMultiplier={CARD_FONT_SCALE}
+              >
+                {offer.title}
+              </Text>
+              <Text
+                variant="footnote"
+                color="secondary"
+                numberOfLines={1}
+                maxFontSizeMultiplier={CARD_FONT_SCALE}
+              >
+                {offer.company_name}
+              </Text>
+              <View style={styles.priceRow}>
+                <Animated.View style={[styles.dealPrice, dealStyle]}>
+                  <Text
+                    variant="headline"
+                    style={styles.dealText}
+                    maxFontSizeMultiplier={CARD_FONT_SCALE}
+                  >
+                    {formatPrice(offer.deal_price_cents, { locale })}
+                  </Text>
+                </Animated.View>
+                <View>
+                  <Text variant="footnote" color="tertiary" maxFontSizeMultiplier={CARD_FONT_SCALE}>
+                    {formatPrice(offer.original_price_cents, { locale })}
+                  </Text>
+                  <Animated.View style={[styles.strike, strikeStyle]} />
+                </View>
+              </View>
+            </View>
+            <Animated.View style={[styles.fog, fogStyle]} />
+          </View>
+
+          <Animated.View style={[styles.discount, discountStyle]}>
             <Text
-              variant="caption"
-              style={styles.noteLabel}
+              variant="subhead"
+              style={styles.discountText}
               maxFontSizeMultiplier={CARD_FONT_SCALE}
             >
-              {t.screens.venue.whatToExpect}
-            </Text>
-            <Text
-              variant="footnote"
-              color="secondary"
-              numberOfLines={2}
-              maxFontSizeMultiplier={CARD_FONT_SCALE}
-            >
-              {description}
+              {formatDiscount(offer.discount_percent, locale)}
             </Text>
           </Animated.View>
-        ) : null}
 
-        <View
-          style={styles.card}
-          onLayout={lead ? (event) => onMeasure?.(event.nativeEvent.layout.height) : undefined}
-        >
-          <View style={[styles.image, { height: imageHeight }]}>
-            <View style={[StyleSheet.absoluteFill, styles.imageFallback]}>
-              <CategoryIcon size={44} color={colors.accent.onSubtle} strokeWidth={1.8} />
-            </View>
-            {offer.cover_image_path ? (
-              <OfferImage
-                path={offer.cover_image_path}
-                priority={lead ? 'high' : 'normal'}
-                style={styles.photo}
-              />
-            ) : null}
-            <View style={styles.whenChip}>
+          {lead ? (
+            <Animated.View style={[styles.venue, venueStyle]}>
+              <MapPin size={14} color={colors.accent.strong} fill={colors.accent.solid} />
               <Text
                 variant="caption"
                 numberOfLines={1}
-                style={styles.whenText}
+                style={styles.venueText}
                 maxFontSizeMultiplier={CARD_FONT_SCALE}
               >
-                {offerWhenText(offer, undefined, locale)}
+                {offer.location_name || offer.company_name}
               </Text>
-            </View>
-          </View>
-          <View style={styles.info}>
-            <Text
-              variant="title3"
-              numberOfLines={2}
-              style={styles.title}
-              maxFontSizeMultiplier={CARD_FONT_SCALE}
-            >
-              {offer.title}
-            </Text>
-            <Text
-              variant="footnote"
-              color="secondary"
-              numberOfLines={1}
-              maxFontSizeMultiplier={CARD_FONT_SCALE}
-            >
-              {offer.company_name}
-            </Text>
-            <View style={styles.priceRow}>
-              <Animated.View style={[styles.dealPrice, dealStyle]}>
-                <Text
-                  variant="headline"
-                  style={styles.dealText}
-                  maxFontSizeMultiplier={CARD_FONT_SCALE}
-                >
-                  {formatPrice(offer.deal_price_cents, { locale })}
-                </Text>
-              </Animated.View>
-              <View>
-                <Text variant="footnote" color="tertiary" maxFontSizeMultiplier={CARD_FONT_SCALE}>
-                  {formatPrice(offer.original_price_cents, { locale })}
-                </Text>
-                <Animated.View style={[styles.strike, strikeStyle]} />
-              </View>
-            </View>
-          </View>
-          <Animated.View style={[styles.fog, fogStyle]} />
-        </View>
-
-        <Animated.View style={[styles.discount, discountStyle]}>
-          <Text
-            variant="subhead"
-            style={styles.discountText}
-            maxFontSizeMultiplier={CARD_FONT_SCALE}
-          >
-            {formatDiscount(offer.discount_percent, locale)}
-          </Text>
+            </Animated.View>
+          ) : null}
         </Animated.View>
 
-        {lead ? (
-          <Animated.View style={[styles.venue, venueStyle]}>
-            <MapPin size={14} color={colors.accent.strong} fill={colors.accent.solid} />
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              style={styles.venueText}
-              maxFontSizeMultiplier={CARD_FONT_SCALE}
-            >
-              {offer.location_name || offer.company_name}
-            </Text>
-          </Animated.View>
-        ) : null}
-      </Animated.View>
-
-      <Animated.View style={[styles.back, backStyle]}>
-        <View style={styles.backMark}>
-          <Sparkles size={30} color={colors.accent.onSubtle} strokeWidth={2} />
-        </View>
-        <Text variant="subhead" style={styles.backText} maxFontSizeMultiplier={CARD_FONT_SCALE}>
-          unfair weekend
-        </Text>
-      </Animated.View>
+        <Animated.View style={[styles.back, backStyle]}>
+          <View style={styles.backMark}>
+            <Sparkles size={30} color={colors.accent.onSubtle} strokeWidth={2} />
+          </View>
+          <Text variant="subhead" style={styles.backText} maxFontSizeMultiplier={CARD_FONT_SCALE}>
+            unfair weekend
+          </Text>
+        </Animated.View>
+      </PressableScale>
     </Animated.View>
   );
 }
@@ -361,25 +334,6 @@ const styles = StyleSheet.create({
     boxShadow: shadow.badge,
   },
   venueText: { flexShrink: 1, fontFamily: fonts.bold },
-  note: {
-    position: 'absolute',
-    top: '100%',
-    left: '5%',
-    right: '5%',
-    marginTop: -NOTE_OVERLAP,
-    gap: space[0.5],
-    paddingTop: NOTE_OVERLAP + space[2],
-    paddingBottom: space[3],
-    paddingHorizontal: space[4],
-    borderRadius: radii.xl,
-    backgroundColor: soft.tint,
-  },
-  noteLabel: {
-    color: colors.accent.onSubtle,
-    fontFamily: fonts.bold,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
   back: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

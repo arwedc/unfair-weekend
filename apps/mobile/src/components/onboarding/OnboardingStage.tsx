@@ -9,6 +9,7 @@ import {
 } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
+  Easing,
   interpolateColor,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -59,12 +60,15 @@ interface OnboardingStageProps {
   /** Karten im Kreis, das gewählte Angebot zuerst. */
   wheel: readonly FeedOffer[];
   selectedId: string | null;
-  description: string;
   reduceMotion: boolean;
+  /** false, während das Onboarding sich schließt: dann reagiert nichts mehr auf Tippen. */
+  interactive: boolean;
   progress: SharedValue<number>;
   rotation: SharedValue<number>;
   heroIntro: SharedValue<number>;
   onSelect: (offer: FeedOffer) => void;
+  /** Tipp auf die Vorschau im Schritt 1: weiter zum großen Angebot. */
+  onOpen: () => void;
 }
 
 /**
@@ -92,12 +96,13 @@ function Scene({
   pins,
   wheel,
   selectedId,
-  description,
   reduceMotion,
+  interactive,
   progress,
   rotation,
   heroIntro,
   onSelect,
+  onOpen,
   width,
   height,
 }: OnboardingStageProps & { width: number; height: number }) {
@@ -105,13 +110,11 @@ function Scene({
   const cardWidth = Math.min(MAX_CARD_WIDTH, width - space[8]);
   const imageHeight = Math.round(cardWidth * 0.56);
   const [cardHeight, setCardHeight] = useState<number | null>(null);
-  const [noteHeight, setNoteHeight] = useState(0);
   const geometry = stageGeometry({
     width,
     height,
     cardWidth,
     cardHeight: cardHeight ?? imageHeight + CARD_INFO_ESTIMATE,
-    noteHeight: description ? noteHeight : 0,
   });
 
   const points = layoutPins(
@@ -127,7 +130,6 @@ function Scene({
   const world = points.map((point) => ({ x: point.x * width, y: point.y * height }));
   const selectedIndex = pins.findIndex((offer) => offer.id === selectedId);
   const selectedPoint = selectedIndex >= 0 ? points[selectedIndex] : undefined;
-  const selectedWorld = selectedIndex >= 0 ? world[selectedIndex] : undefined;
 
   const selected = useSharedValue(0);
   const pop = useSharedValue(0);
@@ -136,35 +138,32 @@ function Scene({
   const camera: CameraValues = { progress, selected, focusU, focusV };
   const values: StageValues = { ...camera, rotation, pop, heroIntro };
 
-  // Neue Auswahl: Vorschau springt aus dem Pin.
+  // Neue Auswahl. Beim ersten Mal springt die Vorschau aus dem Pin. Danach gleitet sie
+  // ruhig zum neuen Pin, die Karte selbst bleibt stehen.
+  const focusX = selectedPoint?.x;
+  const focusY = selectedPoint?.y;
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || focusX === undefined || focusY === undefined) return;
+    const first = pop.get() < 0.5;
+    if (reduceMotion || first) {
+      focusU.set(focusX);
+      focusV.set(focusY);
+    } else {
+      const glide = { duration: 380, easing: Easing.out(Easing.cubic) };
+      focusU.set(withTiming(focusX, glide));
+      focusV.set(withTiming(focusY, glide));
+    }
     if (reduceMotion) {
       selected.set(1);
       pop.set(1);
       return;
     }
-    selected.set(withTiming(1, { duration: 520 }));
-    pop.set(0);
-    pop.set(withSpring(1, { damping: 12, stiffness: 190 }));
-  }, [pop, reduceMotion, selected, selectedId]);
-
-  // Kamera schwenkt zum gewählten Ort.
-  const focusX = selectedPoint?.x;
-  const focusY = selectedPoint?.y;
-  useEffect(() => {
-    if (focusX === undefined || focusY === undefined) return;
-    if (reduceMotion) {
-      focusU.set(focusX);
-      focusV.set(focusY);
-      return;
-    }
-    focusU.set(withSpring(focusX, { damping: 20, stiffness: 120 }));
-    focusV.set(withSpring(focusY, { damping: 20, stiffness: 120 }));
-  }, [focusU, focusV, focusX, focusY, reduceMotion]);
+    selected.set(withTiming(1, { duration: 300 }));
+    if (first) pop.set(withSpring(1, { damping: 18, stiffness: 240 }));
+  }, [focusU, focusV, focusX, focusY, pop, reduceMotion, selected, selectedId]);
 
   const count = wheel.length;
-  const wheelActive = step === 2 && count > 1;
+  const wheelActive = interactive && step === 2 && count > 1;
   const [front, setFront] = useState(0);
   // haptics drosselt selbst, schnelles Drehen verschmilzt also nicht zu einem Brummen.
   const tick = haptics.selection;
@@ -230,13 +229,7 @@ function Scene({
     opacity: lerp(1, 0.5, clamp01(progress.get())) * (1 - clamp01((progress.get() - 1) * 1.6)),
   }));
   const worldStyle = useAnimatedStyle(() => {
-    const cam = cameraAt(
-      progress.get(),
-      selected.get(),
-      focusU.get() * width,
-      focusV.get() * height,
-      geometry,
-    );
+    const cam = cameraAt(progress.get(), focusU.get() * width, focusV.get() * height, geometry);
     const { translateX, translateY, scale } = mapTransform(cam, geometry);
     return { transform: [{ translateX }, { translateY }, { scale }] };
   });
@@ -258,7 +251,9 @@ function Scene({
 
       {count > 0 ? <Backdrop geometry={geometry} progress={progress} /> : null}
 
-      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {/* Ebenen fest getrennt (collapsable={false}): Pins liegen immer unter dem Angebot,
+          die Hand immer ganz oben. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none" collapsable={false}>
         {pins.map((offer, index) => {
           const point = world[index];
           if (!point) return null;
@@ -270,7 +265,7 @@ function Scene({
               worldX={point.x}
               worldY={point.y}
               isSelected={offer.id === selectedId}
-              interactive={step === 0}
+              interactive={interactive && step === 0}
               camera={camera}
               geometry={geometry}
               reduceMotion={reduceMotion}
@@ -278,18 +273,12 @@ function Scene({
             />
           );
         })}
-        {pins.length > 0 && world[0] && !reduceMotion ? (
-          <CoachHand
-            targetX={world[0].x}
-            targetY={world[0].y}
-            visible={step === 0 && !selectedId}
-          />
-        ) : null}
       </View>
 
       <View
         style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        pointerEvents="box-none"
+        collapsable={false}
         accessible={step === 1 && Boolean(leadOffer)}
         accessibilityLabel={
           leadOffer ? t.parts.onboarding.pinLabel(leadOffer.company_name, leadOffer.title) : ''
@@ -304,9 +293,6 @@ function Scene({
             geometry={geometry}
             values={values}
             imageHeight={imageHeight}
-            pinX={index === 0 ? selectedWorld?.x : undefined}
-            pinY={index === 0 ? selectedWorld?.y : undefined}
-            description={index === 0 ? description : undefined}
             onMeasure={
               index === 0
                 ? (measured) => {
@@ -316,16 +302,22 @@ function Scene({
                   }
                 : undefined
             }
-            onNoteMeasure={
-              index === 0
-                ? (measured) => {
-                    if (Math.abs(measured - noteHeight) > 0.5) setNoteHeight(measured);
-                  }
-                : undefined
-            }
+            onOpen={index === 0 && interactive && step === 0 ? onOpen : undefined}
           />
         ))}
       </View>
+
+      {pins.length > 0 && world[0] && !reduceMotion ? (
+        <CoachHand
+          targetX={world[0].x}
+          targetY={world[0].y}
+          visible={step === 0 && !selectedId}
+          onTap={() => {
+            const first = pins[0];
+            if (first && step === 0 && !selectedId) onSelect(first);
+          }}
+        />
+      ) : null}
 
       {count > 1 ? <WheelDots count={count} rotation={rotation} progress={progress} /> : null}
 
