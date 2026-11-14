@@ -160,7 +160,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
     }
     // Abschied: Der Kreis dreht immer schneller, dann blendet alles in die App über.
     setLeaving(true);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.tap();
     cancelAnimation(rotation);
     rotation.set(
       withTiming(rotation.get() - 360 * EXIT_TURNS, {
