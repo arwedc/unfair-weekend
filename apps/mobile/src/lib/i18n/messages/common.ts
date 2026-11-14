@@ -237,7 +237,7 @@ export const commonEn: Widen<typeof commonDe> = {
   tabs: {
     discover: 'Discover',
     map: 'Map',
-    codes: 'My codes',
+    codes: 'My Bookings',
     favorites: 'Favourites',
     profile: 'Profile',
   },

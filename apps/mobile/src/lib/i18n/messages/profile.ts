@@ -233,11 +233,11 @@ export const profileEn: Widen<typeof profileDe> = {
       },
       {
         q: 'How do I get an offer?',
-        a: 'Open the offer and tap “Get code”. The code then appears under “My codes”. You need an account with your first and last name so the business can find you on its guest list.',
+        a: 'Open the offer and tap “Get code”. The code then appears under “My Bookings”. You need an account with your first and last name so the business can find you on its guest list.',
       },
       {
         q: 'How do I redeem my code?',
-        a: 'Show the QR code or the short code from “My codes” on site. For fixed dates this works from one hour before the start, for offers with a time span during that span.',
+        a: 'Show the QR code or the short code from “My Bookings” on site. For fixed dates this works from one hour before the start, for offers with a time span during that span.',
       },
       {
         q: 'Does the app cost anything?',
@@ -245,7 +245,7 @@ export const profileEn: Widen<typeof profileDe> = {
       },
       {
         q: 'Can I cancel a code?',
-        a: 'Yes, under “My codes”. For fixed dates you can cancel until the deadline shortly before the start, shown with your code. Offers with a time span can be cancelled any time as long as the code has not been redeemed. Your spot becomes free again.',
+        a: 'Yes, under “My Bookings”. For fixed dates you can cancel until the deadline shortly before the start, shown with your code. Offers with a time span can be cancelled any time as long as the code has not been redeemed. Your spot becomes free again.',
       },
       {
         q: "What happens if I don't show up?",

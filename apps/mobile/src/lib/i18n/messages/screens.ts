@@ -234,7 +234,7 @@ export const screensEn: Widen<typeof screensDe> = {
   },
   codes: {
     overline: 'Your spots',
-    title: 'My codes',
+    title: 'My Bookings',
     signedOutTitle: 'Your codes show up here',
     signedOutText: 'Sign in, get a code and simply show it on site.',
     loading: 'Loading codes',
@@ -252,7 +252,7 @@ export const screensEn: Widen<typeof screensDe> = {
     loading: 'Loading code',
     notFoundTitle: 'Code not found',
     notFoundText: "This code isn't (or is no longer) in your account.",
-    toCodes: 'Go to my codes',
+    toCodes: 'Go to My Bookings',
     qrAria: 'QR code to show at the venue',
     orSay: 'Or tell them this code',
     shortCodeAria: (spelled) => `Short code ${spelled}`,
