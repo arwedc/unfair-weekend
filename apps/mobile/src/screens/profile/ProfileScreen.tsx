@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  Type,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Share, StyleSheet, Switch, View } from 'react-native';
@@ -35,6 +36,12 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
 import { errorMessage } from '@/lib/api-error';
+import {
+  HEADING_FONT_LABELS,
+  HEADING_FONTS,
+  setHeadingFont,
+  useHeadingFont,
+} from '@/lib/font-preview';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, space } from '@/theme';
 
@@ -160,6 +167,28 @@ function LanguageSettings() {
   );
 }
 
+/** Nur zum Ausprobieren: Schrift für Überschriften und Preise umschalten. */
+function FontPreviewSettings() {
+  const font = useHeadingFont();
+  return (
+    <View style={styles.languageBlock}>
+      <View style={styles.language}>
+        <Type size={20} color={colors.text.secondary} />
+        <View style={styles.languageTabs}>
+          <SegmentedTabs
+            tabs={HEADING_FONTS.map((key) => ({ key, label: HEADING_FONT_LABELS[key] }))}
+            value={font}
+            onChange={setHeadingFont}
+          />
+        </View>
+      </View>
+      <Text variant="footnote" color="secondary">
+        Schrift-Test: Überschriften, Kartentitel und Preise. Fließtext bleibt Inter.
+      </Text>
+    </View>
+  );
+}
+
 function Footer() {
   const { t } = useT();
   const version = Constants.expoConfig?.version;
@@ -209,6 +238,7 @@ export function ProfileScreen() {
         <View style={styles.section}>
           <SectionHeader title={p.settings} />
           <LanguageSettings />
+          <FontPreviewSettings />
         </View>
         <View style={styles.section}>
           <SectionHeader title={p.help} />
@@ -286,6 +316,7 @@ export function ProfileScreen() {
         <View style={styles.group}>
           <PushSettings />
           <LanguageSettings />
+          <FontPreviewSettings />
         </View>
       </View>
 
