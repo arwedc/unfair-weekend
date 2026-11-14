@@ -82,7 +82,7 @@ function Header() {
   );
 }
 
-/** Tab „Meine Codes“: aktive Codes oben, darunter der Verlauf (eingeklappt). */
+/** Tab „Meine Buchungen“: aktive Codes oben, darunter der Verlauf (eingeklappt). */
 export function CodesScreen() {
   const router = useRouter();
   const { t } = useT();

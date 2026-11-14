@@ -63,4 +63,37 @@ select is(
   'erstes Standortbild ist das Hauptbild der Aktivität'
 );
 
+-- Neue Angebote speichern kein eigenes Bild mehr.
+select tests.clear_authentication();
+select is(
+  (select image_paths from public.offers where id = tests.id('offer')),
+  '{}'::text[],
+  'Angebot speichert kein eigenes Bild'
+);
+
+-- Altdaten mit eigenem Angebotsbild (Trigger kurz aus) werden nicht öffentlich
+-- ausgegeben: Feed, Detail und „Meine Codes“ zeigen dasselbe Standortbild.
+alter table public.offers disable trigger offers_clear_legacy_images;
+update public.offers set image_paths = array['eigenes/angebotsbild.jpg'] where id = tests.id('offer');
+alter table public.offers enable trigger offers_clear_legacy_images;
+select tests.set_id('nutzer', tests.create_nutzer());
+select tests.create_voucher(tests.id('offer'), tests.id('nutzer'));
+select tests.authenticate_as_anon();
+select is(
+  (select cover_image_path from public.list_offers() where id = tests.id('offer')),
+  tests.id('loc') || '/one.jpg',
+  'Feed: eigenes Angebotsbild überschreibt das Standortbild nicht'
+);
+select is(
+  (select cover_image_path from public.get_offer(tests.id('offer'))),
+  tests.id('loc') || '/one.jpg',
+  'Detail: Hauptbild ist das erste Standortbild'
+);
+select tests.authenticate_as(tests.id('nutzer'));
+select is(
+  (select cover_image_path from public.get_my_vouchers() where offer_id = tests.id('offer')),
+  tests.id('loc') || '/one.jpg',
+  'Meine Codes: Titelbild ist das erste Standortbild'
+);
+
 select * from finish();
