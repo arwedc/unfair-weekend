@@ -6,6 +6,7 @@
  */
 import type { OfferCategory } from '@repo/shared';
 
+import { LOGO_MARK } from '../brand/logo-mark';
 import type { OfferPlace } from '../offers/feed-logic';
 
 import type { CitySummary } from './map-logic';
@@ -36,7 +37,7 @@ export interface MapColors {
   pin: string;
   /** Nadel des gerade gezeigten Angebots. */
   pinActive: string;
-  /** Kategorie-Symbol in der Nadel. */
+  /** Kategorie-Symbol in der Nadel und Logo-K in der Stadt-Nadel. */
   pinDot: string;
   /** Kategorie-Symbol in der gewählten Nadel. */
   pinActiveDot: string;
@@ -215,6 +216,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     colors: options.colors,
     palette: MAP_PALETTE,
     icons: PIN_ICON_PATHS,
+    logo: LOGO_MARK,
   });
   const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
@@ -386,7 +388,7 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 
-  // Nadel für eine ganze Stadt (weite Ansicht): etwas größer, mit weißem Punkt statt Symbol.
+  // Nadel für eine ganze Stadt (weite Ansicht): etwas größer, mit dem Kiepn-K im Kopf.
   function makeCityPin(fill) {
     var ratio = 3, w = 44, h = 56, cx = 22, cy = 20, r = 17.5, tip = 52;
     var canvas = document.createElement('canvas');
@@ -402,8 +404,21 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     ctx.fillStyle = fill; ctx.fill();
     ctx.shadowColor = 'transparent';
     ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-    ctx.fillStyle = config.colors.pinDot; ctx.fill();
+    // Logo-K mittig in den Kopf, 20 Punkte hoch.
+    var logo = config.logo, size = 20, scale = size / logo.height;
+    ctx.save();
+    ctx.translate(cx - (logo.width * scale) / 2, cy - size / 2);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = config.colors.pinDot; ctx.strokeStyle = config.colors.pinDot;
+    ctx.lineJoin = 'round';
+    logo.shapes.forEach(function (shape) {
+      try {
+        var path = new Path2D(shape.d);
+        ctx.fill(path, shape.fillRule);
+        if (shape.roundStroke > 0) { ctx.lineWidth = shape.roundStroke; ctx.stroke(path); }
+      } catch (e) {}
+    });
+    ctx.restore();
     return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), ratio: ratio };
   }
 

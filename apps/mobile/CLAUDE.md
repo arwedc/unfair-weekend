@@ -36,6 +36,7 @@ src/
                       stripe-provider.tsx (PaymentSheet, nur mit EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY)
     push/             push.ts (Berechtigung, Token, An-/Abmelden), use-push.ts (Hooks),
                       push-logic.ts (Deep-Link-Ziel, Profilzeile; mit Tests)
+    brand/            logo-mark.ts (Kiepn-K als Zeichenpfade, z. B. für die Stadt-Nadel der Karte)
     onboarding/       onboarding-context.tsx (gesehen, Wiederholen), onboarding-logic.ts (Pins aus echten
                       Koordinaten, Karten im Kreis), stage-math.ts (Kamera, Lage der Karte je Schritt); mit Tests
   components/ui/    Komponentenbibliothek: Text, Button, IconButton, Card, Chip, Badge, Input,

@@ -1,6 +1,7 @@
 import { OFFER_CATEGORIES } from '@repo/shared';
 import { describe, expect, it } from 'vitest';
 
+import { LOGO_MARK } from '../brand/logo-mark';
 import type { OfferPlace } from '@/features/offers/feed-logic';
 
 import {
@@ -194,6 +195,12 @@ describe('setCitiesScript', () => {
     expect(html).toContain('maxzoom: config.cityPinMaxZoom');
     expect(html).toContain("source: 'places', minzoom: config.cityPinMaxZoom");
     expect(CITY_PIN_MAX_ZOOM).toBeGreaterThan(3);
+  });
+
+  it('zeichnet das Logo-K in die Stadt-Nadel', () => {
+    const html = buildMapHtml({ styleUrl: 'https://example.org/style', colors });
+    for (const shape of LOGO_MARK.shapes) expect(html).toContain(shape.d);
+    expect(html).toContain('config.logo');
   });
 });
 
