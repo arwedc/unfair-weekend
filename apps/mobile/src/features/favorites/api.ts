@@ -1,4 +1,4 @@
-/** Favoriten: Lieblingsorte und Lieblingskategorien, eigene Zeilen per RLS abgesichert. */
+/** Favoriten: Lieblingsorte, Lieblingskategorien und gemerkte Angebote, eigene Zeilen per RLS abgesichert. */
 import type { OfferCategory } from '@repo/shared';
 import type { RpcRow } from '@repo/shared/types';
 
@@ -54,6 +54,29 @@ export async function setFavoriteCategory(
         .delete()
         .eq('user_id', userId)
         .eq('category', category);
+  if (error) throw toApiError(error);
+}
+
+/** IDs der gemerkten Angebote (Herz auf der Karte). */
+export async function fetchFavoriteOfferIds(): Promise<string[]> {
+  const { data, error } = await supabase.from('favorite_offers').select('offer_id');
+  if (error) throw toApiError(error);
+  return (data ?? []).map((row) => row.offer_id);
+}
+
+export async function setFavoriteOffer(
+  userId: string,
+  offerId: string,
+  favorite: boolean,
+): Promise<void> {
+  const { error } = favorite
+    ? await supabase
+        .from('favorite_offers')
+        .upsert(
+          { user_id: userId, offer_id: offerId },
+          { onConflict: 'user_id,offer_id', ignoreDuplicates: true },
+        )
+    : await supabase.from('favorite_offers').delete().eq('user_id', userId).eq('offer_id', offerId);
   if (error) throw toApiError(error);
 }
 

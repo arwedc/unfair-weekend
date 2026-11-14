@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 
 import { MapSearchBar } from '@/components/map/MapSearchBar';
+import { APP_MAP_HTML } from '@/features/map/app-map-html';
 import { MapOfferCarousel } from '@/components/map/MapOfferCarousel';
 import { FilterBar } from '@/components/offers/FilterBar';
 import {
@@ -19,8 +20,6 @@ import {
   type SheetRef,
 } from '@/components/ui';
 import {
-  buildMapHtml,
-  MAP_PALETTE,
   parseMapMessage,
   selectPlaceScript,
   setCenterScript,
@@ -40,7 +39,6 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { errorMessage } from '@/lib/api-error';
-import { env } from '@/lib/env';
 import {
   peekPosition,
   quickPosition,
@@ -51,19 +49,6 @@ import { openWebsite } from '@/lib/open-external';
 import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
-
-const MAP_HTML = buildMapHtml({
-  styleUrl: env.mapStyleUrl,
-  colors: {
-    pin: colors.accent.solid,
-    pinDot: colors.accent.onSolid,
-    // Gewählte Nadel: kräftigeres Orange-Gold (gold[500]), etwas größer. Eigener Standort: blauer Punkt.
-    pinActive: colors.accent.solidPressed,
-    pinActiveDot: colors.accent.onSolid,
-    user: MAP_PALETTE.userLocation,
-    background: colors.background.muted,
-  },
-});
 
 type LocationNotice = 'denied' | 'failed' | null;
 
@@ -281,7 +266,7 @@ export function MapScreen() {
         <WebView
           key={mapKey}
           ref={webview}
-          source={{ html: MAP_HTML }}
+          source={{ html: APP_MAP_HTML }}
           originWhitelist={['*']}
           style={styles.map}
           onMessage={(event) => handleMessage(event.nativeEvent.data)}

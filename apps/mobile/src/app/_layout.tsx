@@ -96,6 +96,7 @@ export default function RootLayout() {
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                     <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="abschnitt/[key]" options={{ headerShown: false }} />
                     <Stack.Screen name="code/[id]" options={{ title: t.common.screens.code }} />
                     <Stack.Screen
                       name="bezahlen/[id]"

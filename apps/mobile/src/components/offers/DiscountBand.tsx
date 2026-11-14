@@ -1,4 +1,5 @@
 import { formatDiscount } from '@repo/shared';
+import { Zap } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -12,9 +13,9 @@ import Animated, {
 
 import { Text } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
-import { colors, fonts, gold, MAX_FONT_SCALE, radius, space } from '@/theme';
+import { badge, colors, fonts, gold, MAX_FONT_SCALE, radii, space } from '@/theme';
 
-/** Ab diesem Rabatt leuchtet das Band beim Erscheinen einmal kurz auf. */
+/** Ab diesem Rabatt bekommt das Etikett einen Blitz und glänzt beim Erscheinen einmal kurz. */
 export const MEGA_DISCOUNT_PERCENT = 50;
 
 export interface DiscountBandProps {
@@ -24,8 +25,8 @@ export interface DiscountBandProps {
 }
 
 /**
- * Rabatt als Preisschild in der unteren rechten Fotoecke: Schwarz mit Gold, bündig
- * am Rand, ohne Schatten. Mega-Rabatte glänzen beim Erscheinen einmal kurz
+ * Rabatt als goldenes Etikett unten links auf dem Foto: eine ruhige Fläche in der Markenfarbe,
+ * schwarze Schrift. Mega-Rabatte bekommen einen Blitz und glänzen beim Erscheinen einmal kurz
  * (bei „Bewegung reduzieren“ nicht).
  */
 export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
@@ -46,10 +47,18 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
     );
   }, [mega, shine]);
 
-  const shineStyle = useAnimatedStyle(() => ({ opacity: shine.get() * 0.35 }));
+  const shineStyle = useAnimatedStyle(() => ({ opacity: shine.get() * 0.6 }));
 
   return (
-    <View style={[styles.band, compact && styles.bandCompact]} accessible={false}>
+    <View style={[styles.label, compact && styles.labelCompact]} accessible={false}>
+      {mega ? (
+        <Zap
+          size={compact ? 13 : 15}
+          color={colors.text.primary}
+          fill={colors.text.primary}
+          strokeWidth={2}
+        />
+      ) : null}
       <Text
         style={[styles.text, compact && styles.textCompact]}
         maxFontSizeMultiplier={Math.min(MAX_FONT_SCALE, 1.3)}
@@ -67,21 +76,29 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
 }
 
 const styles = StyleSheet.create({
-  band: {
+  label: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
+    left: badge.inset,
+    bottom: badge.inset,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
     paddingHorizontal: space[3],
     paddingVertical: space[1.5],
-    backgroundColor: colors.background.inverse,
-    // Nur die Innenecke rund, die Außenecke folgt dem Foto.
-    borderTopLeftRadius: radius.card,
-    borderBottomRightRadius: radius.card,
+    borderRadius: radii.md,
     borderCurve: 'continuous',
+    backgroundColor: colors.accent.solid,
+    boxShadow: badge.shadow,
     overflow: 'hidden',
   },
-  bandCompact: { paddingHorizontal: space[2], paddingVertical: space[1] },
-  text: { fontFamily: fonts.extrabold, fontSize: 20, lineHeight: 24, color: gold[400] },
-  textCompact: { fontSize: 16, lineHeight: 20 },
-  shine: { backgroundColor: gold[200] },
+  labelCompact: { paddingHorizontal: space[2], paddingVertical: space[1] },
+  text: {
+    fontFamily: fonts.extrabold,
+    fontSize: 16,
+    lineHeight: 20,
+    color: colors.text.primary,
+    fontVariant: ['tabular-nums'],
+  },
+  textCompact: { fontSize: 14, lineHeight: 18 },
+  shine: { backgroundColor: gold[100] },
 });
