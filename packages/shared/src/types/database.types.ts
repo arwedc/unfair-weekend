@@ -1702,7 +1702,13 @@ export type Database = {
         }[];
       };
       list_my_reviews: {
-        Args: { p_limit?: number; p_offset?: number; p_rating?: number };
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_rating?: number;
+          p_since?: string;
+          p_sort?: string;
+        };
         Returns: {
           author_name: string;
           comment: string;
