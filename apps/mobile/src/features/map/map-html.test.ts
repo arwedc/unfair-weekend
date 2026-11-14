@@ -6,6 +6,7 @@ import type { OfferPlace } from '@/features/offers/feed-logic';
 import {
   buildMapHtml,
   CITY_PIN_MAX_ZOOM,
+  fitPlacesScript,
   MAP_ATTRIBUTION,
   MAP_PALETTE,
   MAPLIBRE_CDNS,
@@ -193,5 +194,26 @@ describe('setCitiesScript', () => {
     expect(html).toContain('maxzoom: config.cityPinMaxZoom');
     expect(html).toContain("source: 'places', minzoom: config.cityPinMaxZoom");
     expect(CITY_PIN_MAX_ZOOM).toBeGreaterThan(3);
+  });
+});
+
+describe('fitPlacesScript', () => {
+  it('übergibt alle Orte als [lng, lat] und die Abstände', () => {
+    const script = fitPlacesScript(
+      [
+        { key: 'a', lat: 51.96, lng: 7.62, offers: [], maxDiscount: 0 },
+        { key: 'b', lat: 51.95, lng: 7.64, offers: [], maxDiscount: 0 },
+      ],
+      { top: 100, bottom: 40 },
+    );
+    expect(script).toContain(
+      'window.fitPlaces([[7.62,51.96],[7.64,51.95]], {"top":100,"bottom":40})',
+    );
+  });
+
+  it('kann in der Karte auf alle Nadeln zoomen', () => {
+    const html = buildMapHtml({ styleUrl: 'https://example.org/style', colors });
+    expect(html).toContain('window.fitPlaces = function');
+    expect(html).toContain('fitBounds');
   });
 });

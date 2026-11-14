@@ -6,7 +6,7 @@ import { toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
-import { colors, fun, layout, MAX_FONT_SCALE, radii, space } from '@/theme';
+import { colors, fonts, layout, MAX_FONT_SCALE, radii, space } from '@/theme';
 
 import { CATEGORY_EMOJIS } from './category-emojis';
 
@@ -28,7 +28,7 @@ export function CategoryCircles() {
     >
       {OFFER_CATEGORIES.map((category) => {
         const selected = filters.categories.includes(category);
-        const { emoji, tint } = CATEGORY_EMOJIS[category];
+        const { emoji } = CATEGORY_EMOJIS[category];
         const short = t.parts.categoryShort[category];
         return (
           <PressableScale
@@ -46,13 +46,7 @@ export function CategoryCircles() {
             }}
             style={styles.item}
           >
-            <View
-              style={[
-                styles.circle,
-                { backgroundColor: fun[tint].bg },
-                selected && styles.circleSelected,
-              ]}
-            >
+            <View style={[styles.circle, selected && styles.circleSelected]}>
               <Text style={styles.emoji} maxFontSizeMultiplier={1.2}>
                 {emoji}
               </Text>
@@ -83,10 +77,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2.5,
     borderColor: 'transparent',
+    backgroundColor: colors.background.muted,
   },
-  // Gewählt: schwarzer Ring um die bunte Kachel.
-  circleSelected: { borderColor: colors.text.primary },
+  // Neutrale Kreise wie bei Karten-Apps; die Farbe bringt das Emoji.
+  // Gewählt: Markenfarbe als Fläche, schwarzer Ring.
+  circleSelected: { borderColor: colors.text.primary, backgroundColor: colors.accent.subtle },
   emoji: { fontSize: 32, lineHeight: 40 },
   label: { color: colors.text.secondary },
-  labelSelected: { color: colors.text.primary, fontWeight: '700' },
+  labelSelected: { color: colors.text.primary, fontFamily: fonts.bold },
 });

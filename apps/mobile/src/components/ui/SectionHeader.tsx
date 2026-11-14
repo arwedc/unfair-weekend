@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Map } from 'lucide-react-native';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, fonts, layout, space } from '@/theme';
+import { colors, fonts, layout, radii, soft, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -21,6 +22,14 @@ export interface SectionHeaderProps {
   onToggle?: () => void;
   /** Nur mit `onToggle`: ob der Abschnitt gerade offen ist. */
   expanded?: boolean;
+  /** Runder Pfeil rechts, z. B. zur Seite mit allen Angeboten und Karte. Ersetzt den Link. */
+  onMore?: () => void;
+  /** Text im Knopf, z. B. „Auf der Karte“. */
+  moreLabel?: string;
+  /** Für Screenreader, z. B. „Alle Angebote aus Last Minute“. */
+  moreAccessibilityLabel?: string;
+  /** Kleines Zeichen vor dem Titel, z. B. ein pulsierender Punkt bei „Last Minute“. */
+  accessory?: ReactNode;
 }
 
 /** Überschrift eines Abschnitts, z. B. „Heute in Münster“. Mit `onToggle` auf- und zuklappbar. */
@@ -33,6 +42,10 @@ export function SectionHeader({
   actionAccessibilityLabel,
   onToggle,
   expanded = false,
+  accessory,
+  onMore,
+  moreLabel,
+  moreAccessibilityLabel,
 }: SectionHeaderProps) {
   if (onToggle) {
     const Chevron = expanded ? ChevronUp : ChevronDown;
@@ -49,7 +62,7 @@ export function SectionHeader({
           inset && { paddingHorizontal: layout.screenPaddingX },
         ]}
       >
-        <Text variant="title2" style={styles.title}>
+        <Text variant="title3" style={styles.title}>
           {title}
         </Text>
         <View style={styles.toggleEnd}>
@@ -66,10 +79,29 @@ export function SectionHeader({
 
   return (
     <View style={[styles.row, inset && { paddingHorizontal: layout.screenPaddingX }]}>
-      <Text variant="title2" accessibilityRole="header" style={styles.title}>
-        {title}
-      </Text>
-      {actionLabel && onAction ? (
+      <View style={styles.titleWrap}>
+        {accessory}
+        <Text variant="title3" accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
+      </View>
+      {onMore ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={moreAccessibilityLabel ?? title}
+          onPress={onMore}
+          hitSlop={MORE_HIT_SLOP}
+          pressedScale={0.95}
+          style={styles.more}
+        >
+          <Map size={15} color={colors.accent.onSubtle} strokeWidth={2.25} />
+          {moreLabel ? (
+            <Text variant="footnote" numberOfLines={1} style={styles.moreText}>
+              {moreLabel}
+            </Text>
+          ) : null}
+        </PressableScale>
+      ) : actionLabel && onAction ? (
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={actionAccessibilityLabel ?? actionLabel}
@@ -89,18 +121,44 @@ export function SectionHeader({
   );
 }
 
+/** Der Knopf ist 32 pt hoch, die Touch-Fläche trotzdem 44 pt. */
+const MORE_SIZE = 32;
+const MORE_HIT_SLOP = (44 - MORE_SIZE) / 2;
+
 /** Der Link ist klein, die Touch-Fläche trotzdem mindestens 44 pt. */
 const ACTION_HIT_SLOP = { top: space[3], bottom: space[3], left: space[4], right: space[4] };
 
 const styles = StyleSheet.create({
+  // Mittig statt an der Grundlinie: Mit der Titelgruppe (Punkt + Text) konnte die Grundlinien-
+  // Ausrichtung die Gruppe beim Neuaufbau auf Breite 0 drücken, dann war nur noch der Punkt zu sehen.
   row: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: space[3],
   },
-  toggleRow: { alignItems: 'center', minHeight: layout.minTouchTarget },
+  toggleRow: { minHeight: layout.minTouchTarget },
   toggleEnd: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
+  // Nimmt den freien Platz ein, damit der Titel nie auf 0 schrumpft; „Alle“ bleibt rechts.
+  titleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    flexGrow: 1,
+    flexShrink: 1,
+  },
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
+  more: {
+    height: MORE_SIZE,
+    minWidth: MORE_SIZE,
+    paddingHorizontal: space[3],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space[1.5],
+    borderRadius: radii.full,
+    backgroundColor: soft.tint,
+  },
+  moreText: { fontFamily: fonts.semibold, color: colors.accent.onSubtle },
 });
