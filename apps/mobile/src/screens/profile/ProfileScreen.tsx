@@ -15,8 +15,8 @@ import { InviteCard, ProfileMenu } from './ProfileMenu';
 
 /**
  * Tab „Profil“: oben was Spaß macht (Profilbild, Bilanz, Stufe), dann Interessen,
- * Freunde einladen, ganz unten die Ordner: Mitgliedschaft,
- * Hilfe & Support, Geschenkkarte, Einstellungen und Rechtliches.
+ * Freunde einladen und darunter die Profilordner mit Favoriten, Mitgliedschaft,
+ * Geschenkkarte, Hilfe & Support, Einstellungen und Rechtliches.
  */
 export function ProfileScreen() {
   const router = useRouter();

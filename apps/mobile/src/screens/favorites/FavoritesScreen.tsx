@@ -7,15 +7,7 @@ import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { Stars } from '@/components/reviews/Stars';
-import {
-  Appear,
-  Button,
-  EmptyState,
-  PressableScale,
-  Screen,
-  Skeleton,
-  Text,
-} from '@/components/ui';
+import { Appear, Button, EmptyState, Page, PressableScale, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import type { FavoriteLocation } from '@/features/favorites/api';
 import {
@@ -38,21 +30,6 @@ import { colors, fonts, layout, radii, radius, shadow, soft, space } from '@/the
 
 const COVER_HEIGHT = 168;
 const LOGO_SIZE = 56;
-
-function Header() {
-  const { t } = useT();
-  const f = t.parts.favorites;
-  return (
-    <View style={styles.header}>
-      <Text variant="overline" color="accent">
-        {f.overline}
-      </Text>
-      <Text variant="title1" accessibilityRole="header">
-        {f.title}
-      </Text>
-    </View>
-  );
-}
 
 /** Große Karte eines Lieblingsorts: Foto, Logo, Bewertung und das nächste freie Angebot. */
 function FavoriteCard({
@@ -168,7 +145,7 @@ function FavoriteCard({
   );
 }
 
-/** Tab „Favoriten“: gemerkte Standorte als große Karten, Orte mit freien Angeboten zuerst. */
+/** Gemerkte Standorte als große Karten, Orte mit freien Angeboten zuerst. */
 export function FavoritesScreen() {
   const router = useRouter();
   const { t, locale } = useT();
@@ -180,20 +157,18 @@ export function FavoritesScreen() {
 
   if (!ready || (userId !== null && isPending)) {
     return (
-      <Screen>
-        <Header />
+      <Page>
         <View style={styles.list} accessible accessibilityLabel={f.loading}>
           <Skeleton height={COVER_HEIGHT + 120} radius={radius.card} />
           <Skeleton height={COVER_HEIGHT + 120} radius={radius.card} />
         </View>
-      </Screen>
+      </Page>
     );
   }
 
   if (userId === null) {
     return (
-      <Screen>
-        <Header />
+      <Page>
         <EmptyState icon={Heart} title={f.signInTitle} message={f.signInText} />
         <Button
           label={t.common.signIn}
@@ -201,7 +176,7 @@ export function FavoritesScreen() {
           fullWidth
           onPress={() => router.push('/anmelden')}
         />
-      </Screen>
+      </Page>
     );
   }
 
@@ -212,7 +187,7 @@ export function FavoritesScreen() {
   const sorted = sortFavorites(locations, summary, locale);
 
   return (
-    <Screen
+    <Page
       refreshControl={
         <RefreshControl
           refreshing={false}
@@ -226,8 +201,6 @@ export function FavoritesScreen() {
         />
       }
     >
-      <Header />
-
       {error ? (
         <EmptyState
           tone="error"
@@ -260,14 +233,13 @@ export function FavoritesScreen() {
           ))}
         </View>
       )}
-    </Screen>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   semibold: { fontFamily: fonts.semibold },
-  header: { gap: space[1] },
   list: { gap: space[5] },
 
   card: {

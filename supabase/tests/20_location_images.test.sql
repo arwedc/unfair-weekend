@@ -46,6 +46,7 @@ select throws_ok(
 select tests.clear_authentication();
 update public.payment_settings set payments_enabled = false;
 select tests.set_id('offer', tests.create_offer(tests.id('loc')));
+update public.offers set image_paths = '{}' where id = tests.id('offer');
 select tests.authenticate_as_anon();
 select is(
   (select image_paths from public.get_offer(tests.id('offer'))),

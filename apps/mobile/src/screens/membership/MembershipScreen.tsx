@@ -80,9 +80,6 @@ function LevelSection() {
           ? p.topLevel
           : p.stampsLeft(level.left, p.levels[level.next])}
       </Text>
-      <Text variant="footnote" color="secondary">
-        {p.levelIntro} {m.howText}
-      </Text>
 
       <SectionHeader title={m.levelsTitle} />
       <ListGroup>
@@ -90,7 +87,6 @@ function LevelSection() {
           <ListRow
             key={item.key}
             title={`${item.emoji} ${p.levels[item.key]}`}
-            detail={p.levelFrom(item.from)}
             trailing={
               index <= level.index ? (
                 <View style={styles.reached} accessibilityLabel={m.reached}>
