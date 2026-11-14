@@ -41,10 +41,8 @@ import { OnboardingStage } from './OnboardingStage';
 
 const STEP_COUNT = 3;
 const STEP_EASING = Easing.bezier(0.2, 0, 0, 1);
-/** Eine volle Umdrehung reicht, damit alle Karten kurz vorne vorbeikommen. */
-const INTRO_TURNS = 1;
-const INTRO_SPIN_DELAY_MS = 600;
-const INTRO_SPIN_MS = 2400;
+/** So viele volle Umdrehungen macht der Kreis beim Erscheinen. */
+const INTRO_TURNS = 3;
 /** Beim Schließen wirbelt der Kreis wieder los: so viele Umdrehungen in so vielen ms. */
 const EXIT_TURNS = 3;
 const EXIT_MS = 1300;
@@ -145,21 +143,25 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
       rotation.set(base);
       rotation.set(
         withDelay(
-          INTRO_SPIN_DELAY_MS,
+          340,
           withTiming(base - 360 * INTRO_TURNS, {
-            duration: INTRO_SPIN_MS,
-            easing: Easing.out(Easing.quad),
+            duration: 3000,
+            easing: Easing.out(Easing.cubic),
           }),
         ),
       );
     }
   };
 
+  const finishExploring = () => {
+    router.navigate('/');
+    onFinish();
+  };
+
   const startExploring = () => {
     if (leaving) return;
-    router.navigate('/');
     if (reduceMotion || wheel.length === 0) {
-      onFinish();
+      finishExploring();
       return;
     }
     // Abschied: Der Kreis dreht immer schneller, dann blendet alles in die App über.
@@ -176,7 +178,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
       withDelay(
         EXIT_MS - EXIT_FADE_MS,
         withTiming(1, { duration: EXIT_FADE_MS }, () => {
-          scheduleOnRN(onFinish);
+          scheduleOnRN(finishExploring);
         }),
       ),
     );
