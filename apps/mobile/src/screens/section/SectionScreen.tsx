@@ -32,7 +32,7 @@ import WebView from 'react-native-webview';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { OfferListRow, OfferListRowSkeleton } from '@/components/offers/OfferListRow';
-import { EmptyState, IconButton, PressableScale, Text } from '@/components/ui';
+import { EmptyState, GlassSurface, IconButton, PressableScale, Text } from '@/components/ui';
 import { APP_MAP_HTML } from '@/features/map/app-map-html';
 import {
   fitPlacesScript,
@@ -139,10 +139,18 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     setAtTop(isSheetAtTop(target, minTop));
   };
 
-  // Verlässt das Blatt die oberste Lage, beginnt die Liste wieder oben (oberstes Angebot sichtbar).
+  // Angebot, das nach einem Tipp auf eine Nadel oben in der Liste stehen soll.
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+
+  // Außerhalb der obersten Lage steht oben das gewählte Angebot, sonst das erste.
   useEffect(() => {
-    if (!atTop) list.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [atTop]);
+    if (atTop) return;
+    if (focusIndex !== null) {
+      list.current?.scrollToIndex({ index: focusIndex, animated: true, viewOffset: 0 });
+    } else {
+      list.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [atTop, focusIndex]);
 
   const panConfig = (enabled: boolean) => ({
     enabled,
@@ -199,20 +207,23 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     if (message.type === 'ready') setMapReady(true);
     if (message.type === 'dismiss') {
       setSelectedKey(null);
+      setFocusIndex(null);
       webview.current?.injectJavaScript(selectPlaceScript(null, { top: 0, bottom: 0 }));
     }
     if (message.type === 'place') {
       void Haptics.selectionAsync();
       setSelectedKey(message.key);
+      // Das Blatt fährt auf die Ausgangslage, die Nadel bleibt darüber sichtbar.
+      moveTo(startTop);
       webview.current?.injectJavaScript(
         selectPlaceScript(message.key, {
           top: insets.top + space[16],
-          bottom: height - sheetTop.get(),
+          bottom: height - startTop,
         }),
       );
-      // Das passende Angebot ganz nach oben holen, auch wenn das Blatt ganz unten liegt.
+      // Das passende Angebot steht oben in der Liste und ist hellgold markiert.
       const index = offers.findIndex((offer) => placeKeyOf(offer) === message.key);
-      if (index >= 0) list.current?.scrollToIndex({ index, animated: true, viewOffset: 0 });
+      setFocusIndex(index >= 0 ? index : null);
     }
   };
 
@@ -319,12 +330,16 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         </GestureDetector>
       </Animated.View>
 
-      <IconButton
-        icon={ChevronLeft}
-        accessibilityLabel={m.back}
-        onPress={back}
-        style={[styles.back, { top: insets.top + space[2] }]}
-      />
+      {/* Gleiches Glas wie Stadt-Kachel und Lupe in „Entdecken“. */}
+      <GlassSurface style={[styles.back, { top: insets.top + space[2] }]}>
+        <IconButton
+          variant="plain"
+          icon={ChevronLeft}
+          accessibilityLabel={m.back}
+          onPress={back}
+          style={styles.backButton}
+        />
+      </GlassSurface>
 
       {hasOffers && atTop ? (
         <PressableScale
@@ -384,7 +399,8 @@ const styles = StyleSheet.create({
     marginVertical: space[1],
     backgroundColor: colors.border.subtle,
   },
-  back: { position: 'absolute', left: layout.screenPaddingX },
+  back: { position: 'absolute', left: layout.screenPaddingX, width: 48, height: 48 },
+  backButton: { width: 48, height: 48 },
   toggle: {
     position: 'absolute',
     alignSelf: 'center',
