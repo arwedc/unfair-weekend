@@ -4,7 +4,7 @@ import { useT } from '@/lib/i18n/context';
 import { colors, fonts } from '@/theme';
 
 /**
- * Die vier Tabs der App als echte native Tab-Leiste (iOS: Liquid Glass, Android: Material 3).
+ * Die fünf Tabs der App als echte native Tab-Leiste (iOS: Liquid Glass, Android: Material 3).
  * Icons: SF Symbols auf iOS, Material Symbols auf Android.
  */
 export default function TabsLayout() {
@@ -32,6 +32,11 @@ export default function TabsLayout() {
           sf={{ default: 'ticket', selected: 'ticket.fill' }}
           md="confirmation_number"
         />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="favoriten">
+        <NativeTabs.Trigger.Label>{t.common.tabs.favorites}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} md="favorite" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profil">

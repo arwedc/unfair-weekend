@@ -10,18 +10,12 @@ import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, space } from '@/theme';
 
-import {
-  FavoritePlacesRow,
-  GuestCard,
-  InterestCircles,
-  ProfileHero,
-  StatsSection,
-} from './ProfileParts';
+import { GuestCard, InterestCircles, ProfileHero, StatsSection } from './ProfileParts';
 import { InviteCard, ProfileMenu } from './ProfileMenu';
 
 /**
  * Tab „Profil“: oben was Spaß macht (Profilbild, Bilanz, Stufe), dann Interessen,
- * Freunde einladen und Lieblingsorte, ganz unten die Ordner: Mitgliedschaft,
+ * Freunde einladen, ganz unten die Ordner: Mitgliedschaft,
  * Hilfe & Support, Geschenkkarte, Einstellungen und Rechtliches.
  */
 export function ProfileScreen() {
@@ -105,7 +99,6 @@ export function ProfileScreen() {
       <StatsSection />
       <InterestCircles />
       <InviteCard />
-      <FavoritePlacesRow />
       <ProfileMenu signedIn />
     </Screen>
   );
