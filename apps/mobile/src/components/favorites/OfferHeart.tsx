@@ -1,17 +1,23 @@
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Heart } from 'lucide-react-native';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
-import { GlassSurface, PressableScale } from '@/components/ui';
+import { PressableScale } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { useFavoriteOfferIds, useToggleFavoriteOffer } from '@/features/favorites/queries';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors } from '@/theme';
+import { badge, colors, radii } from '@/theme';
 
 const SIZE = 34;
 /** Tippfläche auf mindestens 44 Punkte vergrößern, ohne den Kreis größer zu machen. */
 const HIT_SLOP = (44 - SIZE) / 2;
+/**
+ * Fester weißer Schleier über der Unschärfe. Anders als Liquid Glass passt er sich nicht dem
+ * Foto an: Das Herz sieht auf hellen und dunklen Bildern gleich aus, das Foto scheint nur leicht durch.
+ */
+const VEIL = 'rgba(255, 255, 255, 0.72)';
 
 export interface OfferHeartProps {
   offerId: string;
@@ -45,15 +51,16 @@ export function OfferHeart({ offerId, title }: OfferHeartProps) {
       }}
       style={styles.button}
     >
-      {/* Glas wie Tab-Leiste und Stadt-Kachel: das Foto scheint leicht durch. */}
-      <GlassSurface style={styles.glass}>
-        <Heart
-          size={18}
-          strokeWidth={2.25}
-          color={saved ? colors.accent.strong : colors.text.primary}
-          fill={saved ? colors.accent.solid : 'transparent'}
-        />
-      </GlassSurface>
+      {Platform.OS === 'ios' ? (
+        <BlurView style={StyleSheet.absoluteFill} tint="light" intensity={40} />
+      ) : null}
+      <View style={[StyleSheet.absoluteFill, styles.veil]} />
+      <Heart
+        size={18}
+        strokeWidth={2.25}
+        color={saved ? colors.accent.strong : colors.text.primary}
+        fill={saved ? colors.accent.solid : 'transparent'}
+      />
     </PressableScale>
   );
 }
@@ -65,6 +72,10 @@ const styles = StyleSheet.create({
     right: badge.inset,
     width: SIZE,
     height: SIZE,
+    borderRadius: radii.full,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  glass: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  veil: { backgroundColor: VEIL },
 });
