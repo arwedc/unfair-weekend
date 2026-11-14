@@ -22,7 +22,8 @@ const GAP = space[2];
  * Als Innenabstand der Liste, denn die Liste füllt die ganze Höhe und würde die Kachel sonst
  * oben anlegen.
  */
-const AIR = space[3];
+// Luft über und unter den Kacheln, damit ihr Schatten Platz hat und nicht als graue Kante abreißt.
+const AIR = space[5];
 
 export interface MapOfferCarouselProps {
   offers: readonly Offer[];
@@ -106,6 +107,8 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
           offset: interval * position,
           index: position,
         })}
+        // Schatten nicht an den Listenrändern abschneiden (sonst grauer Balken).
+        style={styles.list}
         contentContainerStyle={{ paddingHorizontal: SIDE, paddingVertical: AIR }}
         scrollEventThrottle={16}
         onScrollBeginDrag={() => {
@@ -140,4 +143,5 @@ export function MapOfferCarousel({ offers, index, onIndexChange }: MapOfferCarou
 
 const styles = StyleSheet.create({
   wrap: { height: MAP_TILE_HEIGHT + AIR * 2 },
+  list: { overflow: 'visible' },
 });
