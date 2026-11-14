@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { buildMiniMapHtml } from '@/features/map/mini-map-html';
@@ -9,13 +9,14 @@ import { colors, radii } from '@/theme';
 export interface MiniMapProps {
   lat: number;
   lng: number;
-  /** Für Screenreader, z. B. der Name des Ortes. */
+  /** Name des Ortes: Schild am Pin und Text für Screenreader. */
   label: string;
   height?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
-/** Kleine, nicht antippbare Kartenvorschau mit einem Pin. */
-export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
+/** Kleine, nicht antippbare Kartenvorschau mit einem Pin und Namensschild. */
+export function MiniMap({ lat, lng, label, height = 168, style }: MiniMapProps) {
   const { t } = useT();
   const html = buildMiniMapHtml({
     styleUrl: env.mapStyleUrl,
@@ -23,6 +24,7 @@ export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
     lng,
     pinColor: colors.accent.solid,
     background: colors.background.muted,
+    label,
   });
 
   return (
@@ -30,7 +32,7 @@ export function MiniMap({ lat, lng, label, height = 168 }: MiniMapProps) {
       accessible
       accessibilityRole="image"
       accessibilityLabel={t.parts.card.mapPreview(label)}
-      style={[styles.frame, { height }]}
+      style={[styles.frame, { height }, style]}
     >
       <WebView
         source={{ html }}

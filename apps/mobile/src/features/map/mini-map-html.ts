@@ -1,11 +1,12 @@
 /**
- * Kleine, feste Kartenvorschau (ein Pin) für die Location-Kachel auf der Detailseite.
- * Nicht verschiebbar; ein Tipp darauf öffnet in der App die Karten-App.
+ * Kleine, feste Kartenvorschau (ein Pin mit Namensschild) für die Anfahrt-Kachel der Standortseite.
+ * Nicht verschiebbar; ein Tipp auf die Kachel öffnet in der App die Karten-App.
  * Nutzt dieselbe MapLibre-Version und Quellenangabe wie die große Karte.
  */
 import { MAP_ATTRIBUTION, MAPLIBRE_CDNS, toScriptJson } from './map-html';
 
-export const MINI_MAP_ZOOM = 14.5;
+/** Nah genug, dass Straßennamen lesbar sind. */
+export const MINI_MAP_ZOOM = 16;
 
 export interface MiniMapOptions {
   styleUrl: string;
@@ -13,6 +14,8 @@ export interface MiniMapOptions {
   lng: number;
   pinColor: string;
   background: string;
+  /** Name am Pin, z. B. der Standort. Leer: nur der Pin. */
+  label?: string;
 }
 
 export function buildMiniMapHtml(options: MiniMapOptions): string {
@@ -21,6 +24,7 @@ export function buildMiniMapHtml(options: MiniMapOptions): string {
     center: [options.lng, options.lat],
     zoom: MINI_MAP_ZOOM,
     pinColor: options.pinColor,
+    label: options.label?.trim() ?? '',
   });
   const [cdn, fallbackCdn] = MAPLIBRE_CDNS;
 
@@ -41,6 +45,12 @@ export function buildMiniMapHtml(options: MiniMapOptions): string {
   .pin {
     width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
     border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .label {
+    max-width: 180px; padding: 4px 8px; border-radius: 8px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    font: 600 12px/1.3 -apple-system, Roboto, sans-serif; color: #1a1a1a;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
   }
 </style>
 </head>
@@ -67,6 +77,14 @@ export function buildMiniMapHtml(options: MiniMapOptions): string {
   pin.className = 'pin';
   pin.style.background = config.pinColor;
   new maplibregl.Marker({ element: pin, anchor: 'bottom' }).setLngLat(config.center).addTo(map);
+  if (config.label) {
+    var label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = config.label;
+    new maplibregl.Marker({ element: label, anchor: 'left', offset: [22, -22] })
+      .setLngLat(config.center)
+      .addTo(map);
+  }
 })();
 </script>
 </body>
