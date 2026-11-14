@@ -172,16 +172,27 @@ export const commonDe = {
     statExperienced: 'Erlebt',
     statReviewed: 'Bewertet',
     levels: {
-      newbie: 'Neu dabei 🌱',
-      explorer: 'Auf Entdeckungstour 🧭',
-      cityExplorer: 'Stadtentdecker 🏙️',
-      legend: 'Local Legend 🏆',
+      newbie: 'Neu dabei',
+      explorer: 'Auf Entdeckungstour',
+      cityExplorer: 'Stadtentdecker',
+      legend: 'Local Legend',
     },
-    nextLevel: (n: number) =>
-      n === 1
-        ? 'Noch 1 Erlebnis bis zur nächsten Stufe'
-        : `Noch ${n} Erlebnisse bis zur nächsten Stufe`,
+    levelStep: (n: number, total: number) => `Stufe ${n} von ${total}`,
+    stampsLeft: (n: number, next: string) =>
+      n === 1 ? `Noch 1 Stempel bis „${next}“` : `Noch ${n} Stempel bis „${next}“`,
+    firstStamp: 'Jedes eingelöste Erlebnis gibt einen Stempel.',
     topLevel: 'Höchste Stufe erreicht. Respekt!',
+    stampCardA11y: (step: string, level: string, filled: number, total: number, hint: string) =>
+      `Stempelkarte, ${step}: ${level}. ${filled} von ${total} Stempeln. ${hint}`,
+    levelShowAll: 'Zeigt alle Stufen',
+    stampsCollected: (n: number) => (n === 1 ? '1 Stempel gesammelt' : `${n} Stempel gesammelt`),
+    levelIntro:
+      'Jedes eingelöste Erlebnis gibt einen Stempel. Sind fünf Stempel auf der Karte, steigst du eine Stufe auf.',
+    levelFrom: (n: number) => (n === 0 ? 'Hier startet jeder' : `Ab ${n} Stempeln`),
+    levelCurrent: 'Du bist hier',
+    levelUpTitle: 'Level up!',
+    levelUpText: (level: string) => `Karte voll! Du bist jetzt „${level}“.`,
+    levelUpButton: 'Weiter sammeln',
     guestTitle: 'Hol dir deinen ersten Deal 🎉',
     guestText:
       'Mit Konto sicherst du dir Codes, merkst dir Lieblingsorte und siehst, wie viel du sparst.',
@@ -373,14 +384,27 @@ export const commonEn: Widen<typeof commonDe> = {
     statExperienced: 'Experienced',
     statReviewed: 'Reviewed',
     levels: {
-      newbie: 'New here 🌱',
-      explorer: 'On the hunt 🧭',
-      cityExplorer: 'City explorer 🏙️',
-      legend: 'Local legend 🏆',
+      newbie: 'New here',
+      explorer: 'On the hunt',
+      cityExplorer: 'City explorer',
+      legend: 'Local legend',
     },
-    nextLevel: (n) =>
-      n === 1 ? '1 more experience to level up' : `${n} more experiences to level up`,
+    levelStep: (n, total) => `Level ${n} of ${total}`,
+    stampsLeft: (n, next) =>
+      n === 1 ? `1 more stamp to “${next}”` : `${n} more stamps to “${next}”`,
+    firstStamp: 'Every redeemed experience earns a stamp.',
     topLevel: 'Top level reached. Respect!',
+    stampCardA11y: (step, level, filled, total, hint) =>
+      `Stamp card, ${step}: ${level}. ${filled} of ${total} stamps. ${hint}`,
+    levelShowAll: 'Shows all levels',
+    stampsCollected: (n) => (n === 1 ? '1 stamp collected' : `${n} stamps collected`),
+    levelIntro:
+      'Every redeemed experience earns a stamp. Once there are five stamps on the card, you level up.',
+    levelFrom: (n) => (n === 0 ? 'Where everyone starts' : `From ${n} stamps`),
+    levelCurrent: 'You are here',
+    levelUpTitle: 'Level up!',
+    levelUpText: (level) => `Card full! You're now “${level}”.`,
+    levelUpButton: 'Keep collecting',
     guestTitle: 'Grab your first deal 🎉',
     guestText: 'With an account you get codes, save favourite places and see how much you save.',
     placesEmpty: 'No favourite places yet. Tap the heart on a venue.',

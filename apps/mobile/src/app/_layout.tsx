@@ -106,6 +106,7 @@ export default function RootLayout() {
                       name="favoriten"
                       options={{ title: t.common.screens.favorites }}
                     />
+                    <Stack.Screen name="stufen" options={{ title: '' }} />
                     <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                     <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
                   </Stack>
