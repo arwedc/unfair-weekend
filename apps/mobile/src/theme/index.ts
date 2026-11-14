@@ -129,7 +129,9 @@ const DISPLAY_STYLES: ReadonlySet<TextStyleName> = new Set([
 /** Satoshi-Schnitt zur Stärke des Tokens: kräftig bleibt kräftig, ohne zu fett zu wirken. */
 export function displayFont(weight: number): string {
   if (!SATOSHI_AVAILABLE) return nativeFontFamily[weight as keyof typeof nativeFontFamily];
-  if (weight >= 800) return 'Satoshi-Black';
+  // Satoshi wirkt leichter als Inter: Überschriften ab 700 (Abschnittstitel, Begrüßung, Preise)
+  // bekommen Black, damit sie wirklich fett sind. Kleinere Titel (600, z. B. Kartentitel) Bold.
+  if (weight >= 700) return 'Satoshi-Black';
   if (weight >= 600) return 'Satoshi-Bold';
   return 'Satoshi-Medium';
 }
