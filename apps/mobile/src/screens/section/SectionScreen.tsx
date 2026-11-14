@@ -43,6 +43,8 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const list = useRef<FlatList<(typeof offers)[number]>>(null);
   const [mapVisible, setMapVisible] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  // Erst sichtbar, wenn der Ausschnitt auf den Angeboten liegt (sonst blitzt der Startpunkt Münster auf).
+  const [mapFitted, setMapFitted] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const mapHeight = Math.round(height * 0.42);
@@ -58,6 +60,9 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     if (!mapReady) return;
     webview.current?.injectJavaScript(placesScript);
     webview.current?.injectJavaScript(fitScript);
+    // Kurz warten, bis die Karte den neuen Ausschnitt gezeichnet hat, dann einblenden.
+    const timer = setTimeout(() => setMapFitted(true), 120);
+    return () => clearTimeout(timer);
   }, [mapReady, placesScript, fitScript]);
 
   const handleMessage = (raw: string) => {
@@ -136,7 +141,7 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
             ref={webview}
             source={{ html: APP_MAP_HTML }}
             originWhitelist={['*']}
-            style={styles.map}
+            style={[styles.map, !mapFitted && styles.mapLoading]}
             onMessage={(event) => handleMessage(event.nativeEvent.data)}
             javaScriptEnabled
             domStorageEnabled
@@ -209,10 +214,17 @@ function Separator() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
-  mapWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
+  mapWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background.muted,
+  },
   map: { flex: 1, backgroundColor: colors.background.muted },
   // Unsichtbar, aber geladen: Nadeln und Ausschnitt bleiben erhalten.
   mapHidden: { opacity: 0 },
+  mapLoading: { opacity: 0 },
   sheet: {
     flex: 1,
     backgroundColor: colors.background.default,

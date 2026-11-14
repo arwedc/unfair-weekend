@@ -7,7 +7,7 @@ import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText, type OfferBadge } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, fun, radii, radius, shadow, space } from '@/theme';
+import { badge, colors, fun, radius, shadow, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
 import { OfferImage } from './OfferImage';
@@ -27,7 +27,7 @@ export const COMPACT_CARD_WIDTH = 264;
 
 /**
  * Höchstens ein Badge auf dem Foto, das stärkste Kaufsignal zuerst:
- * ausgebucht > knappe Plätze > startet bald. Den Rabatt zeigt das Preisschild unten rechts.
+ * ausgebucht > knappe Plätze > startet bald. Den Rabatt zeigt der Streifen oben links.
  */
 const BADGE_PRIORITY: Record<OfferBadge['variant'], number> = {
   soldOut: 0,
@@ -37,7 +37,7 @@ const BADGE_PRIORITY: Record<OfferBadge['variant'], number> = {
 };
 
 /**
- * Angebotskarte, bewusst schlicht: Foto mit einem Badge, Kategorie-Emoji und Preisschild,
+ * Angebotskarte, bewusst schlicht: Foto mit Rabatt-Streifen und höchstens einem Badge,
  * darunter Titel, Zeit, Ort und Preis. Mehr steht auf der Angebotsseite.
  */
 export function OfferCard({ offer, variant = 'large', onOpen, priority, style }: OfferCardProps) {
@@ -108,15 +108,6 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
           </View>
         ) : null}
 
-        {/* Kategorie als kleines Emoji. Ohne Foto zeigt die Fläche sie schon groß. */}
-        {hasPhoto ? (
-          <View style={styles.categoryDot} accessible={false}>
-            <Text style={styles.categoryEmoji} maxFontSizeMultiplier={1}>
-              {category.emoji}
-            </Text>
-          </View>
-        ) : null}
-
         {!soldOut ? <DiscountBand percent={offer.discount_percent} compact={compact} /> : null}
       </View>
 
@@ -159,8 +150,6 @@ export function OfferCardSkeleton({ variant = 'large' }: { variant?: 'large' | '
   );
 }
 
-const CATEGORY_DOT = 30;
-
 const styles = StyleSheet.create({
   noPhoto: { alignItems: 'center', justifyContent: 'center' },
   noPhotoEmoji: { fontSize: 64, lineHeight: 76 },
@@ -179,19 +168,8 @@ const styles = StyleSheet.create({
   // Ausgebuchte Angebote treten optisch zurück, bleiben aber sichtbar.
   imageSoldOut: { opacity: 0.55 },
   skeletonImage: { aspectRatio: 16 / 10 },
-  badge: { position: 'absolute', top: badge.inset, left: badge.inset },
-  categoryDot: {
-    position: 'absolute',
-    left: badge.inset,
-    bottom: badge.inset,
-    width: CATEGORY_DOT,
-    height: CATEGORY_DOT,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.badge.neutral.background,
-  },
-  categoryEmoji: { fontSize: 16, lineHeight: 20 },
+  // Links oben klebt der Rabatt-Streifen, das Badge sitzt deshalb rechts oben.
+  badge: { position: 'absolute', top: badge.inset, right: badge.inset },
   body: { padding: space[3], paddingTop: space[3], gap: space[1] },
   meta: { gap: space[0.5] },
   // Gestrichelte Linie trennt Infos und Preis, wie ein Abriss am Gutschein.
