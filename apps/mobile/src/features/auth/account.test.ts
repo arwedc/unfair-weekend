@@ -40,7 +40,13 @@ describe('parseAccount', () => {
       noShowCount: 1,
       blockedUntil: null,
       isBlocked: false,
+      avatarPath: null,
     });
+  });
+
+  it('liest das Profilbild, wenn eins gesetzt ist', () => {
+    expect(parseAccount({ ...raw, avatar_path: 'u1/bild.jpg' })?.avatarPath).toBe('u1/bild.jpg');
+    expect(parseAccount({ ...raw, avatar_path: '' })?.avatarPath).toBeNull();
   });
 
   it('behandelt fehlende Namen als leer und unvollständig', () => {

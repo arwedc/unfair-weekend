@@ -56,18 +56,40 @@ export function savedCents(
 
 export type ExplorerLevel = 'newbie' | 'explorer' | 'cityExplorer' | 'legend';
 
+/** Stufen mit der Zahl eingelöster Erlebnisse, ab der sie gelten (aufsteigend). */
+export const LEVEL_STEPS: readonly { level: ExplorerLevel; from: number }[] = [
+  { level: 'newbie', from: 0 },
+  { level: 'explorer', from: 1 },
+  { level: 'cityExplorer', from: 5 },
+  { level: 'legend', from: 15 },
+];
+
 /** Stufe nach eingelösten Erlebnissen: 0 neu, ab 1 unterwegs, ab 5 Stadtentdecker, ab 15 Legende. */
 export function explorerLevel(redeemed: number): ExplorerLevel {
-  if (redeemed >= 15) return 'legend';
-  if (redeemed >= 5) return 'cityExplorer';
-  if (redeemed >= 1) return 'explorer';
-  return 'newbie';
+  let current: ExplorerLevel = 'newbie';
+  for (const step of LEVEL_STEPS) if (redeemed >= step.from) current = step.level;
+  return current;
 }
 
 /** Wie viele Erlebnisse noch bis zur nächsten Stufe fehlen (null auf der höchsten). */
 export function untilNextLevel(redeemed: number): number | null {
-  if (redeemed >= 15) return null;
-  if (redeemed >= 5) return 15 - redeemed;
-  if (redeemed >= 1) return 5 - redeemed;
-  return 1;
+  const next = LEVEL_STEPS.find((step) => step.from > redeemed);
+  return next ? next.from - redeemed : null;
+}
+
+/** Fortschritt innerhalb der aktuellen Stufe von 0 bis 1 (1 auf der höchsten Stufe). */
+export function levelProgress(redeemed: number): number {
+  const nextIndex = LEVEL_STEPS.findIndex((step) => step.from > redeemed);
+  if (nextIndex === -1) return 1;
+  const start = LEVEL_STEPS[nextIndex - 1]?.from ?? 0;
+  const end = LEVEL_STEPS[nextIndex]?.from ?? start + 1;
+  return Math.min(1, Math.max(0, (redeemed - start) / (end - start)));
+}
+
+/**
+ * Speicherort eines neuen Profilbilds im Bucket `avatars`: immer im eigenen Ordner
+ * und mit neuem Namen, damit kein altes Bild aus dem Cache auftaucht.
+ */
+export function avatarStoragePath(userId: string, fileId: string): string {
+  return `${userId}/${fileId}.jpg`;
 }

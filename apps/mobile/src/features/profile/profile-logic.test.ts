@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  avatarStoragePath,
   avatarTint,
   explorerLevel,
   initials,
+  LEVEL_STEPS,
+  levelProgress,
   redeemedVouchers,
   savedCents,
   untilNextLevel,
@@ -60,5 +63,30 @@ describe('explorerLevel', () => {
     expect(untilNextLevel(3)).toBe(2);
     expect(untilNextLevel(7)).toBe(8);
     expect(untilNextLevel(20)).toBeNull();
+  });
+});
+
+describe('levelProgress', () => {
+  it('misst den Weg innerhalb der aktuellen Stufe', () => {
+    expect(levelProgress(0)).toBe(0);
+    expect(levelProgress(1)).toBe(0);
+    expect(levelProgress(3)).toBe(0.5);
+    expect(levelProgress(10)).toBe(0.5);
+  });
+
+  it('ist auf der höchsten Stufe voll', () => {
+    expect(levelProgress(15)).toBe(1);
+    expect(levelProgress(40)).toBe(1);
+  });
+
+  it('Stufen sind aufsteigend sortiert', () => {
+    const froms = LEVEL_STEPS.map((step) => step.from);
+    expect(froms).toEqual([...froms].sort((a, b) => a - b));
+  });
+});
+
+describe('avatarStoragePath', () => {
+  it('liegt im eigenen Ordner und endet auf .jpg', () => {
+    expect(avatarStoragePath('user-1', 'abc')).toBe('user-1/abc.jpg');
   });
 });

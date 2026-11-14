@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import type { UserSignUpInput } from '@repo/shared';
 
+import { removeAllAvatars } from '@/features/profile/avatar-api';
 import { forgetDevice, unregisterDevice } from '@/features/push/push';
 import { ApiError, toApiError } from '@/lib/api-error';
 import { getLocale } from '@/lib/i18n/locale-store';
@@ -256,6 +257,11 @@ export async function signOut(): Promise<void> {
 
 /** Löscht das Konto endgültig (Pflicht im App Store) und meldet ab. */
 export async function deleteAccount(): Promise<void> {
+  // Profilbilder vorher löschen: Die DB kann Dateien im Storage nicht selbst entfernen.
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (userId) await removeAllAvatars(userId).catch(() => undefined);
+
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw toApiError(error);
   // Push-Tokens hat der Server mit dem Konto gelöscht, lokal nur vergessen.
