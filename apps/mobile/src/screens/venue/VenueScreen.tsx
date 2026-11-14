@@ -385,9 +385,24 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       >
         {/* Kopf: Name, Kategorien, Bewertung */}
         <View style={styles.head}>
-          <Text variant="title1" accessibilityRole="header">
-            {name}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text variant="title1" accessibilityRole="header" style={styles.flex}>
+              {name}
+            </Text>
+            <View style={styles.titleActions}>
+              {resolvedLocationId ? (
+                <FavoriteButton locationId={resolvedLocationId} name={name} />
+              ) : null}
+              {offer ? (
+                <IconButton
+                  icon={Share2}
+                  variant="plain"
+                  accessibilityLabel={v.share}
+                  onPress={() => void shareOffer(offer, locale)}
+                />
+              ) : null}
+            </View>
+          </View>
           {showLocationName ? (
             <Text variant="callout" color="secondary">
               {locationName}
@@ -677,20 +692,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       </Animated.View>
 
       <BackButton top={buttonTop} />
-      <View style={[styles.topRight, { top: buttonTop }]}>
-        {resolvedLocationId ? (
-          <View style={styles.floatingCircle}>
-            <FavoriteButton locationId={resolvedLocationId} name={name} />
-          </View>
-        ) : null}
-        {offer ? (
-          <IconButton
-            icon={Share2}
-            accessibilityLabel={v.share}
-            onPress={() => void shareOffer(offer, locale)}
-          />
-        ) : null}
-      </View>
 
       {offer ? <ClaimSheet ref={claimSheet} offer={offer} /> : null}
     </View>
@@ -715,17 +716,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.muted,
   },
   back: { position: 'absolute', left: layout.screenPaddingX },
-  topRight: {
-    position: 'absolute',
-    right: layout.screenPaddingX,
-    flexDirection: 'row',
-    gap: space[2],
-  },
-  floatingCircle: {
-    borderRadius: radii.full,
-    backgroundColor: colors.surface.raised,
-    boxShadow: shadow.floating,
-  },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2] },
+  titleActions: { flexDirection: 'row', gap: space[1], marginRight: -space[2] },
 
   head: {
     paddingHorizontal: layout.screenPaddingX,
