@@ -109,10 +109,6 @@ export default function RootLayout() {
                       name="name"
                       options={{ title: t.common.screens.name, presentation: 'modal' }}
                     />
-                    <Stack.Screen
-                      name="favoriten"
-                      options={{ title: t.common.screens.favorites }}
-                    />
                     <Stack.Screen name="stufen" options={{ title: '' }} />
                     <Stack.Screen
                       name="einstellungen"

@@ -1,20 +1,14 @@
-/** Bausteine des Profils: Kopf mit Avatar, Bilanz mit Stempelkarte, Interessen und Lieblingsorte. */
-import { formatPrice, OFFER_CATEGORIES, STORAGE_BUCKETS, berlinParts } from '@repo/shared';
+/** Bausteine des Profils: Kopf mit Avatar, Bilanz mit Stempelkarte, Interessen. */
+import { formatPrice, OFFER_CATEGORIES, berlinParts } from '@repo/shared';
 import { useRouter } from 'expo-router';
-import { Pencil, Store } from 'lucide-react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pencil } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
-import { OfferImage } from '@/components/offers/OfferImage';
 import { Button, IconButton, PressableScale, SectionHeader, Skeleton, Text } from '@/components/ui';
 import type { Account } from '@/features/auth/account';
 import { useAuth } from '@/features/auth/auth-context';
-import {
-  useFavoriteCategories,
-  useFavoriteLocations,
-  useToggleFavoriteCategory,
-} from '@/features/favorites/queries';
-import { initials } from '@/features/profile/profile-logic';
+import { useFavoriteCategories, useToggleFavoriteCategory } from '@/features/favorites/queries';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
 import { useSeenStamps } from '@/features/profile/use-seen-stamps';
 import { errorMessage } from '@/lib/api-error';
@@ -188,68 +182,6 @@ export function InterestCircles() {
   );
 }
 
-/** Lieblingsorte als Reihe runder Logos. „Alle“ führt zur Favoriten-Seite. */
-export function FavoritePlacesRow() {
-  const router = useRouter();
-  const { locations, isPending } = useFavoriteLocations();
-  const { t } = useT();
-  const p = t.common.profile;
-
-  return (
-    <View style={styles.section}>
-      <SectionHeader
-        title={p.favoritePlaces}
-        actionLabel={locations.length > 0 ? p.seeAll : undefined}
-        onAction={locations.length > 0 ? () => router.push('/favoriten') : undefined}
-      />
-      {isPending ? (
-        <Skeleton height={88} radius={radius.card} />
-      ) : locations.length === 0 ? (
-        <View style={styles.emptyPlaces}>
-          <Store size={20} color={colors.text.tertiary} />
-          <Text variant="footnote" color="secondary" style={styles.emptyText}>
-            {p.placesEmpty}
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.places}
-        >
-          {locations.map((location) => (
-            <PressableScale
-              key={location.id}
-              accessibilityRole="button"
-              accessibilityLabel={location.company_name}
-              onPress={() =>
-                router.push({ pathname: '/standort/[id]', params: { id: location.id } })
-              }
-              style={styles.place}
-            >
-              <View style={styles.logo}>
-                {location.company_logo_path ? (
-                  <OfferImage
-                    path={location.company_logo_path}
-                    bucket={STORAGE_BUCKETS.companyLogos}
-                    contentFit="contain"
-                    style={styles.logoImage}
-                  />
-                ) : (
-                  <Text variant="title3">{initials(location.company_name, '')}</Text>
-                )}
-              </View>
-              <Text variant="caption" numberOfLines={1} style={styles.placeName}>
-                {location.company_name}
-              </Text>
-            </PressableScale>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
 /** Ohne Konto: einladende Kachel statt leerem Profil. */
 export function GuestCard() {
   const router = useRouter();
@@ -316,30 +248,6 @@ const styles = StyleSheet.create({
   circleEmoji: { fontSize: 28, lineHeight: 34 },
   circleLabel: { color: colors.text.secondary },
   circleLabelActive: { color: colors.text.primary, fontFamily: fonts.bold },
-  emptyPlaces: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    padding: space[4],
-    borderRadius: radius.card,
-    backgroundColor: colors.background.subtle,
-  },
-  emptyText: { flex: 1 },
-  places: { gap: space[4] },
-  place: { width: 72, alignItems: 'center', gap: space[1.5] },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.full,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface.default,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.default,
-  },
-  logoImage: { width: 64, height: 64 },
-  placeName: { color: colors.text.secondary, textAlign: 'center' },
   guest: {
     gap: space[3],
     padding: space[5],

@@ -1,13 +1,13 @@
 import type { OfferCategory } from '@repo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth, userKeys } from '@/features/auth/auth-context';
-import { fetchLocations } from '@/features/offers/api';
 import { locationKeys } from '@/features/offers/queries';
 
 import {
   fetchFavoriteCategories,
   fetchFavoriteLocationIds,
+  fetchFavoriteLocations,
   setFavoriteCategory,
   setFavoriteLocation,
 } from './api';
@@ -30,19 +30,24 @@ export function useFavoriteCategories() {
   });
 }
 
-/** Die Lieblingsorte mit Namen und Adresse (nur freigeschaltete Standorte). */
+/**
+ * Die Lieblingsorte mit Namen, Adresse und Galerie (nur freigeschaltete Standorte).
+ * Beim Entfernen bleibt die alte Liste stehen und wird nur gefiltert, damit nichts aufblitzt.
+ */
 export function useFavoriteLocations() {
   const ids = useFavoriteLocationIds();
   const sorted = [...(ids.data ?? [])].sort();
   const locations = useQuery({
-    queryKey: [...locationKeys.all, 'list', sorted],
-    queryFn: () => fetchLocations(sorted),
+    queryKey: [...locationKeys.all, 'favorites', sorted],
+    queryFn: () => fetchFavoriteLocations(sorted),
     enabled: sorted.length > 0,
+    placeholderData: keepPreviousData,
   });
   return {
-    locations: sorted.length > 0 ? (locations.data ?? []) : [],
+    locations: (locations.data ?? []).filter((location) => sorted.includes(location.id)),
     isPending: ids.isPending || (sorted.length > 0 && locations.isPending),
     error: ids.error ?? locations.error,
+    refetch: () => Promise.all([ids.refetch(), locations.refetch()]),
   };
 }
 

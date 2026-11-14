@@ -24,7 +24,7 @@ Bibliotheken nie mit `pnpm add` in der neuesten Version holen, sondern mit `expo
 
 ```
 src/
-  app/              nur Routen (Expo Router). (tabs)/ = die vier Tabs
+  app/              nur Routen (Expo Router). (tabs)/ = die fünf Tabs (Entdecken, Karte, Meine Codes, Favoriten, Profil)
   screens/          Inhalte der Screens, nach Bereich (feed/, venue/, map/, codes/ …).
                     venue/ = Standort-Seite; Angebote (/angebot/[id]) öffnen sie mit dem Angebot oben
   features/         Daten und Logik ohne Oberfläche, nach Bereich:
