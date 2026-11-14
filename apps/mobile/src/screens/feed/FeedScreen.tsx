@@ -1,5 +1,5 @@
-import type { OfferCategory } from '@repo/shared';
 import { ChevronDown, CloudOff, MapPin, Search, SearchX, Sparkles, X } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,24 +37,18 @@ import { errorMessage, isOffline } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, space } from '@/theme';
 
-function Carousel({
-  section,
-  onShowAll,
-}: {
-  section: FeedSection;
-  onShowAll?: (category: OfferCategory) => void;
-}) {
+/** Eine Reihe zum Wischen. Der Pfeil rechts öffnet alle Angebote des Abschnitts mit Karte. */
+function Carousel({ section }: { section: FeedSection }) {
   const { t } = useT();
-  const category = section.category;
+  const router = useRouter();
   return (
     <View style={styles.section}>
       <SectionHeader
         title={section.title}
         inset
         accessory={section.key === 'last-minute' ? <LiveDot /> : undefined}
-        actionLabel={category && onShowAll ? t.common.all : undefined}
-        actionAccessibilityLabel={t.screens.feed.showAllAria(section.title)}
-        onAction={category && onShowAll ? () => onShowAll(category) : undefined}
+        onMore={() => router.push({ pathname: '/abschnitt/[key]', params: { key: section.key } })}
+        moreAccessibilityLabel={t.screens.feed.showAllAria(section.title)}
       />
       <ScrollView
         horizontal
@@ -150,11 +144,6 @@ export function FeedScreen() {
     }
   };
 
-  const showCategory = (category: OfferCategory) => {
-    setFilters({ categories: [category] });
-    list.current?.scrollToOffset({ offset: 0, animated: false });
-  };
-
   const listTitle =
     filters.categories.length === 1 && filters.categories[0] && filters.query.trim() === ''
       ? labels.offerCategory[filters.categories[0]]
@@ -240,7 +229,7 @@ export function FeedScreen() {
       {isPending ? <LoadingState /> : null}
 
       {sections.map((section) => (
-        <Carousel key={section.key} section={section} onShowAll={showCategory} />
+        <Carousel key={section.key} section={section} />
       ))}
 
       {listItems.length > 0 ? (

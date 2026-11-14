@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, fonts, layout, space } from '@/theme';
+import { colors, fonts, layout, radii, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -22,6 +22,10 @@ export interface SectionHeaderProps {
   onToggle?: () => void;
   /** Nur mit `onToggle`: ob der Abschnitt gerade offen ist. */
   expanded?: boolean;
+  /** Runder Pfeil rechts, z. B. zur Seite mit allen Angeboten und Karte. Ersetzt den Link. */
+  onMore?: () => void;
+  /** Für Screenreader, z. B. „Alle Angebote aus Last Minute“. */
+  moreAccessibilityLabel?: string;
   /** Kleines Zeichen vor dem Titel, z. B. ein pulsierender Punkt bei „Last Minute“. */
   accessory?: ReactNode;
 }
@@ -37,6 +41,8 @@ export function SectionHeader({
   onToggle,
   expanded = false,
   accessory,
+  onMore,
+  moreAccessibilityLabel,
 }: SectionHeaderProps) {
   if (onToggle) {
     const Chevron = expanded ? ChevronUp : ChevronDown;
@@ -76,7 +82,18 @@ export function SectionHeader({
           {title}
         </Text>
       </View>
-      {actionLabel && onAction ? (
+      {onMore ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={moreAccessibilityLabel ?? title}
+          onPress={onMore}
+          hitSlop={MORE_HIT_SLOP}
+          pressedScale={0.9}
+          style={styles.more}
+        >
+          <ChevronRight size={18} color={colors.text.primary} strokeWidth={2.5} />
+        </PressableScale>
+      ) : actionLabel && onAction ? (
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={actionAccessibilityLabel ?? actionLabel}
@@ -95,6 +112,10 @@ export function SectionHeader({
     </View>
   );
 }
+
+/** Der Pfeil ist 32 pt groß, die Touch-Fläche trotzdem 44 pt. */
+const MORE_SIZE = 32;
+const MORE_HIT_SLOP = (44 - MORE_SIZE) / 2;
 
 /** Der Link ist klein, die Touch-Fläche trotzdem mindestens 44 pt. */
 const ACTION_HIT_SLOP = { top: space[3], bottom: space[3], left: space[4], right: space[4] };
@@ -120,4 +141,12 @@ const styles = StyleSheet.create({
   },
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
+  more: {
+    width: MORE_SIZE,
+    height: MORE_SIZE,
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.muted,
+  },
 });

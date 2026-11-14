@@ -276,6 +276,14 @@ describe('buildSections', () => {
     expect(ids(many, 'rabatt')).toHaveLength(8);
   });
 
+  it('liefert für die Abschnitts-Seite auf Wunsch alle Angebote', () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
+      offer({ id: `o${i}`, discount_percent: 20 + i, capacity: 10, free_seats: 5 }),
+    );
+    const rabatt = buildSections(many, { limit: Infinity }).find((s) => s.key === 'rabatt');
+    expect(rabatt?.offers).toHaveLength(12);
+  });
+
   it('zeigt unter „Last Minute“ nur heutige Angebote, das früheste zuerst', () => {
     const offers = [
       offer({

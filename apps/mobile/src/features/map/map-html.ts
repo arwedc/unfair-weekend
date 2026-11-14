@@ -184,6 +184,15 @@ export const MAP_PALETTE = {
   userLocation: '#2F7FF0',
 } as const;
 
+/**
+ * Befehl für die WebView: Ausschnitt so wählen, dass alle Orte zu sehen sind.
+ * `padding` hält die Nadeln frei von Knöpfen oben und der Liste unten.
+ */
+export function fitPlacesScript(places: readonly OfferPlace[], padding: MapPadding): string {
+  const coords = places.map((place) => [place.lng, place.lat]);
+  return `window.fitPlaces && window.fitPlaces(${toScriptJson(coords)}, ${toScriptJson(padding)}); true;`;
+}
+
 /** Befehl für die WebView: ohne Animation auf eine Stadt springen (Zoom wie beim Start). */
 export function setCenterScript(lat: number, lng: number): string {
   return `window.setCenter && window.setCenter(${toScriptJson([lng, lat])}); true;`;
@@ -325,6 +334,18 @@ export function buildMapHtml(options: { styleUrl: string; colors: MapColors }): 
     // Ladesymbol genau dann ausblendet.
     map.once('idle', function () { send({ type: 'userShown' }); });
     if (far) map.jumpTo(target); else map.easeTo(Object.assign(target, { duration: 300 }));
+  };
+
+  window.fitPlaces = function (coords, padding) {
+    if (!coords.length) return;
+    var pad = { top: padding.top, bottom: padding.bottom, left: 40, right: 40 };
+    if (coords.length === 1) {
+      map.jumpTo({ center: coords[0], zoom: 14.5, padding: pad });
+      return;
+    }
+    var bounds = coords.reduce(function (b, c) { return b.extend(c); },
+      new maplibregl.LngLatBounds(coords[0], coords[0]));
+    map.fitBounds(bounds, { padding: pad, maxZoom: 15, duration: 0 });
   };
 
   window.setCenter = function (lngLat) {

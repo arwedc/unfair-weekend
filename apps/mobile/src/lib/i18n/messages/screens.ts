@@ -39,6 +39,16 @@ export const screensDe = {
     quietText:
       'Im Moment gibt es keine Angebote. Schau später nochmal rein, hier tut sich oft kurzfristig was.',
   },
+  section: {
+    showMap: 'Karte',
+    showList: 'Liste',
+    showMapAria: 'Angebote auf der Karte zeigen',
+    showListAria: 'Nur die Liste zeigen',
+    count: (n: number) => (n === 1 ? '1 Angebot' : `${n} Angebote`),
+    emptyTitle: 'Gerade nichts dabei',
+    emptyText: 'In diesem Abschnitt gibt es im Moment keine Angebote. Schau bald wieder vorbei.',
+    back: 'Zurück',
+  },
   venue: {
     cancelled: 'Dieses Angebot wurde abgesagt.',
     unavailable: 'Dieses Angebot ist nicht mehr verfügbar.',
@@ -159,6 +169,16 @@ export const screensEn: Widen<typeof screensDe> = {
     quietTitle: "It's quiet right now ✨",
     quietText:
       'There are no offers at the moment. Check back later, things often pop up at short notice.',
+  },
+  section: {
+    showMap: 'Map',
+    showList: 'List',
+    showMapAria: 'Show offers on the map',
+    showListAria: 'Show the list only',
+    count: (n) => (n === 1 ? '1 offer' : `${n} offers`),
+    emptyTitle: 'Nothing here right now',
+    emptyText: 'There are no offers in this section at the moment. Check back soon.',
+    back: 'Back',
   },
   venue: {
     cancelled: 'This offer was cancelled.',

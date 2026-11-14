@@ -224,6 +224,8 @@ export function buildSections(
     now?: DateInput;
     /** Bewertungen je Standort (`location_id`). Ohne sie fällt „Community-Lieblinge“ weg. */
     ratings?: ReadonlyMap<string, LocationRatingSummary>;
+    /** Höchstens so viele Angebote je Abschnitt (Karussell: 8). `Infinity` für die ganze Liste. */
+    limit?: number;
   } = {},
 ): FeedSection[] {
   const locale = options.locale ?? DEFAULT_LOCALE;
@@ -301,7 +303,10 @@ export function buildSections(
 
   return drafts
     .filter(({ section, minOffers }) => section.offers.length >= minOffers)
-    .map(({ section }) => ({ ...section, offers: section.offers.slice(0, SECTION_LIMIT) }));
+    .map(({ section }) => ({
+      ...section,
+      offers: section.offers.slice(0, options.limit ?? SECTION_LIMIT),
+    }));
 }
 
 export interface OfferBadge {
