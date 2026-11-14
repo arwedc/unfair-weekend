@@ -18,6 +18,13 @@ export const partsDe = {
     next: 'Weiter',
     start: 'Los geht’s',
     previous: 'Vorheriger Schritt',
+    wheelTitle: (count: number) =>
+      count === 1
+        ? 'Ein Angebot.'
+        : `${['Zwei', 'Drei', 'Vier', 'Fünf'][count - 2] ?? String(count)} Angebote.`,
+    wheelValue: (n: number, total: number, title: string) => `Angebot ${n} von ${total}: ${title}`,
+    pinLabel: (company: string, title: string) => `${company}: ${title}`,
+    comingSoon: 'Neue Angebote kommen bald.',
   },
   map: {
     hintTitle: 'Tippe auf einen Pin',
@@ -164,6 +171,13 @@ export const partsEn: Widen<typeof partsDe> = {
     next: 'Next',
     start: "Let's go",
     previous: 'Previous step',
+    wheelTitle: (count) =>
+      count === 1
+        ? 'One offer.'
+        : `${['Two', 'Three', 'Four', 'Five'][count - 2] ?? String(count)} offers.`,
+    wheelValue: (n, total, title) => `Offer ${n} of ${total}: ${title}`,
+    pinLabel: (company, title) => `${company}: ${title}`,
+    comingSoon: 'New offers are coming soon.',
   },
   map: {
     hintTitle: 'Tap a pin',
