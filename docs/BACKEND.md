@@ -223,6 +223,10 @@ Freigeschaltete Standorte mit Unternehmensinfo, für die Standortseite der App (
 
 Rückgabe pro Zeile: `id, name, street, postal_code, city, lat, lng, phone, website, company_id, company_name, company_description, company_logo_path`
 
+#### `get_locations_public_with_images(p_location_ids)` → 0 bis n Zeilen
+
+Wie `get_locations_public`, zusätzlich mit `image_paths` (0–5 Storage-Pfade der Standortgalerie). Die Funktion gibt dieselben freigeschalteten Standorte zurück und wird von der App für das Standortfoto und die Galerie verwendet.
+
 Die Angebote eines Standorts liefert `list_offers(p_location_ids => [id])`.
 
 #### `list_offer_created_at(p_offer_ids)` → 0 bis n Zeilen
