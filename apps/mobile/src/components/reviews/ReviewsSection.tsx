@@ -110,7 +110,7 @@ export function ReviewsSection({ locationId, locationName }: ReviewsSectionProps
           <MessageSquareText size={22} strokeWidth={2} color={colors.text.tertiary} />
           <Text variant="callout" color="secondary" style={styles.flex}>
             {locationName} hat noch keine Bewertungen. Nach deinem Besuch kannst du den Ort unter
-            „Meine Codes“ bewerten.
+            „Meine Buchungen“ bewerten.
           </Text>
         </View>
       )}

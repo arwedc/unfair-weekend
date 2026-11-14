@@ -22,7 +22,7 @@ export const commonDe = {
   tabs: {
     discover: 'Entdecken',
     map: 'Karte',
-    codes: 'Meine Codes',
+    codes: 'Meine Buchungen',
     favorites: 'Favoriten',
     profile: 'Profil',
   },
@@ -237,7 +237,7 @@ export const commonEn: Widen<typeof commonDe> = {
   tabs: {
     discover: 'Discover',
     map: 'Map',
-    codes: 'My codes',
+    codes: 'My Bookings',
     favorites: 'Favourites',
     profile: 'Profile',
   },
