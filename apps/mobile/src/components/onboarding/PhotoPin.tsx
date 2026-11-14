@@ -7,7 +7,6 @@ import Animated, {
   Extrapolation,
   interpolate,
   interpolateColor,
-  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -17,7 +16,6 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { OfferImage } from '@/components/offers/OfferImage';
@@ -184,69 +182,50 @@ export function PhotoPin({
   );
 }
 
-/**
- * Die Hand zeigt beim ersten Öffnen, wie es geht: Sie fährt zum Pin und tippt ihn an.
- * Der Tipp öffnet den Pin wirklich (`onTap`), danach verschwindet die Hand.
- */
+/** Tippt wiederholt auf den aktuellen Hinweis, bis der Nutzer selbst weitermacht. */
 export function CoachHand({
+  cycle,
   targetX,
   targetY,
   visible,
-  onTap,
+  showTapRing,
 }: {
+  cycle: SharedValue<number>;
   targetX: number;
   targetY: number;
   visible: boolean;
-  onTap: () => void;
+  showTapRing: boolean;
 }) {
-  const cycle = useSharedValue(0);
-
-  useAnimatedReaction(
-    () => cycle.get() >= 2,
-    (pressed, previous) => {
-      if (pressed && previous === false) scheduleOnRN(onTap);
-    },
-  );
-
   useEffect(() => {
     if (!visible) {
       cancelAnimation(cycle);
-      // Nach dem Tipp sanft ausblenden; vorher sofort weg, damit kein zweiter Tipp entsteht.
-      cycle.set(cycle.get() >= 2 ? withTiming(4, { duration: 180 }) : 0);
+      cycle.set(0);
       return;
     }
     cycle.set(0);
-    cycle.set(
-      withDelay(
-        1500,
-        withRepeat(
-          withSequence(
-            withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }),
-            withTiming(2, { duration: 150 }),
-            withTiming(3, { duration: 220 }),
-            withTiming(4, { duration: 420 }),
-            withDelay(1100, withTiming(0, { duration: 0 })),
-          ),
-          -1,
-          false,
-        ),
+    const arrive = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
+    const taps = withRepeat(
+      withSequence(
+        withTiming(2, { duration: 180 }),
+        withTiming(3, { duration: 300 }),
+        withDelay(1020, withTiming(1, { duration: 0 })),
       ),
+      -1,
+      false,
     );
+    cycle.set(withDelay(900, withSequence(arrive, taps)));
     return () => cancelAnimation(cycle);
   }, [cycle, visible]);
 
   // Fingerspitze des Icons (40 px) liegt etwa bei (16, 3).
-  const tipX = targetX - 16;
-  const tipY = targetY - PIN_HEIGHT + PIN_SIZE / 2 - 3;
-
   const handStyle = useAnimatedStyle(() => {
     const c = cycle.get();
     const travel = clamp01(c);
     return {
-      opacity: interpolate(c, [0, 0.35, 3, 4], [0, 1, 1, 0], Extrapolation.CLAMP),
+      opacity: interpolate(c, [0, 0.35, 3], [0, 1, 1], Extrapolation.CLAMP),
       transform: [
-        { translateX: lerp(tipX + 64, tipX + 6, travel) },
-        { translateY: lerp(tipY + 84, tipY + 10, travel) },
+        { translateX: lerp(targetX + 48, targetX - 16, travel) },
+        { translateY: lerp(targetY + 80, targetY - 3, travel) },
         { scale: interpolate(c, [1, 2, 3], [1, 0.84, 1], Extrapolation.CLAMP) },
       ],
     };
@@ -254,18 +233,18 @@ export function CoachHand({
   const tapStyle = useAnimatedStyle(() => {
     const c = cycle.get();
     return {
-      opacity: interpolate(c, [1.9, 2.1, 4], [0, 0.7, 0], Extrapolation.CLAMP),
+      opacity: showTapRing ? interpolate(c, [1.9, 2, 3], [0, 0.72, 0], Extrapolation.CLAMP) : 0,
       transform: [
         { translateX: targetX - PIN_SIZE / 2 },
-        { translateY: targetY - PIN_HEIGHT },
-        { scale: interpolate(c, [2, 4], [0.9, 2.1], Extrapolation.CLAMP) },
+        { translateY: targetY - PIN_SIZE / 2 },
+        { scale: interpolate(c, [2, 3], [0.9, 2.7], Extrapolation.CLAMP) },
       ],
     };
   });
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill} collapsable={false}>
-      <Animated.View style={[styles.tapRing, tapStyle]} />
+      {showTapRing ? <Animated.View style={[styles.tapRing, tapStyle]} /> : null}
       <Animated.View style={[styles.hand, handStyle]}>
         <Pointer
           size={40}

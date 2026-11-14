@@ -4,11 +4,14 @@ import type { Widen } from './widen';
 export const partsDe = {
   onboarding: {
     steps: [
-      { title: 'Dein Stadtplan.', body: 'Tippe auf einen Pin.' },
+      { title: 'Dein Stadtplan.', body: 'Entdecke echte Angebote in deiner Stadt.' },
       { title: 'Ein Ort. Ein Angebot.', body: 'Sieh dir einen echten Deal genauer an.' },
-      { title: 'Fünf Angebote.', body: 'Wische zum Drehen.' },
+      { title: 'Entdecke unzählige Möglichkeiten.', body: 'Wische zum Drehen.' },
     ],
     selectCompany: 'Unternehmen auswählen',
+    tapPin: 'Tippe auf einen Pin',
+    tapOffer: 'Tippe auf das Angebot',
+    noOffers: 'In deiner Stadt gibt es gerade keine Angebote.',
     offerOnSite: 'Ein Angebot direkt vor Ort',
     discountCaps: (discount: string) => `${discount} RABATT`,
     localProvider: 'LOKALER ANBIETER',
@@ -18,10 +21,7 @@ export const partsDe = {
     next: 'Weiter',
     start: 'Los geht’s',
     previous: 'Vorheriger Schritt',
-    wheelTitle: (count: number) =>
-      count === 1
-        ? 'Ein Angebot.'
-        : `${['Zwei', 'Drei', 'Vier', 'Fünf'][count - 2] ?? String(count)} Angebote.`,
+    continueWithoutAccount: 'Ohne Konto weitermachen',
     wheelValue: (n: number, total: number, title: string) => `Angebot ${n} von ${total}: ${title}`,
     pinLabel: (company: string, title: string) => `${company}: ${title}`,
     comingSoon: 'Neue Angebote kommen bald.',
@@ -171,11 +171,14 @@ export const partsDe = {
 export const partsEn: Widen<typeof partsDe> = {
   onboarding: {
     steps: [
-      { title: 'Your city map.', body: 'Tap a pin.' },
+      { title: 'Your city map.', body: 'Find real offers around your city.' },
       { title: 'One place. One offer.', body: 'Take a closer look at a real deal.' },
-      { title: 'Five offers.', body: 'Swipe to spin.' },
+      { title: 'Explore endless opportunities.', body: 'Swipe to spin.' },
     ],
     selectCompany: 'Select business',
+    tapPin: 'Tap a pin',
+    tapOffer: 'Tap the offer',
+    noOffers: 'There are no offers in your city yet.',
     offerOnSite: 'An offer right on site',
     discountCaps: (discount) => `${discount} OFF`,
     localProvider: 'LOCAL BUSINESS',
@@ -185,10 +188,7 @@ export const partsEn: Widen<typeof partsDe> = {
     next: 'Next',
     start: "Let's go",
     previous: 'Previous step',
-    wheelTitle: (count) =>
-      count === 1
-        ? 'One offer.'
-        : `${['Two', 'Three', 'Four', 'Five'][count - 2] ?? String(count)} offers.`,
+    continueWithoutAccount: 'Continue without an account',
     wheelValue: (n, total, title) => `Offer ${n} of ${total}: ${title}`,
     pinLabel: (company, title) => `${company}: ${title}`,
     comingSoon: 'New offers are coming soon.',

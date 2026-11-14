@@ -45,7 +45,7 @@ export default async function LoginPage({
         <LocaleSwitcher />
       </div>
       <div className="mb-8 text-center">
-        <Logo />
+        <Logo size="lg" />
         <h1 className="mt-6 text-title2 text-text-primary">{t.common.login.heading}</h1>
         <p className="mt-2 text-callout text-text-secondary">{t.common.login.intro}</p>
       </div>
