@@ -54,8 +54,6 @@ export const commonDe = {
     reasonNoLocation:
       'Dieses Konto gehört zu keinem Standort. Die Website ist nur für Partner. Bitte mit dem Standort-Zugang anmelden.',
     reasonNoAdmin: 'Dieses Konto hat keinen Zugriff auf den Admin-Bereich.',
-    reasonLinkExpired:
-      'Der Bestätigungslink ist abgelaufen oder ungültig. Melde dich an oder registriere dich erneut.',
     partnerPrompt: 'Du möchtest mit deinem Unternehmen dabei sein?',
     partnerLink: 'Partnerkonto erstellen',
     devHintBefore: 'Entwicklung: Seed-Zugänge wie',
@@ -118,7 +116,6 @@ export const commonEn: Widen<typeof commonDe> = {
     reasonNoLocation:
       'This account does not belong to a venue. The website is for partners only. Please log in with your venue account.',
     reasonNoAdmin: 'This account has no access to the admin area.',
-    reasonLinkExpired: 'The confirmation link has expired or is invalid. Log in or sign up again.',
     partnerPrompt: 'Want to join with your business?',
     partnerLink: 'Create a partner account',
     devHintBefore: 'Development: seed accounts like',

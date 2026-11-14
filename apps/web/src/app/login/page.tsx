@@ -18,7 +18,6 @@ async function ReasonNotice({ searchParams }: { searchParams: Promise<{ grund?: 
   const reasons: Record<string, string> = {
     'kein-standort': t.common.login.reasonNoLocation,
     'kein-admin': t.common.login.reasonNoAdmin,
-    'link-abgelaufen': t.common.login.reasonLinkExpired,
   };
   const text = grund ? reasons[grund] : undefined;
   if (!text) return null;

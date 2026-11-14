@@ -1,6 +1,5 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { locationSignUpSchema, profileSchema } from '@repo/shared';
 import { translateValidationMessage } from '@repo/shared/i18n';
@@ -10,7 +9,6 @@ import { createClient } from '@/lib/supabase/server';
 export interface SignUpState {
   error?: string;
   email?: string;
-  sent?: boolean;
 }
 
 export async function signUpAction(_prev: SignUpState, formData: FormData): Promise<SignUpState> {
@@ -32,11 +30,6 @@ export async function signUpAction(_prev: SignUpState, formData: FormData): Prom
     return { error: issue ? translateValidationMessage(issue, locale) : m.checkInput, email };
   }
 
-  const origin = (await headers()).get('origin');
-  if (!origin || !/^https?:\/\//.test(origin)) {
-    return { error: m.originUnknown, email };
-  }
-
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: credentials.data.email,
@@ -47,7 +40,6 @@ export async function signUpAction(_prev: SignUpState, formData: FormData): Prom
         first_name: contact.data.first_name,
         last_name: contact.data.last_name,
       },
-      emailRedirectTo: `${origin}/auth/callback`,
     },
   });
 
@@ -55,6 +47,11 @@ export async function signUpAction(_prev: SignUpState, formData: FormData): Prom
     return { error: m.failed, email };
   }
 
-  if (data.session) redirect('/registrieren');
-  return { email, sent: true };
+  // Ohne Bestätigungsmail: Supabase liefert direkt eine Session. Fehlt sie trotzdem
+  // (z. B. weil „Confirm email“ im Projekt wieder an ist), gleich anmelden.
+  if (!data.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword(credentials.data);
+    if (signInError) return { error: m.failed, email };
+  }
+  redirect('/registrieren');
 }

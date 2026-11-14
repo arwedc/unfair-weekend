@@ -10,17 +10,6 @@ export function SignUpForm() {
   const { t } = useT();
   const m = t.onboarding.signUp;
 
-  if (state.sent) {
-    return (
-      <div className="space-y-3" role="status">
-        <h2 className="text-headline text-text-primary">{m.sentHeading}</h2>
-        <p className="text-callout text-text-secondary">
-          {m.sentBefore} <strong>{state.email}</strong> {m.sentAfter}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
