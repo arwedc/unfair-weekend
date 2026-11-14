@@ -11,18 +11,17 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   ChevronLeft,
-  ChevronRight,
   Clock,
   CloudOff,
   CreditCard,
   Euro,
   Globe,
   MapPin,
-  Navigation,
   Phone,
   SearchX,
   Share2,
   Sparkles,
+  Star,
   Ticket,
   Users,
   type LucideIcon,
@@ -32,7 +31,6 @@ import { ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -42,11 +40,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { ImageGallery } from '@/components/offers/ImageGallery';
-import { MiniMap } from '@/components/offers/MiniMap';
+import { LocationCard } from '@/components/offers/LocationCard';
 import { COMPACT_CARD_WIDTH, OfferCard } from '@/components/offers/OfferCard';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { ReviewsSection } from '@/components/reviews/ReviewsSection';
-import { Stars } from '@/components/reviews/Stars';
 import {
   Appear,
   Button,
@@ -71,18 +68,26 @@ import {
   useSettings,
 } from '@/features/offers/queries';
 import type { Offer, OfferDetail } from '@/features/offers/types';
+import { distinctSubtitle } from '@/features/offers/venue-logic';
 import { useLocationRating } from '@/features/reviews/queries';
 import { formatRating, reviewCountLabel } from '@/features/reviews/review-logic';
 import { useBookingMode } from '@/features/payments/queries';
 import { useActiveVoucherForOffer } from '@/features/vouchers/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { getMessages, type Messages } from '@/lib/i18n/messages';
-import { callPhone, openInMaps, openWebsite } from '@/lib/open-external';
+import { callPhone, openWebsite } from '@/lib/open-external';
 import { colors, fonts, layout, radii, shadow, soft, space } from '@/theme';
 
 /** Mindesthöhe des Fotos, bevor es beim Scrollen ganz aus dem Bild läuft. */
 const HERO_COLLAPSED = space[20] + space[10];
+
+/** Zeilen, ab denen die Beschreibung gekürzt wird und „Mehr lesen“ erscheint. */
+const DESCRIPTION_LINES = 3;
+
+/** Breite einer Kachel in der Angebotsauswahl. */
+const CHOICE_WIDTH = 160;
 
 /** Warum man gerade keinen Code holen kann (oder null, wenn es geht). */
 function unavailableReason(offer: OfferDetail, m: Messages['screens']['venue']): string | null {
@@ -109,43 +114,68 @@ async function shareOffer(offer: OfferDetail, locale: Locale): Promise<void> {
   }
 }
 
-/** Zeile in der Deal-Karte: farbiges Icon, Text, optional Pfeil. */
+/** Zeile in der Deal-Karte: farbiges Icon und Text. */
 function InfoRow({
   icon: Icon,
   children,
-  onPress,
-  accessibilityLabel,
   last = false,
 }: {
   icon: LucideIcon;
   children: ReactNode;
-  onPress?: () => void;
-  accessibilityLabel?: string;
   last?: boolean;
 }) {
-  const content = (
-    <>
+  return (
+    <View style={[styles.infoRow, !last && styles.infoRowDivider]}>
       <Icon size={22} color={colors.accent.strong} strokeWidth={2} />
       <View style={styles.flexText}>{children}</View>
-      {onPress ? <ChevronRight size={20} color={colors.text.tertiary} /> : null}
-    </>
-  );
-  const style = [styles.infoRow, !last && styles.infoRowDivider];
-  if (!onPress) return <View style={style}>{content}</View>;
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-      pressedScale={0.99}
-      style={style}
-    >
-      {content}
-    </PressableScale>
+    </View>
   );
 }
 
-/** Ein Angebot in der Liste „Angebote hier“. Antippen wählt es oben in der Deal-Karte aus. */
+/** Beschreibung des Angebots: gekürzt, auf Wunsch ganz. */
+function ExpandableText({ text }: { text: string }) {
+  const { t } = useT();
+  const v = t.screens.venue;
+  const [expanded, setExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  return (
+    <View>
+      {/* Unsichtbare volle Fassung zum Messen: iOS und Android melden gekürzte Zeilen verschieden. */}
+      <Text
+        variant="footnote"
+        style={styles.measure}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        onTextLayout={(event) => setCanExpand(event.nativeEvent.lines.length > DESCRIPTION_LINES)}
+      >
+        {text}
+      </Text>
+      <Text
+        variant="footnote"
+        color="secondary"
+        numberOfLines={expanded ? undefined : DESCRIPTION_LINES}
+      >
+        {text}
+      </Text>
+      {canExpand ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={() => setExpanded((value) => !value)}
+          pressedScale={0.98}
+          hitSlop={space[2]}
+          style={styles.readMore}
+        >
+          <Text variant="footnote" color="accent" style={styles.semibold}>
+            {expanded ? v.readLess : v.readMore}
+          </Text>
+        </PressableScale>
+      ) : null}
+    </View>
+  );
+}
+
+/** Kachel in der Auswahl über der Deal-Karte. Antippen zeigt das Angebot in der Karte darunter. */
 function OfferChoice({
   offer,
   selected,
@@ -156,43 +186,48 @@ function OfferChoice({
   onPress: () => void;
 }) {
   const { t, locale } = useT();
+  const when = offerWhenText(offer, undefined, locale);
+  const price = formatPrice(offer.deal_price_cents, { locale });
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${offer.title}, ${offerWhenText(offer, undefined, locale)}, ${formatPrice(offer.deal_price_cents, { locale })}`}
-      accessibilityHint={t.screens.venue.showOnTop}
+      accessibilityLabel={`${offer.title}, ${when}, ${price}`}
+      accessibilityHint={selected ? undefined : t.screens.venue.selectOffer}
       onPress={onPress}
-      pressedScale={0.98}
+      pressedScale={0.97}
       style={[styles.choice, selected && styles.choiceSelected]}
     >
-      <OfferImage path={offer.cover_image_path} style={styles.choiceImage} />
-      <View style={styles.flexText}>
-        <Text variant="bodyStrong" numberOfLines={2}>
+      <View style={styles.choiceText}>
+        <Text variant="caption" color="accent" style={styles.semibold} numberOfLines={1}>
+          {when}
+        </Text>
+        <Text variant="subhead" style={styles.semibold} numberOfLines={2}>
           {offer.title}
         </Text>
-        <Text variant="footnote" color="secondary" numberOfLines={1}>
-          {offerWhenText(offer, undefined, locale)}
-        </Text>
-        <View style={styles.choicePrice}>
-          <Text variant="subhead" color="accent" style={styles.semibold}>
-            {formatPrice(offer.deal_price_cents, { locale })}
-          </Text>
-          <Text variant="caption" color="tertiary" style={styles.strike}>
-            {formatPrice(offer.original_price_cents, { locale })}
-          </Text>
-        </View>
       </View>
-      {selected ? (
-        <View style={styles.choiceBadge}>
-          <Text variant="caption" style={styles.choiceBadgeText}>
-            Oben
-          </Text>
-        </View>
-      ) : (
-        <ChevronRight size={20} color={colors.text.tertiary} />
-      )}
+      <View style={styles.choicePrice}>
+        <Text variant="subhead" color="accent" style={styles.semibold}>
+          {price}
+        </Text>
+        <Text variant="caption" color="tertiary" style={styles.strike}>
+          {formatPrice(offer.original_price_cents, { locale })}
+        </Text>
+      </View>
     </PressableScale>
+  );
+}
+
+/** Erste Kategorie des Standorts als gelbe Pill. */
+function CategoryPill({ category, label }: { category: OfferCategory; label: string }) {
+  const Icon = CATEGORY_ICONS[category];
+  return (
+    <View style={styles.pill}>
+      <Icon size={14} strokeWidth={2.25} color={colors.accent.onSubtle} />
+      <Text variant="footnote" style={[styles.semibold, { color: colors.accent.onSubtle }]}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -217,10 +252,11 @@ export interface VenueScreenProps {
 }
 
 /**
- * Seite eines Unternehmensstandorts mit allen Angeboten dort.
- * Oben ein großes Foto, das beim Scrollen zu einem schmalen Streifen schrumpft und dann verschwindet.
- * Darunter die Deal-Karte des ausgewählten Angebots mit „Code holen“, die übrigen Angebote zum
- * Umschalten, Infos und Karte zum Ort, Bewertungen und Ähnliches in der Nähe.
+ * Seite eines Unternehmensstandorts mit allen Angeboten dort. Jede Angabe steht nur einmal:
+ * oben die Fotos zum Wischen (schrumpfen beim Scrollen), dann Name, Kategorie, Bewertung und Stadt.
+ * Bei mehreren Angeboten eine Auswahl als Kacheln, darunter die Deal-Karte mit „Code holen“.
+ * Danach „Über den Anbieter“ (Text, Anrufen, Website), „Anfahrt“ (Karte, Adresse, Route),
+ * Bewertungen und Ähnliches in der Stadt.
  */
 export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const router = useRouter();
@@ -228,9 +264,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const v = t.screens.venue;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const claimSheet = useRef<SheetRef>(null);
-  const cardY = useRef(0);
   const [selectedId, setSelectedId] = useState<string | null>(offerId ?? null);
 
   // Über ein Angebot kommen wir zum Standort; direkt über den Standort zum ersten Angebot.
@@ -335,7 +369,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
 
   const list = offers.data ?? [];
   const locationName = place.data?.name ?? offer?.location_name ?? name;
-  const showLocationName = locationName.trim() !== '' && locationName !== name;
+  const subtitle = distinctSubtitle(name, locationName);
   const address = place.data
     ? [place.data.street, `${place.data.postal_code} ${place.data.city}`]
         .map((part) => part.trim())
@@ -344,8 +378,8 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     : (offer?.address ?? '');
   const lat = place.data?.lat ?? offer?.lat ?? null;
   const lng = place.data?.lng ?? offer?.lng ?? null;
-  const phone = place.data?.phone ?? offer?.location_phone ?? '';
-  const website = place.data?.website ?? offer?.location_website ?? '';
+  const phone = (place.data?.phone ?? offer?.location_phone ?? '').trim();
+  const website = (place.data?.website ?? offer?.location_website ?? '').trim();
   const about = (place.data?.company_description ?? offer?.company_description ?? '').trim();
   const logo = place.data?.company_logo_path ?? offer?.company_logo_path ?? '';
   const locationImages = place.data?.image_paths.length
@@ -360,8 +394,14 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       list.map((item) => item.category).concat(offer ? [offer.category] : []),
     ),
   ];
+  const [firstCategory, ...moreCategories] = categories;
   // Ohne Koordinaten wählt cityOfOffer selbst die Startstadt.
   const cityId = cityOfOffer({ lat, lng } as unknown as Pick<Offer, 'lat' | 'lng'>);
+  const cityName = getCity(cityId).name;
+  // Weitere Kategorien und Stadt als eine ruhige Textzeile neben der Pill.
+  const metaText = [...moreCategories.map((category) => labels.offerCategory[category]), cityName]
+    .filter(Boolean)
+    .join(' · ');
   const similar = offer
     ? similarOffers(offersInCity(feed ?? [], cityId), offer).filter(
         (item) => item.location_id !== resolvedLocationId,
@@ -369,14 +409,13 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     : [];
   const reason = offer ? unavailableReason(offer, v) : null;
   const description = offer?.description.trim() ?? '';
+  const hasProvider = about !== '' || phone !== '' || website !== '';
+  const hasDirections = address !== '' || (lat !== null && lng !== null);
 
-  const openMaps = () => void openInMaps({ label: locationName, address, lat, lng });
   const choose = (id: string) => {
+    if (id === activeId) return;
+    haptics.selection();
     setSelectedId(id);
-    scrollRef.current?.scrollTo({
-      y: Math.max(0, cardY.current - heroMin - space[4]),
-      animated: true,
-    });
   };
 
   return (
@@ -384,7 +423,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       <StatusBar style="light" />
 
       <Animated.ScrollView
-        ref={scrollRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
@@ -406,7 +444,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           />
         </Animated.View>
 
-        {/* Kopf: Name, Kategorien, Bewertung */}
+        {/* Kopf: Name, ggf. abweichender Standortname, dann Kategorie · Bewertung · Stadt */}
         <View style={styles.head}>
           <View style={styles.titleRow}>
             <Text variant="title1" accessibilityRole="header" style={styles.flex}>
@@ -426,61 +464,78 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
               ) : null}
             </View>
           </View>
-          {showLocationName ? (
+          {subtitle ? (
             <Text variant="callout" color="secondary">
-              {locationName}
+              {subtitle}
             </Text>
           ) : null}
-          <View style={styles.pills}>
-            {categories.map((category, index) => {
-              const Icon = CATEGORY_ICONS[category];
-              return (
-                <View key={category} style={[styles.pill, index === 0 && styles.pillAccent]}>
-                  <Icon
-                    size={14}
-                    strokeWidth={2.25}
-                    color={index === 0 ? colors.accent.onSubtle : colors.text.secondary}
-                  />
-                  <Text
-                    variant="footnote"
-                    style={[styles.semibold, index === 0 && { color: colors.accent.onSubtle }]}
-                  >
-                    {labels.offerCategory[category]}
-                  </Text>
-                </View>
-              );
-            })}
-            <View style={styles.pill}>
-              <MapPin size={14} strokeWidth={2.25} color={colors.text.secondary} />
-              <Text variant="footnote" style={styles.semibold}>
-                {getCity(cityId).name}
-              </Text>
-            </View>
+          <View style={styles.meta}>
+            {firstCategory ? (
+              <CategoryPill category={firstCategory} label={labels.offerCategory[firstCategory]} />
+            ) : null}
+            {rating.data ? (
+              <View
+                style={styles.metaItem}
+                accessible
+                accessibilityLabel={`${t.parts.review.starsAria(
+                  formatRating(rating.data.average_rating, locale),
+                )}, ${reviewCountLabel(rating.data.review_count, locale)}`}
+              >
+                <Star
+                  size={15}
+                  strokeWidth={1.75}
+                  color={colors.accent.vivid}
+                  fill={colors.accent.vivid}
+                />
+                <Text variant="footnote" style={styles.semibold}>
+                  {formatRating(rating.data.average_rating, locale)}
+                </Text>
+                <Text variant="footnote" color="secondary">
+                  ({rating.data.review_count})
+                </Text>
+              </View>
+            ) : null}
+            {metaText ? (
+              <View style={styles.metaItem}>
+                <MapPin size={14} strokeWidth={2.25} color={colors.text.secondary} />
+                <Text variant="footnote" color="secondary">
+                  {metaText}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          {rating.data ? (
-            <View style={styles.ratingLine}>
-              <Stars value={rating.data.average_rating} size={18} />
-              <Text variant="subhead" style={styles.semibold}>
-                {formatRating(rating.data.average_rating, locale)}
-              </Text>
-              <Text variant="subhead" color="secondary">
-                · {reviewCountLabel(rating.data.review_count, locale)}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
-        <View style={styles.offerHeading}>
-          <HighlightTitle>{`Angebote bei ${name}`}</HighlightTitle>
-        </View>
+        {/* Auswahl, wenn es hier mehrere Angebote gibt: wechselt die Deal-Karte darunter */}
+        {list.length > 1 ? (
+          <View style={styles.choices}>
+            <View style={styles.inset}>
+              <Text variant="subhead" color="secondary" style={styles.semibold}>
+                {v.offersHere(list.length)}
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carousel}
+              decelerationRate="fast"
+              snapToInterval={CHOICE_WIDTH + space[3]}
+              snapToAlignment="start"
+            >
+              {list.map((item) => (
+                <OfferChoice
+                  key={item.id}
+                  offer={item}
+                  selected={item.id === activeId}
+                  onPress={() => choose(item.id)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {/* Deal-Karte des ausgewählten Angebots */}
-        <View
-          style={styles.cardOuter}
-          onLayout={(event) => {
-            cardY.current = event.nativeEvent.layout.y;
-          }}
-        >
+        <View style={styles.cardOuter}>
           {offer ? (
             <View style={styles.card}>
               <View style={styles.cardBody}>
@@ -494,9 +549,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                       <Text variant="subhead" color="secondary">
                         {v.whatToExpect}
                       </Text>
-                      <Text variant="footnote" color="secondary" numberOfLines={2}>
-                        {description}
-                      </Text>
+                      <ExpandableText key={offer.id} text={description} />
                     </View>
                   ) : null}
                 </View>
@@ -504,16 +557,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
                 <View>
                   <InfoRow icon={Clock}>
                     <Text variant="body">{offerWhenText(offer, undefined, locale)}</Text>
-                  </InfoRow>
-                  <InfoRow
-                    icon={MapPin}
-                    onPress={openMaps}
-                    accessibilityLabel={v.openInMaps(address)}
-                  >
-                    <Text variant="body">{locationName}</Text>
-                    <Text variant="footnote" color="secondary" numberOfLines={1}>
-                      {address}
-                    </Text>
                   </InfoRow>
                   <InfoRow icon={Euro}>
                     <View style={styles.choicePrice}>
@@ -582,86 +625,58 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         </View>
 
         <View style={styles.body}>
-          {/* Weitere Angebote am Standort */}
-          {list.length > 1 ? (
+          {/* Über den Anbieter: Text, Anrufen, Website (nur was es gibt) */}
+          {hasProvider ? (
             <View style={styles.section}>
-              <HighlightTitle>{v.offersHere(list.length)}</HighlightTitle>
-              <View style={styles.choices}>
-                {list.map((item) => (
-                  <OfferChoice
-                    key={item.id}
-                    offer={item}
-                    selected={item.id === activeId}
-                    onPress={() => choose(item.id)}
-                  />
-                ))}
-              </View>
+              <HighlightTitle>{v.aboutProvider}</HighlightTitle>
+              {about ? (
+                <View style={styles.aboutRow}>
+                  {logo ? (
+                    <OfferImage
+                      path={logo}
+                      bucket={STORAGE_BUCKETS.companyLogos}
+                      style={styles.logo}
+                      contentFit="cover"
+                      accessibilityLabel={v.logoOf(name)}
+                    />
+                  ) : null}
+                  <Text variant="body" color="secondary" style={styles.flex}>
+                    {about}
+                  </Text>
+                </View>
+              ) : null}
+              {phone || website ? (
+                <View style={styles.actions}>
+                  {phone ? (
+                    <Button
+                      label={v.call}
+                      icon={Phone}
+                      variant="outline"
+                      onPress={() => void callPhone(phone)}
+                      style={styles.flex}
+                    />
+                  ) : null}
+                  {website ? (
+                    <Button
+                      label={v.web}
+                      icon={Globe}
+                      variant="outline"
+                      onPress={() => void openWebsite(website)}
+                      style={styles.flex}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
-          {/* Über den Anbieter und Ort */}
-          <View style={styles.section}>
-            <HighlightTitle>{v.about(name)}</HighlightTitle>
-            <View style={styles.aboutHead}>
-              {logo ? (
-                <OfferImage
-                  path={logo}
-                  bucket={STORAGE_BUCKETS.companyLogos}
-                  style={styles.logo}
-                  contentFit="cover"
-                  accessibilityLabel={v.logoOf(name)}
-                />
-              ) : (
-                <View style={[styles.logo, styles.logoFallback]}>
-                  <Text variant="title3" style={{ color: colors.accent.onSolid }}>
-                    {name.trim().charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.flexText}>
-                <Text variant="bodyStrong">{locationName}</Text>
-                <Text variant="footnote" color="secondary">
-                  {address}
-                </Text>
-              </View>
+          {/* Anfahrt: Karte und Adresse, Antippen öffnet die Karten-App */}
+          {hasDirections ? (
+            <View style={styles.section}>
+              <HighlightTitle>{v.directions}</HighlightTitle>
+              <LocationCard name={locationName} address={address} lat={lat} lng={lng} />
             </View>
-            {about ? (
-              <Text variant="body" color="secondary">
-                {about}
-              </Text>
-            ) : null}
-            {lat !== null && lng !== null ? (
-              <MiniMap lat={lat} lng={lng} label={locationName} />
-            ) : null}
-            <View style={styles.actions}>
-              <Button
-                label={v.route}
-                icon={Navigation}
-                variant="secondary"
-                onPress={openMaps}
-                accessibilityHint={v.routeHint}
-                style={styles.flex}
-              />
-              {phone.trim() ? (
-                <Button
-                  label={v.call}
-                  icon={Phone}
-                  variant="outline"
-                  onPress={() => void callPhone(phone)}
-                  style={styles.flex}
-                />
-              ) : null}
-              {website.trim() ? (
-                <Button
-                  label={v.web}
-                  icon={Globe}
-                  variant="outline"
-                  onPress={() => void openWebsite(website)}
-                  style={styles.flex}
-                />
-              ) : null}
-            </View>
-          </View>
+          ) : null}
 
           {resolvedLocationId ? (
             <ReviewsSection locationId={resolvedLocationId} locationName={name} />
@@ -672,7 +687,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         {similar.length > 0 ? (
           <View style={styles.similar}>
             <View style={styles.inset}>
-              <HighlightTitle variant="title2">{v.similarIn(getCity(cityId).name)}</HighlightTitle>
+              <HighlightTitle variant="title2">{v.similarIn(cityName)}</HighlightTitle>
             </View>
             <ScrollView
               horizontal
@@ -726,8 +741,15 @@ const styles = StyleSheet.create({
     paddingBottom: space[5],
     gap: space[2],
   },
-  offerHeading: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[3] },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingTop: space[1] },
+  meta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: space[3],
+    rowGap: space[2],
+    paddingTop: space[1],
+  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: space[1], flexShrink: 1 },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -735,10 +757,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: space[3],
     paddingVertical: space[1.5],
     borderRadius: radii.full,
-    backgroundColor: colors.background.muted,
+    backgroundColor: soft.tint,
   },
-  pillAccent: { backgroundColor: soft.tint },
-  ratingLine: { flexDirection: 'row', alignItems: 'center', gap: space[1.5], paddingTop: space[1] },
+
+  choices: { gap: space[2], paddingBottom: space[4] },
+  choice: {
+    width: CHOICE_WIDTH,
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.surface.raised,
+    minHeight: space[20] + space[5],
+    padding: space[3],
+    gap: space[2],
+    justifyContent: 'space-between',
+  },
+  choiceSelected: { borderColor: colors.accent.strong, backgroundColor: soft.warm },
+  choiceText: { gap: space[0.5] },
+  choicePrice: { flexDirection: 'row', alignItems: 'baseline', gap: space[2] },
 
   cardOuter: { paddingHorizontal: layout.screenPaddingX },
   card: {
@@ -749,6 +785,8 @@ const styles = StyleSheet.create({
   },
   offerTitleText: { flex: 1, gap: space[1] },
   descriptionPreview: { gap: space[0.5], paddingTop: space[1] },
+  measure: { position: 'absolute', left: 0, right: 0, opacity: 0 },
+  readMore: { alignSelf: 'flex-start', paddingTop: space[1] },
   cardBody: { padding: space[4], gap: space[3] },
   infoRow: {
     minHeight: layout.minTouchTarget + space[3],
@@ -764,38 +802,12 @@ const styles = StyleSheet.create({
   reason: { padding: space[3], borderRadius: radii.lg, backgroundColor: colors.background.subtle },
   body: { paddingHorizontal: layout.screenPaddingX, paddingTop: space[10], gap: space[10] },
   section: { gap: space[3] },
-  choices: { gap: space[2] },
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    padding: space[2],
-    borderRadius: radii.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.surface.raised,
-  },
-  choiceSelected: { borderColor: colors.accent.strong, backgroundColor: soft.warm },
-  choiceImage: { width: space[20], height: space[16], borderRadius: radii.md },
-  choicePrice: { flexDirection: 'row', alignItems: 'baseline', gap: space[2] },
-  choiceBadge: {
-    paddingHorizontal: space[2],
-    paddingVertical: space[0.5],
-    borderRadius: radii.full,
-    backgroundColor: colors.accent.solid,
-  },
-  choiceBadgeText: { color: colors.accent.onSolid, fontFamily: fonts.semibold },
 
-  aboutHead: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
+  aboutRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[3] },
   logo: {
     width: layout.minTouchTarget + space[3],
     height: layout.minTouchTarget + space[3],
     borderRadius: radii.full,
-  },
-  logoFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accent.solid,
   },
   actions: { flexDirection: 'row', gap: space[2] },
 
