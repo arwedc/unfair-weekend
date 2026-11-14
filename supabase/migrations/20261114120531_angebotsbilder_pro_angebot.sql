@@ -1,6 +1,3 @@
--- Aus supabase_migrations.schema_migrations des Dev-Projekts übernommen:
--- Die Migration war eingespielt, die Datei fehlte aber im Repo.
-
 -- Angebotsbilder sind wieder angebotsbezogen. Die Standortgalerie bleibt als
 -- Rückfallbild für ältere Angebote erhalten.
 

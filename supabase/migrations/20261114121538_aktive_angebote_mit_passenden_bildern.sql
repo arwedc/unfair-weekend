@@ -1,6 +1,3 @@
--- Aus supabase_migrations.schema_migrations des Dev-Projekts übernommen:
--- Die Migration war eingespielt, die Datei fehlte aber im Repo.
-
 -- Aktive Angebote erhalten ein eigenes, thematisch passendes Titelbild,
 -- falls sie bisher nur das gemeinsame Standortbild verwendet haben.
 create function pg_temp.unsplash_image(p_photo_id text)

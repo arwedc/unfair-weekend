@@ -10,7 +10,6 @@ import {
 import Animated, {
   cancelAnimation,
   Easing,
-  interpolateColor,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
@@ -25,11 +24,11 @@ import type { FeedOffer } from '@/features/offers/types';
 import {
   frontIndex,
   layoutPins,
-  normalizeAngle,
   snapRotation,
   stepAngle,
 } from '@/features/onboarding/onboarding-logic';
 import {
+  bubbleCenter,
   cameraAt,
   clamp01,
   lerp,
@@ -130,13 +129,29 @@ function Scene({
   const world = points.map((point) => ({ x: point.x * width, y: point.y * height }));
   const selectedIndex = pins.findIndex((offer) => offer.id === selectedId);
   const selectedPoint = selectedIndex >= 0 ? points[selectedIndex] : undefined;
+  const selectedWorld = selectedIndex >= 0 ? world[selectedIndex] : undefined;
+  const middleWorld = world.reduce<{ x: number; y: number; distance: number } | undefined>(
+    (middle, point) => {
+      const dx = point.x - width / 2;
+      const dy = point.y - height / 2;
+      const distance = dx * dx + dy * dy;
+      return !middle || distance < middle.distance ? { ...point, distance } : middle;
+    },
+    undefined,
+  );
+  const guideTarget = selectedWorld
+    ? bubbleCenter(selectedWorld.x, selectedWorld.y, geometry)
+    : middleWorld
+      ? { x: middleWorld.x, y: middleWorld.y - PIN_HEIGHT + PIN_SIZE / 2 }
+      : undefined;
 
   const selected = useSharedValue(0);
   const pop = useSharedValue(0);
+  const coachTap = useSharedValue(0);
   const focusU = useSharedValue(0.5);
   const focusV = useSharedValue(0.5);
   const camera: CameraValues = { progress, selected, focusU, focusV };
-  const values: StageValues = { ...camera, rotation, pop, heroIntro };
+  const values: StageValues = { ...camera, rotation, pop, heroIntro, coachTap };
 
   // Neue Auswahl. Beim ersten Mal springt die Vorschau aus dem Pin. Danach gleitet sie
   // ruhig zum neuen Pin, die Karte selbst bleibt stehen.
@@ -165,18 +180,21 @@ function Scene({
   const count = wheel.length;
   const wheelActive = interactive && step === 2 && count > 1;
   const [front, setFront] = useState(0);
+  const manualSpin = useSharedValue(false);
   // haptics drosselt selbst, schnelles Drehen verschmilzt also nicht zu einem Brummen.
   const tick = haptics.selection;
 
-  // Klickt wie ein Glücksrad, sobald eine Karte vorne vorbeizieht.
+  // Haptik nur für echte Wischbewegungen, nicht während sich der Kreis selbst dreht.
   useAnimatedReaction(
     () =>
-      progress.get() > 1.4 && count > 1 ? Math.round(rotation.get() / stepAngle(count)) : null,
+      manualSpin.get() && progress.get() > 1.4 && count > 1
+        ? Math.round(rotation.get() / stepAngle(count))
+        : null,
     (current, previous) => {
       if (current === null || previous === null || previous === undefined) return;
       if (current === previous) return;
+      // Kein React-Render pro Kartenwechsel während der Einführung, das hält den Spin flüssig.
       scheduleOnRN(tick);
-      scheduleOnRN(setFront, frontIndex(rotation.get(), count));
     },
   );
 
@@ -191,6 +209,7 @@ function Scene({
     onActivate: (event) => {
       'worklet';
       cancelAnimation(rotation);
+      manualSpin.set(true);
       dragOrigin.set(rotation.get());
       dragStart.set(event.translationX);
     },
@@ -202,7 +221,9 @@ function Scene({
       'worklet';
       const velocity = event.velocityX * degreesPerPx;
       const target = snapRotation(rotation.get(), count, velocity, 0.28, 900);
+      manualSpin.set(false);
       rotation.set(reduceMotion ? target : withSpring(target, { ...SNAP_SPRING, velocity }));
+      scheduleOnRN(setFront, frontIndex(target, count));
     },
   });
 
@@ -215,6 +236,8 @@ function Scene({
       if (direction === 0) return;
       const target = snapRotation(rotation.get(), count) + direction * stepAngle(count);
       rotation.set(reduceMotion ? target : withSpring(target, SNAP_SPRING));
+      scheduleOnRN(tick);
+      scheduleOnRN(setFront, frontIndex(target, count));
     },
   });
   const wheelGesture = useCompetingGestures(pan, tap);
@@ -222,6 +245,7 @@ function Scene({
   const turnBy = (direction: 1 | -1) => {
     const target = snapRotation(rotation.get(), count) + direction * stepAngle(count);
     rotation.set(reduceMotion ? target : withSpring(target, SNAP_SPRING));
+    tick();
     setFront(frontIndex(target, count));
   };
 
@@ -307,19 +331,16 @@ function Scene({
         ))}
       </View>
 
-      {pins.length > 0 && world[0] && !reduceMotion ? (
+      {guideTarget && !reduceMotion ? (
         <CoachHand
-          targetX={world[0].x}
-          targetY={world[0].y}
-          visible={step === 0 && !selectedId}
-          onTap={() => {
-            const first = pins[0];
-            if (first && step === 0 && !selectedId) onSelect(first);
-          }}
+          key={selectedId ?? 'pin'}
+          cycle={coachTap}
+          targetX={guideTarget.x}
+          targetY={guideTarget.y}
+          visible={step === 0}
+          showTapRing={!selectedId}
         />
       ) : null}
-
-      {count > 1 ? <WheelDots count={count} rotation={rotation} progress={progress} /> : null}
 
       {pins.length === 0 ? <EmptyScene step={step} /> : null}
 
@@ -395,48 +416,6 @@ function Backdrop({
   );
 }
 
-/** Punkte unter dem Kreis, der vordere ist breit und gold. */
-function WheelDots({
-  count,
-  rotation,
-  progress,
-}: {
-  count: number;
-  rotation: SharedValue<number>;
-  progress: SharedValue<number>;
-}) {
-  const rowStyle = useAnimatedStyle(() => ({
-    opacity: clamp01((progress.get() - 1.5) * 2),
-  }));
-  return (
-    <Animated.View pointerEvents="none" style={[styles.dots, rowStyle]}>
-      {Array.from({ length: count }, (_, index) => (
-        <WheelDot key={index} index={index} count={count} rotation={rotation} />
-      ))}
-    </Animated.View>
-  );
-}
-
-function WheelDot({
-  index,
-  count,
-  rotation,
-}: {
-  index: number;
-  count: number;
-  rotation: SharedValue<number>;
-}) {
-  const style = useAnimatedStyle(() => {
-    const angle = normalizeAngle(rotation.get() + index * stepAngle(count));
-    const near = 1 - clamp01(Math.abs(angle) / stepAngle(count));
-    return {
-      width: lerp(space[1.5], space[5], near),
-      backgroundColor: interpolateColor(near, [0, 1], [colors.border.strong, colors.accent.strong]),
-    };
-  });
-  return <Animated.View style={[styles.dot, style]} />;
-}
-
 function EmptyScene({ step }: { step: number }) {
   const { t } = useT();
   return (
@@ -479,17 +458,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     backgroundColor: soft.tint,
   },
-  dots: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: space[2],
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: space[1.5],
-  },
-  dot: { height: space[1.5], borderRadius: radii.full },
   empty: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

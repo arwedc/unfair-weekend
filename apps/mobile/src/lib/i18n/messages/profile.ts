@@ -6,11 +6,16 @@ import type { Widen } from './widen';
  */
 export const profileDe = {
   menu: {
+    favorites: 'Favoriten',
     membership: 'Mitgliedschaft',
     help: 'Hilfe & Support',
     giftCard: 'Geschenkkarte senden',
     settings: 'Einstellungen',
     legal: 'Rechtliches',
+    sections: {
+      personal: 'Dein Bereich',
+      service: 'Service & Rechtliches',
+    },
   },
   invite: {
     title: 'Zusammen ist es unfairer',
@@ -80,7 +85,7 @@ export const profileDe = {
     close: 'Antwort ausblenden',
     items: [
       {
-        q: 'Was ist unfair weekend?',
+        q: 'Was ist Kiepn?',
         a: 'Lokale Anbieter stellen hier kurzfristig Plätze zum Sonderpreis ein, zum Beispiel Kochkurse, Yoga oder Kultur. Du sicherst dir einen Platz per Code und gehst einfach hin.',
       },
       {
@@ -144,11 +149,16 @@ export const profileDe = {
 
 export const profileEn: Widen<typeof profileDe> = {
   menu: {
+    favorites: 'Favourites',
     membership: 'Membership',
     help: 'Help & support',
     giftCard: 'Send a gift card',
     settings: 'Settings',
     legal: 'Legal',
+    sections: {
+      personal: 'Your space',
+      service: 'Support & legal',
+    },
   },
   invite: {
     title: 'Better together',
@@ -218,7 +228,7 @@ export const profileEn: Widen<typeof profileDe> = {
     close: 'Hide answer',
     items: [
       {
-        q: 'What is unfair weekend?',
+        q: 'What is Kiepn?',
         a: 'Local businesses offer last-minute spots at a special price, for example cooking classes, yoga or culture. You grab a spot with a code and just go.',
       },
       {

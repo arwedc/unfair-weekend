@@ -1,17 +1,18 @@
-/** Ordner unten im Profil (Mitgliedschaft, Hilfe & Support, …) und die Einladungskarte. */
+/** Profilordner in Gruppen sowie die Einladungskarte. */
 import { useRouter, type Href } from 'expo-router';
 import {
   BadgeCheck,
   BookText,
   CircleHelp,
   Gift,
+  Heart,
   Settings,
   Share2,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Share, StyleSheet, View } from 'react-native';
 
-import { Button, ListGroup, ListRow, Text } from '@/components/ui';
+import { Button, ListGroup, ListRow, SectionHeader, Text } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
 import { radius, soft, space } from '@/theme';
 
@@ -22,34 +23,55 @@ interface MenuItem {
 }
 
 /**
- * Die Ordner in fester Reihenfolge. Ohne Konto fehlen Mitgliedschaft und Geschenkkarte,
- * weil beide ein Konto brauchen.
+ * Die Profilordner sind in persönliche Bereiche und Service gegliedert. Ohne Konto fehlen
+ * Mitgliedschaft und Geschenkkarte, weil beide ein Konto brauchen.
  */
 export function ProfileMenu({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
   const { t } = useT();
   const m = t.profile.menu;
-  const items: (MenuItem | false)[] = [
+  const personalItems: (MenuItem | false)[] = [
+    { icon: Heart, title: m.favorites, href: '/favoriten' },
     signedIn && { icon: BadgeCheck, title: m.membership, href: '/mitgliedschaft' },
-    { icon: CircleHelp, title: m.help, href: '/hilfe' },
     signedIn && { icon: Gift, title: m.giftCard, href: '/geschenkkarte' },
+  ];
+  const serviceItems: MenuItem[] = [
+    { icon: CircleHelp, title: m.help, href: '/hilfe' },
     { icon: Settings, title: m.settings, href: '/einstellungen' },
     { icon: BookText, title: m.legal, href: '/rechtliches' },
   ];
 
   return (
-    <ListGroup>
-      {items
-        .filter((item): item is MenuItem => item !== false)
-        .map((item) => (
-          <ListRow
-            key={item.title}
-            icon={item.icon}
-            title={item.title}
-            onPress={() => router.push(item.href)}
-          />
-        ))}
-    </ListGroup>
+    <View style={styles.sections}>
+      <View style={styles.section}>
+        <SectionHeader title={m.sections.personal} />
+        <ListGroup>
+          {personalItems
+            .filter((item): item is MenuItem => item !== false)
+            .map((item) => (
+              <ListRow
+                key={item.title}
+                icon={item.icon}
+                title={item.title}
+                onPress={() => router.push(item.href)}
+              />
+            ))}
+        </ListGroup>
+      </View>
+      <View style={styles.section}>
+        <SectionHeader title={m.sections.service} />
+        <ListGroup>
+          {serviceItems.map((item) => (
+            <ListRow
+              key={item.title}
+              icon={item.icon}
+              title={item.title}
+              onPress={() => router.push(item.href)}
+            />
+          ))}
+        </ListGroup>
+      </View>
+    </View>
   );
 }
 
@@ -74,6 +96,8 @@ export function InviteCard() {
 }
 
 const styles = StyleSheet.create({
+  sections: { gap: space[5] },
+  section: { gap: space[2] },
   invite: {
     gap: space[2],
     padding: space[5],

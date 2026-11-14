@@ -94,6 +94,10 @@ export default function RootLayout() {
                     }}
                   >
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="favoriten"
+                      options={{ title: t.profile.menu.favorites, ...largeTitle }}
+                    />
                     <Stack.Screen name="angebot/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="standort/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="abschnitt/[key]" options={{ headerShown: false }} />

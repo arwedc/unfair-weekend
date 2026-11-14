@@ -1,5 +1,6 @@
 import { formatDiscount, formatPrice } from '@repo/shared';
 import { MapPin, Sparkles } from 'lucide-react-native';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -37,6 +38,8 @@ export interface StageValues extends CameraValues {
   pop: SharedValue<number>;
   /** Auftritt des großen Angebots: Sticker, Preis-Strich (0 → 1). */
   heroIntro: SharedValue<number>;
+  /** Tippzyklus des Fingers, damit die Angebotsumrandung synchron aufklappt. */
+  coachTap: SharedValue<number>;
 }
 
 interface StageCardProps {
@@ -73,6 +76,8 @@ export function StageCard({
   const { t, locale } = useT();
   const lead = index === 0;
   const CategoryIcon = CATEGORY_ICONS[offer.category];
+  const [oldPriceWidth, setOldPriceWidth] = useState(0);
+  const inviting = lead && Boolean(onOpen);
 
   const pose = useDerivedValue(() => {
     const progress = values.progress.get();
@@ -127,10 +132,17 @@ export function StageCard({
     };
   });
   const strikeStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scaleX: interpolate(values.heroIntro.get(), [0.1, 0.55], [0, 1], Extrapolation.CLAMP) },
-    ],
+    width:
+      oldPriceWidth * interpolate(values.heroIntro.get(), [0.1, 0.55], [0, 1], Extrapolation.CLAMP),
   }));
+  const haloStyle = useAnimatedStyle(() => {
+    const amount = interpolate(values.coachTap.get(), [2, 3], [0, 1], Extrapolation.CLAMP);
+    const atPreview = clamp01(1 - values.progress.get()) * clamp01(values.pop.get());
+    return {
+      opacity: inviting ? atPreview * 0.72 * (1 - amount) : 0,
+      transform: [{ scale: 1 + amount * 0.2 }],
+    };
+  });
   const dealStyle = useAnimatedStyle(() => ({
     transform: [
       {
@@ -155,7 +167,7 @@ export function StageCard({
         accessibilityRole="button"
         accessibilityLabel={t.parts.onboarding.pinLabel(offer.company_name, offer.title)}
         accessibilityHint={t.parts.card.openHint}
-        pressedScale={0.96}
+        pressedScale={0.98}
         onPress={onOpen}
       >
         <Animated.View style={[styles.face, frontStyle]}>
@@ -163,6 +175,9 @@ export function StageCard({
             style={styles.card}
             onLayout={lead ? (event) => onMeasure?.(event.nativeEvent.layout.height) : undefined}
           >
+            {lead ? (
+              <Animated.View pointerEvents="none" style={[styles.previewHalo, haloStyle]} />
+            ) : null}
             <View style={[styles.image, { height: imageHeight }]}>
               <View style={[StyleSheet.absoluteFill, styles.imageFallback]}>
                 <CategoryIcon size={44} color={colors.accent.onSubtle} strokeWidth={1.8} />
@@ -213,10 +228,32 @@ export function StageCard({
                   </Text>
                 </Animated.View>
                 <View>
-                  <Text variant="footnote" color="tertiary" maxFontSizeMultiplier={CARD_FONT_SCALE}>
+                  <Text
+                    variant="footnote"
+                    color="tertiary"
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={CARD_FONT_SCALE}
+                    onLayout={(event) => setOldPriceWidth(event.nativeEvent.layout.width)}
+                  >
                     {formatPrice(offer.original_price_cents, { locale })}
                   </Text>
-                  <Animated.View style={[styles.strike, strikeStyle]} />
+                  <Animated.View
+                    pointerEvents="none"
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    style={[styles.strikeClip, strikeStyle]}
+                  >
+                    <Text
+                      variant="footnote"
+                      color="tertiary"
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={CARD_FONT_SCALE}
+                      style={[styles.struck, oldPriceWidth > 0 && { width: oldPriceWidth }]}
+                    >
+                      {formatPrice(offer.original_price_cents, { locale })}
+                    </Text>
+                  </Animated.View>
                 </View>
               </View>
             </View>
@@ -253,7 +290,7 @@ export function StageCard({
             <Sparkles size={30} color={colors.accent.onSubtle} strokeWidth={2} />
           </View>
           <Text variant="subhead" style={styles.backText} maxFontSizeMultiplier={CARD_FONT_SCALE}>
-            unfair weekend
+            Kiepn
           </Text>
         </Animated.View>
       </PressableScale>
@@ -269,6 +306,16 @@ const styles = StyleSheet.create({
     borderRadius: radii['2xl'],
     backgroundColor: colors.surface.raised,
     boxShadow: shadow.floating,
+  },
+  previewHalo: {
+    position: 'absolute',
+    left: -space[2],
+    right: -space[2],
+    top: -space[2],
+    bottom: -space[2],
+    borderRadius: radii['2xl'] + space[2],
+    borderWidth: space[1.5],
+    borderColor: colors.accent.solid,
   },
   image: {
     overflow: 'hidden',
@@ -293,15 +340,11 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: space[2], paddingTop: space[1] },
   dealPrice: { transformOrigin: '0% 50%' },
   dealText: { color: colors.text.accent, fontFamily: fonts.extrabold },
-  strike: {
-    position: 'absolute',
-    left: -2,
-    right: -2,
-    top: '50%',
-    height: 2,
-    borderRadius: radii.full,
-    backgroundColor: colors.text.secondary,
-    transformOrigin: '0% 50%',
+  strikeClip: { position: 'absolute', left: 0, top: 0, bottom: 0, overflow: 'hidden' },
+  struck: {
+    color: 'transparent',
+    textDecorationLine: 'line-through',
+    textDecorationColor: colors.text.secondary,
   },
   fog: {
     ...StyleSheet.absoluteFill,

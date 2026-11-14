@@ -114,7 +114,7 @@ export function CheckoutScreen({ offerId, seats }: { offerId: string; seats: num
     try {
       const init = await initPaymentSheet({
         paymentIntentClientSecret: booking.client_secret,
-        merchantDisplayName: 'unfair weekend',
+        merchantDisplayName: 'Kiepn',
         returnURL: stripeReturnUrl(),
         allowsDelayedPaymentMethods: false,
         primaryButtonLabel: m.payNow(formatPrice(booking.amount_cents, { locale })),

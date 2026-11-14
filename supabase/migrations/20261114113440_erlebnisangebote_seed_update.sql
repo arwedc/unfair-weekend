@@ -1,6 +1,3 @@
--- Aus supabase_migrations.schema_migrations des Dev-Projekts übernommen:
--- Die Migration war eingespielt, die Datei fehlte aber im Repo.
-
 -- Ersetzt die bisherigen Demo-Angebote durch lokale Freizeit- und Kultur-Erlebnisse.
 -- Die Seed-IDs bleiben erhalten, damit bereits angelegte Demo-Codes gültig bleiben.
 
