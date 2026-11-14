@@ -351,11 +351,11 @@ function Separator() {
  */
 const FADE_STOPS: readonly (readonly [number, number])[] = [
   [0, 1],
-  [0.4, 1],
-  [0.5, 0.94],
-  [0.6, 0.8],
-  [0.7, 0.6],
-  [0.8, 0.38],
+  [0.35, 1],
+  [0.47, 0.94],
+  [0.58, 0.8],
+  [0.69, 0.6],
+  [0.79, 0.38],
   [0.88, 0.2],
   [0.95, 0.07],
   [1, 0],
@@ -381,7 +381,9 @@ const styles = StyleSheet.create({
     paddingBottom: space[2],
   },
   // Reicht etwas unter die Kacheln, damit der Übergang weich ausläuft.
-  fade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -space[16] },
+  // Endet knapp über dem Inhalt (Liste startet bei topHeight + space[4]):
+  // In Ruhe liegt nichts darunter, erst beim Scrollen blendet der Inhalt weich aus.
+  fade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -space[2] },
   // Leicht durchsichtige Kachel, wie die Tab-Leiste unten.
   // Glas wie die Tab-Leiste kommt aus GlassSurface; hier nur Größe und Platz.
   cityTile: { alignSelf: 'flex-start' },
