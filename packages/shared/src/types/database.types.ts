@@ -890,6 +890,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null;
+          avatar_path: string | null;
           blocked_until: string | null;
           created_at: string;
           first_name: string | null;
@@ -902,6 +903,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           age?: number | null;
+          avatar_path?: string | null;
           blocked_until?: string | null;
           created_at?: string;
           first_name?: string | null;
@@ -913,6 +915,7 @@ export type Database = {
         };
         Update: {
           age?: number | null;
+          avatar_path?: string | null;
           blocked_until?: string | null;
           created_at?: string;
           first_name?: string | null;
@@ -1918,6 +1921,7 @@ export type Database = {
         };
       };
       unregister_push_token: { Args: { p_token: string }; Returns: undefined };
+      update_my_avatar: { Args: { p_path: string }; Returns: string };
       update_my_company: {
         Args: { p_description?: string; p_logo_path?: string; p_name: string };
         Returns: {
@@ -1978,6 +1982,7 @@ export type Database = {
         Args: { p_first_name: string; p_last_name: string };
         Returns: {
           age: number | null;
+          avatar_path: string | null;
           blocked_until: string | null;
           created_at: string;
           first_name: string | null;
