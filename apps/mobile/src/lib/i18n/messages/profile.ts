@@ -90,11 +90,11 @@ export const profileDe = {
       },
       {
         q: 'Wie sichere ich mir ein Angebot?',
-        a: 'Öffne das Angebot und tippe auf „Code holen“. Danach liegt der Code unter „Meine Codes“. Du brauchst dafür ein Konto mit Vor- und Nachnamen, damit der Anbieter dich auf seiner Teilnehmerliste findet.',
+        a: 'Öffne das Angebot und tippe auf „Code holen“. Danach liegt der Code unter „Meine Buchungen“. Du brauchst dafür ein Konto mit Vor- und Nachnamen, damit der Anbieter dich auf seiner Teilnehmerliste findet.',
       },
       {
         q: 'Wie löse ich meinen Code ein?',
-        a: 'Zeig vor Ort den QR-Code oder den Kurzcode aus „Meine Codes“. Bei festen Terminen geht das ab einer Stunde vor Beginn, bei Angeboten mit Zeitraum während des Zeitraums.',
+        a: 'Zeig vor Ort den QR-Code oder den Kurzcode aus „Meine Buchungen“. Bei festen Terminen geht das ab einer Stunde vor Beginn, bei Angeboten mit Zeitraum während des Zeitraums.',
       },
       {
         q: 'Kostet mich die App etwas?',
@@ -102,7 +102,7 @@ export const profileDe = {
       },
       {
         q: 'Kann ich einen Code stornieren?',
-        a: 'Ja, unter „Meine Codes“. Bei festen Terminen geht das bis zur Stornofrist kurz vor Beginn, sie steht bei deinem Code. Angebote mit Zeitraum kannst du jederzeit stornieren, solange der Code nicht eingelöst ist. Dein Platz wird dann wieder frei.',
+        a: 'Ja, unter „Meine Buchungen“. Bei festen Terminen geht das bis zur Stornofrist kurz vor Beginn, sie steht bei deinem Code. Angebote mit Zeitraum kannst du jederzeit stornieren, solange der Code nicht eingelöst ist. Dein Platz wird dann wieder frei.',
       },
       {
         q: 'Was passiert, wenn ich nicht hingehe?',

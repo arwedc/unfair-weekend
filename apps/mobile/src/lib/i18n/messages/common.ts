@@ -22,7 +22,7 @@ export const commonDe = {
   tabs: {
     discover: 'Entdecken',
     map: 'Karte',
-    codes: 'Meine Codes',
+    codes: 'Meine Buchungen',
     favorites: 'Favoriten',
     profile: 'Profil',
   },

@@ -101,7 +101,7 @@ export const screensDe = {
   },
   codes: {
     overline: 'Deine Plätze',
-    title: 'Meine Codes',
+    title: 'Meine Buchungen',
     signedOutTitle: 'Hier landen deine Codes',
     signedOutText: 'Melde dich an, hol dir einen Code und zeig ihn vor Ort einfach vor.',
     loading: 'Codes werden geladen',
@@ -120,7 +120,7 @@ export const screensDe = {
     loading: 'Code wird geladen',
     notFoundTitle: 'Code nicht gefunden',
     notFoundText: 'Diesen Code gibt es nicht (mehr) in deinem Konto.',
-    toCodes: 'Zu meinen Codes',
+    toCodes: 'Zu meinen Buchungen',
     qrAria: 'QR-Code zum Vorzeigen beim Anbieter',
     orSay: 'Oder diesen Code nennen',
     shortCodeAria: (spelled: string) => `Kurzcode ${spelled}`,
