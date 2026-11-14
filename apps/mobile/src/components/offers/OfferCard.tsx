@@ -138,7 +138,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
         ) : null}
 
         {!soldOut ? <DiscountBand percent={offer.discount_percent} compact={compact} /> : null}
-        <OfferHeart offerId={offer.id} title={offer.title} />
+        <OfferHeart locationId={offer.location_id} name={offer.location_name} />
       </View>
 
       <View style={styles.body}>

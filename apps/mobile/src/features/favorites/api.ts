@@ -57,29 +57,6 @@ export async function setFavoriteCategory(
   if (error) throw toApiError(error);
 }
 
-/** IDs der gemerkten Angebote (Herz auf der Karte). */
-export async function fetchFavoriteOfferIds(): Promise<string[]> {
-  const { data, error } = await supabase.from('favorite_offers').select('offer_id');
-  if (error) throw toApiError(error);
-  return (data ?? []).map((row) => row.offer_id);
-}
-
-export async function setFavoriteOffer(
-  userId: string,
-  offerId: string,
-  favorite: boolean,
-): Promise<void> {
-  const { error } = favorite
-    ? await supabase
-        .from('favorite_offers')
-        .upsert(
-          { user_id: userId, offer_id: offerId },
-          { onConflict: 'user_id,offer_id', ignoreDuplicates: true },
-        )
-    : await supabase.from('favorite_offers').delete().eq('user_id', userId).eq('offer_id', offerId);
-  if (error) throw toApiError(error);
-}
-
 /** Lieblingsort mit Fotos der Standortgalerie. */
 export type FavoriteLocation = RpcRow<'get_locations_public_with_images'>;
 

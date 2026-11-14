@@ -469,20 +469,19 @@ describe('dayPart', () => {
 });
 
 describe('pickDealOfTheDay', () => {
-  it('nimmt den höchsten Rabatt der nächsten Tage, nicht ausgebuchte', () => {
+  it('nimmt den prozentual höchsten Rabatt, egal wann, aber nicht ausgebucht', () => {
     const offers = [
       offer({ id: 'klein', discount_percent: 20, relevant_at: at(0), starts_at: at(0) }),
       offer({ id: 'voll', discount_percent: 70, free_seats: 0, relevant_at: at(0) }),
       offer({ id: 'gross', discount_percent: 50, relevant_at: at(1), starts_at: at(1) }),
       offer({ id: 'spaet', discount_percent: 60, relevant_at: at(9), starts_at: at(9) }),
     ];
-    expect(pickDealOfTheDay(offers, NOW)?.id).toBe('gross');
+    expect(pickDealOfTheDay(offers)?.id).toBe('spaet');
   });
 
-  it('weicht auf alle Angebote aus und liefert ohne Angebote nichts', () => {
-    const later = [offer({ id: 'spaet', relevant_at: at(9), starts_at: at(9) })];
-    expect(pickDealOfTheDay(later, NOW)?.id).toBe('spaet');
-    expect(pickDealOfTheDay([], NOW)).toBeNull();
+  it('liefert ohne buchbare Angebote nichts', () => {
+    expect(pickDealOfTheDay([])).toBeNull();
+    expect(pickDealOfTheDay([offer({ free_seats: 0 })])).toBeNull();
   });
 
   it('nimmt bei gleichem Rabatt das frühere', () => {
@@ -490,7 +489,7 @@ describe('pickDealOfTheDay', () => {
       offer({ id: 'b', discount_percent: 40, relevant_at: at(2) }),
       offer({ id: 'a', discount_percent: 40, relevant_at: at(1) }),
     ];
-    expect(pickDealOfTheDay(offers, NOW)?.id).toBe('a');
+    expect(pickDealOfTheDay(offers)?.id).toBe('a');
   });
 });
 
