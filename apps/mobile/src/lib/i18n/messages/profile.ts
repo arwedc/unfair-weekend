@@ -85,7 +85,7 @@ export const profileDe = {
     close: 'Antwort ausblenden',
     items: [
       {
-        q: 'Was ist unfair weekend?',
+        q: 'Was ist Kiepn?',
         a: 'Lokale Anbieter stellen hier kurzfristig Plätze zum Sonderpreis ein, zum Beispiel Kochkurse, Yoga oder Kultur. Du sicherst dir einen Platz per Code und gehst einfach hin.',
       },
       {
@@ -228,7 +228,7 @@ export const profileEn: Widen<typeof profileDe> = {
     close: 'Hide answer',
     items: [
       {
-        q: 'What is unfair weekend?',
+        q: 'What is Kiepn?',
         a: 'Local businesses offer last-minute spots at a special price, for example cooking classes, yoga or culture. You grab a spot with a code and just go.',
       },
       {
