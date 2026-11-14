@@ -52,6 +52,7 @@ src/
 
 - **Nur Bausteine aus `@/components/ui`.** Kein rohes `<Text>` aus react-native, keine eigenen Buttons in Screens. Fehlt etwas, die Bibliothek erweitern.
 - **Farben, Abstände, Radien, Schatten, Schrift nur über `@/theme`** (`colors`, `space`, `layout`, `radius`, `radii`, `shadow`, `badge`, `fonts`, `textStyle()`). Keine Hex-Werte, keine Zahlen für Abstände außerhalb des Rasters.
+- **Schrift:** Überschriften, Titel, Preise und das Rabatt-Etikett in **Satoshi**, Fließtext in Inter (`textStyle()` wählt das automatisch, für eigene Stile `displayFont(gewicht)`). Satoshi (ITF Free Font License) darf in die App, die Dateien aber **nicht ins Repo**: `scripts/fetch-fonts.mjs` lädt sie bei `pnpm install`, `start`, `typecheck`, `lint`, `test` und im EAS-Build nach `assets/fonts/satoshi/` (gitignored). Ohne Netz fällt die App auf Inter zurück.
 - **Aus `@repo/shared`, nie nachbauen:** Typen (`Database`), Zod-Schemas, Kategorien und Labels, `parseRpcError`, `formatPrice`, `formatDiscount`, `formatDateTime`, `offerTimeLabel`, `seatsLabel`, `storageImageUrl`.
 - **Supabase nur über `@/lib/supabase`.** Daten über die RPCs aus [docs/BACKEND.md](../../docs/BACKEND.md). Fehler immer über `toApiError`/`errorMessage` aus `@/lib/api-error` anzeigen (nutzt `parseRpcError`), nie `error.message` direkt.
 - **Daten laden mit TanStack Query.** RPC-Aufrufe stehen in `features/<bereich>/api.ts`, Screens nutzen nur die Hooks aus `queries.ts`. Jeder Screen zeigt Laden (Skeleton), Fehler und Leerzustand (`EmptyState`).

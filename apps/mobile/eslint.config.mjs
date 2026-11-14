@@ -7,7 +7,15 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['node_modules/', '.expo/', 'dist/', 'ios/', 'android/', 'expo-env.d.ts']),
+  globalIgnores([
+    'node_modules/',
+    '.expo/',
+    'dist/',
+    'ios/',
+    'android/',
+    'expo-env.d.ts',
+    'src/theme/satoshi.generated.ts',
+  ]),
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   reactHooks.configs.flat.recommended,

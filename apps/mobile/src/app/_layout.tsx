@@ -25,6 +25,7 @@ import { hideDevToolsButton } from '@/lib/dev-tools';
 import { useLoadLocale, useT } from '@/lib/i18n/context';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
+import { satoshiFonts } from '@/theme/satoshi.generated';
 
 /** Großer Titel für die Ordner aus dem Profil (Einstellungen, Hilfe & Support …). */
 const largeTitle = {
@@ -52,6 +53,8 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
+    // Satoshi für Überschriften und Preise, falls beim Installieren geladen (sonst Inter).
+    ...satoshiFonts(),
   });
 
   const ready = fontsLoaded || fontError !== null;
