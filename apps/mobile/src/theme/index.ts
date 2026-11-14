@@ -126,6 +126,3 @@ export function textStyle(name: TextStyleName): TextStyle {
 
 /** Obergrenze für die Systemschriftgröße, damit Layouts bei sehr großer Schrift nicht brechen. */
 export const MAX_FONT_SCALE = 1.6;
-
-/** Rohe Typografie-Tokens, z. B. für die Stärke einer Text-Stufe. */
-export { textStyles };

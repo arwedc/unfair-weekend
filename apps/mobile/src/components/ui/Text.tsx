@@ -1,7 +1,6 @@
 import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
 
-import { headingFamily, useHeadingFont } from '@/lib/font-preview';
-import { colors, MAX_FONT_SCALE, textStyle, textStyles, type TextStyleName } from '@/theme';
+import { colors, MAX_FONT_SCALE, textStyle, type TextStyleName } from '@/theme';
 
 type TextColor = keyof typeof colors.text;
 
@@ -22,14 +21,11 @@ export function Text({
   maxFontSizeMultiplier = MAX_FONT_SCALE,
   ...rest
 }: TextProps) {
-  const headingFont = useHeadingFont();
-  const family = headingFamily(headingFont, variant, textStyles[variant].fontWeight);
   return (
     <RNText
       maxFontSizeMultiplier={maxFontSizeMultiplier}
       style={[
         textStyle(variant),
-        family && { fontFamily: family },
         { color: colors.text[color] },
         align && { textAlign: align },
         style,
