@@ -50,6 +50,7 @@ export const screensDe = {
     emptyTitle: 'Gerade nichts dabei',
     emptyText: 'In diesem Abschnitt gibt es im Moment keine Angebote. Schau bald wieder vorbei.',
     back: 'Zurück',
+    closePreview: 'Vorschau schließen',
   },
   venue: {
     cancelled: 'Dieses Angebot wurde abgesagt.',
@@ -186,6 +187,7 @@ export const screensEn: Widen<typeof screensDe> = {
     emptyTitle: 'Nothing here right now',
     emptyText: 'There are no offers in this section at the moment. Check back soon.',
     back: 'Back',
+    closePreview: 'Close preview',
   },
   venue: {
     cancelled: 'This offer was cancelled.',

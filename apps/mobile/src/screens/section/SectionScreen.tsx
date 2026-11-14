@@ -4,10 +4,11 @@
  * wo man es loslässt (mit etwas Schwung). Die Karte ist sichtbar, bis das Blatt sie ganz verdeckt.
  *  - ganz unten: Titel und das oberste Angebot
  *  - ganz oben: nur die Liste; der Knopf „Karte“ holt die Karte zurück
- * Tippen auf eine Nadel scrollt das passende Angebot nach oben und hebt es hervor.
+ * Tippen auf eine Nadel blendet das Blatt aus und zeigt unten eine Vorschau-Kachel wie im
+ * Karten-Tab (wischbar durch die Angebote). Das Kreuz holt die Liste in der Startlage zurück.
  */
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, CloudOff, Map as MapIcon, Sparkles } from 'lucide-react-native';
+import { ChevronLeft, CloudOff, Map as MapIcon, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +32,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WebView from 'react-native-webview';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { MapOfferCarousel } from '@/components/map/MapOfferCarousel';
+import { MAP_TILE_HEIGHT } from '@/components/map/MapOfferTile';
 import { OfferListRow, OfferListRowSkeleton } from '@/components/offers/OfferListRow';
 import { EmptyState, GlassSurface, IconButton, PressableScale, Text } from '@/components/ui';
 import { APP_MAP_HTML } from '@/features/map/app-map-html';
@@ -40,6 +43,7 @@ import {
   selectPlaceScript,
   setPlacesScript,
 } from '@/features/map/map-html';
+import { firstIndexAtPlace, mapOffers } from '@/features/map/map-logic';
 import { clampSheetTop, isSheetAtTop, sheetBounds } from '@/features/map/sheet-logic';
 import { groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useSectionOffers } from '@/features/offers/use-section-offers';
@@ -76,7 +80,8 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const [mapReady, setMapReady] = useState(false);
   // Erst sichtbar, wenn der Ausschnitt auf den Angeboten liegt (sonst blitzt der Startpunkt Münster auf).
   const [mapFitted, setMapFitted] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Angebot in der Vorschau-Kachel (nach Tipp auf eine Nadel). Solange gesetzt, ist das Blatt weg.
+  const [previewId, setPreviewId] = useState<string | null>(null);
   // Liegt das Blatt ganz oben? Dann scrollt die Liste und der Knopf „Karte“ erscheint.
   const [atTop, setAtTop] = useState(false);
   const [headHeight, setHeadHeight] = useState(DEFAULT_HEAD);
@@ -119,6 +124,8 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
 
   // Grenzen ändern sich, wenn Kopf oder Zeile gemessen sind: Blatt in den Grenzen halten.
   useEffect(() => {
+    // Während der Vorschau liegt das Blatt bewusst unter dem Bildschirm.
+    if (previewId) return;
     if (sheetTop.get() > maxTop) sheetTop.set(maxTop);
     else if (!touched) sheetTop.set(startTop);
     // Nur bei neuen Maßen.
@@ -139,18 +146,32 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     setAtTop(isSheetAtTop(target, minTop));
   };
 
-  // Angebot, das nach einem Tipp auf eine Nadel oben in der Liste stehen soll.
-  const [focusIndex, setFocusIndex] = useState<number | null>(null);
-
-  // Außerhalb der obersten Lage steht oben das gewählte Angebot, sonst das erste.
+  // Verlässt das Blatt die oberste Lage, beginnt die Liste wieder oben (oberstes Angebot sichtbar).
   useEffect(() => {
-    if (atTop) return;
-    if (focusIndex !== null) {
-      list.current?.scrollToIndex({ index: focusIndex, animated: true, viewOffset: 0 });
-    } else {
-      list.current?.scrollToOffset({ offset: 0, animated: false });
-    }
-  }, [atTop, focusIndex]);
+    if (!atTop) list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [atTop]);
+
+  // Vorschau: buchbare Angebote mit Ort, von West nach Ost wie im Karten-Tab.
+  const previewOffers = mapOffers(offers);
+  const preview = previewId ? previewOffers.find((offer) => offer.id === previewId) : undefined;
+  const previewIndex = preview ? previewOffers.indexOf(preview) : -1;
+  // Platz unten für die Kachel, damit die gewählte Nadel darüber sichtbar bleibt.
+  const previewPadding = {
+    top: insets.top + space[16],
+    bottom: insets.bottom + MAP_TILE_HEIGHT + space[16],
+  };
+
+  const showPreview = (offerId: string, placeKey: string | null) => {
+    setPreviewId(offerId);
+    webview.current?.injectJavaScript(selectPlaceScript(placeKey, previewPadding));
+  };
+
+  // Kreuz oder Tipp auf freie Karte: Vorschau zu, Liste wieder in der Startlage.
+  const closePreview = () => {
+    setPreviewId(null);
+    webview.current?.injectJavaScript(selectPlaceScript(null, { top: 0, bottom: 0 }));
+    moveTo(startTop);
+  };
 
   const panConfig = (enabled: boolean) => ({
     enabled,
@@ -205,25 +226,15 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     const message = parseMapMessage(raw);
     if (!message) return;
     if (message.type === 'ready') setMapReady(true);
-    if (message.type === 'dismiss') {
-      setSelectedKey(null);
-      setFocusIndex(null);
-      webview.current?.injectJavaScript(selectPlaceScript(null, { top: 0, bottom: 0 }));
-    }
+    if (message.type === 'dismiss' && previewId) closePreview();
     if (message.type === 'place') {
+      const index = firstIndexAtPlace(previewOffers, message.key);
+      const offer = previewOffers[index];
+      if (!offer) return;
       void Haptics.selectionAsync();
-      setSelectedKey(message.key);
-      // Das Blatt fährt auf die Ausgangslage, die Nadel bleibt darüber sichtbar.
-      moveTo(startTop);
-      webview.current?.injectJavaScript(
-        selectPlaceScript(message.key, {
-          top: insets.top + space[16],
-          bottom: height - startTop,
-        }),
-      );
-      // Das passende Angebot steht oben in der Liste und ist hellgold markiert.
-      const index = offers.findIndex((offer) => placeKeyOf(offer) === message.key);
-      setFocusIndex(index >= 0 ? index : null);
+      // Das Blatt fährt nach unten aus dem Bild, die Vorschau-Kachel übernimmt.
+      moveTo(height);
+      showPreview(offer.id, message.key);
     }
   };
 
@@ -305,12 +316,7 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
             ref={list}
             data={isPending ? [] : offers}
             keyExtractor={(offer) => offer.id}
-            renderItem={({ item }) => (
-              <OfferListRow
-                offer={item}
-                highlighted={selectedKey !== null && placeKeyOf(item) === selectedKey}
-              />
-            )}
+            renderItem={({ item }) => <OfferListRow offer={item} />}
             ListEmptyComponent={empty}
             ItemSeparatorComponent={Separator}
             onScrollToIndexFailed={({ averageItemLength, index }) =>
@@ -340,6 +346,32 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
           style={styles.backButton}
         />
       </GlassSurface>
+
+      {preview ? (
+        <View style={[styles.preview, { bottom: insets.bottom + space[4] }]}>
+          <GlassSurface style={styles.close}>
+            <IconButton
+              variant="plain"
+              icon={X}
+              accessibilityLabel={m.closePreview}
+              onPress={closePreview}
+              style={styles.closeButton}
+            />
+          </GlassSurface>
+          <MapOfferCarousel
+            // Neue Trefferliste: Kacheln frisch aufbauen.
+            key={previewOffers.map((offer) => offer.id).join(',')}
+            offers={previewOffers}
+            index={previewIndex}
+            onIndexChange={(index) => {
+              const offer = previewOffers[index];
+              if (!offer || offer.id === previewId) return;
+              void Haptics.selectionAsync();
+              showPreview(offer.id, placeKeyOf(offer));
+            }}
+          />
+        </View>
+      ) : null}
 
       {hasOffers && atTop ? (
         <PressableScale
@@ -400,6 +432,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.subtle,
   },
   back: { position: 'absolute', left: layout.screenPaddingX, width: 48, height: 48 },
+  preview: { position: 'absolute', left: 0, right: 0, gap: space[2] },
+  close: { alignSelf: 'flex-end', marginRight: layout.screenPaddingX, width: 40, height: 40 },
+  closeButton: { width: 40, height: 40 },
   backButton: { width: 48, height: 48 },
   toggle: {
     position: 'absolute',
