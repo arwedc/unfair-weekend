@@ -253,7 +253,7 @@ export function StageCard({
             <Sparkles size={30} color={colors.accent.onSubtle} strokeWidth={2} />
           </View>
           <Text variant="subhead" style={styles.backText} maxFontSizeMultiplier={CARD_FONT_SCALE}>
-            unfair weekend
+            Kiepn
           </Text>
         </Animated.View>
       </PressableScale>

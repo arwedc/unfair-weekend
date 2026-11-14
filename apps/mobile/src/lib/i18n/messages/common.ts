@@ -201,7 +201,7 @@ export const commonDe = {
     invite: 'Freunde einladen',
     inviteHint: 'Teil die App mit deiner Crew',
     inviteMessage:
-      'Schau dir unfair weekend an: spontane Deals in deiner Stadt, ohne Bezahlen in der App. 🎉',
+      'Schau dir Kiepn an: spontane Deals in deiner Stadt, ohne Bezahlen in der App. 🎉',
     version: (v: string) => `Version ${v}`,
   },
   legal: {
@@ -411,8 +411,7 @@ export const commonEn: Widen<typeof commonDe> = {
     help: 'Help & info',
     invite: 'Invite friends',
     inviteHint: 'Share the app with your crew',
-    inviteMessage:
-      'Check out unfair weekend: spontaneous deals in your city, no payment in the app. 🎉',
+    inviteMessage: 'Check out Kiepn: spontaneous deals in your city, no payment in the app. 🎉',
     version: (v) => `Version ${v}`,
   },
   legal: {

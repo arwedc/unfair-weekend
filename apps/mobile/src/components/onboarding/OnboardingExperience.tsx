@@ -195,7 +195,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
               <Sparkles size={17} color={colors.accent.onSolid} strokeWidth={2.1} />
             </View>
             <Text variant="subhead" style={styles.brandName}>
-              unfair weekend
+              Kiepn
             </Text>
           </View>
           <View
