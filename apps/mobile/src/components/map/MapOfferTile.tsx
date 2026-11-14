@@ -91,7 +91,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderCurve: 'continuous',
     backgroundColor: colors.surface.raised,
-    boxShadow: shadow.floating,
+    // Weicher, kurzer Schatten: passt in die Luft der Liste und bildet keinen grauen Balken.
+    boxShadow: shadow.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.subtle,
   },
   image: {
     width: IMAGE_SIZE,
