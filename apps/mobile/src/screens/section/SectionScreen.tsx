@@ -81,7 +81,13 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
 
   const toggleMap = () => {
     void Haptics.selectionAsync();
-    setMapVisible((visible) => !visible);
+    // Beim Ausblenden wird die Karte entfernt. Beim Einblenden lädt sie neu und meldet sich
+    // wieder mit „ready“; erst dann kommen Nadeln und Ausschnitt (sonst stünde sie auf Münster).
+    if (mapVisible) {
+      setMapReady(false);
+      setSelectedKey(null);
+    }
+    setMapVisible(!mapVisible);
   };
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));

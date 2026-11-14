@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Map } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -24,6 +24,8 @@ export interface SectionHeaderProps {
   expanded?: boolean;
   /** Runder Pfeil rechts, z. B. zur Seite mit allen Angeboten und Karte. Ersetzt den Link. */
   onMore?: () => void;
+  /** Text im Knopf, z. B. „Auf der Karte“. */
+  moreLabel?: string;
   /** Für Screenreader, z. B. „Alle Angebote aus Last Minute“. */
   moreAccessibilityLabel?: string;
   /** Kleines Zeichen vor dem Titel, z. B. ein pulsierender Punkt bei „Last Minute“. */
@@ -42,6 +44,7 @@ export function SectionHeader({
   expanded = false,
   accessory,
   onMore,
+  moreLabel,
   moreAccessibilityLabel,
 }: SectionHeaderProps) {
   if (onToggle) {
@@ -88,10 +91,15 @@ export function SectionHeader({
           accessibilityLabel={moreAccessibilityLabel ?? title}
           onPress={onMore}
           hitSlop={MORE_HIT_SLOP}
-          pressedScale={0.9}
+          pressedScale={0.95}
           style={styles.more}
         >
-          <ChevronRight size={18} color={colors.text.primary} strokeWidth={2.5} />
+          <Map size={15} color={colors.text.primary} strokeWidth={2.25} />
+          {moreLabel ? (
+            <Text variant="footnote" numberOfLines={1} style={styles.moreText}>
+              {moreLabel}
+            </Text>
+          ) : null}
         </PressableScale>
       ) : actionLabel && onAction ? (
         <PressableScale
@@ -113,7 +121,7 @@ export function SectionHeader({
   );
 }
 
-/** Der Pfeil ist 32 pt groß, die Touch-Fläche trotzdem 44 pt. */
+/** Der Knopf ist 32 pt hoch, die Touch-Fläche trotzdem 44 pt. */
 const MORE_SIZE = 32;
 const MORE_HIT_SLOP = (44 - MORE_SIZE) / 2;
 
@@ -142,11 +150,15 @@ const styles = StyleSheet.create({
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
   more: {
-    width: MORE_SIZE,
     height: MORE_SIZE,
-    borderRadius: radii.full,
+    minWidth: MORE_SIZE,
+    paddingHorizontal: space[3],
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space[1.5],
+    borderRadius: radii.full,
     backgroundColor: colors.background.muted,
   },
+  moreText: { fontFamily: fonts.semibold, color: colors.text.primary },
 });

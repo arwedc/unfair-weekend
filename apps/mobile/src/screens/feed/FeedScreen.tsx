@@ -48,6 +48,7 @@ function Carousel({ section }: { section: FeedSection }) {
         inset
         accessory={section.key === 'last-minute' ? <LiveDot /> : undefined}
         onMore={() => router.push({ pathname: '/abschnitt/[key]', params: { key: section.key } })}
+        moreLabel={t.screens.feed.onMap}
         moreAccessibilityLabel={t.screens.feed.showAllAria(section.title)}
       />
       <ScrollView

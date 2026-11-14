@@ -4,6 +4,7 @@ import type { Widen } from './widen';
 export const screensDe = {
   feed: {
     showAllAria: (section: string) => `Alle Angebote aus ${section}`,
+    onMap: 'Auf der Karte',
     loading: 'Angebote werden geladen',
     forYou: 'Passt zu dir',
     cityAria: (city: string) => `Stadt: ${city}`,
@@ -141,6 +142,7 @@ export const screensDe = {
 export const screensEn: Widen<typeof screensDe> = {
   feed: {
     showAllAria: (section) => `All offers in ${section}`,
+    onMap: 'See on map',
     loading: 'Loading offers',
     forYou: 'Picked for you',
     cityAria: (city) => `City: ${city}`,
