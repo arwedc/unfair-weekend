@@ -1,5 +1,5 @@
 import { radius, shadow, space } from './layout';
-import { amber, black, crimson, glut, gray, green, white } from './palette';
+import { amber, black, crimson, gold, gray, green, white } from './palette';
 
 /** Farben für einen Status (Erfolg, Warnung, Fehler). */
 export interface StatusColors {
@@ -42,11 +42,13 @@ export interface ThemeColors {
   };
   border: { default: string; subtle: string; strong: string; focus: string };
   accent: {
-    /** Haupt-Buttons, aktive Elemente. Weißer Text darauf erfüllt AA. */
+    /** Haupt-Buttons, aktive Elemente. Text darauf nur in `onSolid`. */
     solid: string;
     solidPressed: string;
-    /** Leuchtender Markenton für große Flächen und große, fette Zahlen. */
+    /** Leuchtender Markenton für große Flächen, Sterne und große, fette Zahlen. */
     vivid: string;
+    /** Akzent für Icons, Linien und Auswahlrahmen auf Weiß (gut sichtbar, ≥ 4,5:1). */
+    strong: string;
     subtle: string;
     onSubtle: string;
     onSolid: string;
@@ -85,23 +87,24 @@ export const lightTheme = {
     tertiary: gray[600],
     disabled: gray[400],
     inverse: white,
-    accent: glut[600],
-    onAccent: white,
-    link: glut[600],
+    accent: gold[700],
+    onAccent: black,
+    link: gold[700],
   },
   border: {
     default: gray[200],
     subtle: gray[100],
     strong: gray[300],
-    focus: glut[500],
+    focus: gold[600],
   },
   accent: {
-    solid: glut[600],
-    solidPressed: glut[700],
-    vivid: glut[500],
-    subtle: glut[50],
-    onSubtle: glut[800],
-    onSolid: white,
+    solid: gold[400],
+    solidPressed: gold[500],
+    vivid: gold[400],
+    strong: gold[700],
+    subtle: gold[50],
+    onSubtle: gold[800],
+    onSolid: black,
   },
   status: {
     success: {
@@ -127,7 +130,7 @@ export const lightTheme = {
     },
   },
   badge: {
-    deal: { background: glut[600], foreground: white },
+    deal: { background: gold[400], foreground: black },
     urgent: { background: black, foreground: white },
     neutral: { background: 'rgba(255, 255, 255, 0.92)', foreground: black },
     soldOut: { background: gray[800], foreground: white },

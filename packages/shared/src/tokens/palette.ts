@@ -24,7 +24,31 @@ export const gray = {
 } as const;
 
 /**
- * Akzentfarbe „Glut“: warmes, mattes Orange (Terrakotta-Richtung).
+ * Akzentfarbe „Gold“: warmes Goldgelb, Markenton #FCC753 (Stufe 400). Gilt für App und Website.
+ * - 400 ist der Markenton für Flächen (Buttons, Chips, Badges, Sterne). Darauf nur
+ *   schwarzer Text, weißer Text wäre zu schwach (1,6:1).
+ * - 600 ist der Fokus-Rahmen.
+ * - 700 ist der Arbeitston für Akzent-Text, Links, Icons und Linien auf Weiß (≥ 4,5:1).
+ * - 50–200 sind zarte Flächen (Hintergründe, Formen, Avatare).
+ */
+export const gold = {
+  50: '#FEF8EC',
+  100: '#FDEDC9',
+  200: '#FCDF9C',
+  300: '#FCD173',
+  400: '#FCC753',
+  500: '#EDA71D',
+  600: '#B87E14',
+  700: '#885C11',
+  800: '#66450F',
+  900: '#4A310D',
+  950: '#271A07',
+} as const;
+
+/**
+ * Frühere Akzentfarbe „Glut“ (bis 14.11.2026): warmes, mattes Orange. Nicht mehr im Theme,
+ * bleibt nur als Rohpalette erhalten.
+ *
  * Wärmer und weniger grell als ein reines Signal-Orange, damit es das Auge nicht angreift.
  * - 500 ist der Markenton (große Flächen, Illustrationen, große fette Zahlen).
  * - 600 ist der Arbeitston für Flächen mit weißem Text (Buttons, Deal-Badges)
@@ -66,4 +90,4 @@ export const crimson = {
   800: '#9F1239',
 } as const;
 
-export const palette = { white, black, gray, glut, green, amber, crimson } as const;
+export const palette = { white, black, gray, gold, glut, green, amber, crimson } as const;
