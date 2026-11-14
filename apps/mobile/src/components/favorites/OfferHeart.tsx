@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import { Heart } from 'lucide-react-native';
 import { StyleSheet } from 'react-native';
 
-import { PressableScale } from '@/components/ui';
+import { GlassSurface, PressableScale } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { useFavoriteOfferIds, useToggleFavoriteOffer } from '@/features/favorites/queries';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, radii } from '@/theme';
+import { badge, colors } from '@/theme';
 
 const SIZE = 34;
 /** Tippfläche auf mindestens 44 Punkte vergrößern, ohne den Kreis größer zu machen. */
@@ -45,12 +45,15 @@ export function OfferHeart({ offerId, title }: OfferHeartProps) {
       }}
       style={styles.button}
     >
-      <Heart
-        size={18}
-        strokeWidth={2.25}
-        color={saved ? colors.accent.strong : colors.text.primary}
-        fill={saved ? colors.accent.solid : 'transparent'}
-      />
+      {/* Glas wie Tab-Leiste und Stadt-Kachel: das Foto scheint leicht durch. */}
+      <GlassSurface style={styles.glass}>
+        <Heart
+          size={18}
+          strokeWidth={2.25}
+          color={saved ? colors.accent.strong : colors.text.primary}
+          fill={saved ? colors.accent.solid : 'transparent'}
+        />
+      </GlassSurface>
     </PressableScale>
   );
 }
@@ -62,10 +65,6 @@ const styles = StyleSheet.create({
     right: badge.inset,
     width: SIZE,
     height: SIZE,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.badge.neutral.background,
-    boxShadow: badge.shadow,
   },
+  glass: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
