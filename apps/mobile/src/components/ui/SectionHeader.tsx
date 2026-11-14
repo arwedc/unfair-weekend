@@ -100,15 +100,24 @@ export function SectionHeader({
 const ACTION_HIT_SLOP = { top: space[3], bottom: space[3], left: space[4], right: space[4] };
 
 const styles = StyleSheet.create({
+  // Mittig statt an der Grundlinie: Mit der Titelgruppe (Punkt + Text) konnte die Grundlinien-
+  // Ausrichtung die Gruppe beim Neuaufbau auf Breite 0 drücken, dann war nur noch der Punkt zu sehen.
   row: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: space[3],
   },
-  toggleRow: { alignItems: 'center', minHeight: layout.minTouchTarget },
+  toggleRow: { minHeight: layout.minTouchTarget },
   toggleEnd: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
-  titleWrap: { flexDirection: 'row', alignItems: 'center', gap: space[2], flexShrink: 1 },
+  // Nimmt den freien Platz ein, damit der Titel nie auf 0 schrumpft; „Alle“ bleibt rechts.
+  titleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    flexGrow: 1,
+    flexShrink: 1,
+  },
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
 });
