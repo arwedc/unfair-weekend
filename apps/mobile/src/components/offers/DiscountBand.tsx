@@ -1,4 +1,5 @@
 import { formatDiscount } from '@repo/shared';
+import { Zap } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -12,9 +13,9 @@ import Animated, {
 
 import { Text } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
-import { colors, fonts, gold, MAX_FONT_SCALE } from '@/theme';
+import { badge, colors, fonts, gold, MAX_FONT_SCALE, radii, space } from '@/theme';
 
-/** Ab diesem Rabatt leuchtet das Band beim Erscheinen einmal kurz auf. */
+/** Ab diesem Rabatt bekommt das Etikett einen Blitz und glänzt beim Erscheinen einmal kurz. */
 export const MEGA_DISCOUNT_PERCENT = 50;
 
 export interface DiscountBandProps {
@@ -24,9 +25,9 @@ export interface DiscountBandProps {
 }
 
 /**
- * Rabatt als Klebestreifen: ein schwarzes Band mit goldener Schrift, diagonal über die linke
- * obere Fotoecke geklebt. Die Karte schneidet die Enden ab (overflow: hidden). Mega-Rabatte
- * glänzen beim Erscheinen einmal kurz (bei „Bewegung reduzieren“ nicht).
+ * Rabatt als goldenes Etikett unten links auf dem Foto: eine ruhige Fläche in der Markenfarbe,
+ * schwarze Schrift. Mega-Rabatte bekommen einen Blitz und glänzen beim Erscheinen einmal kurz
+ * (bei „Bewegung reduzieren“ nicht).
  */
 export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
   const { locale } = useT();
@@ -46,13 +47,18 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
     );
   }, [mega, shine]);
 
-  const shineStyle = useAnimatedStyle(() => ({ opacity: shine.get() * 0.35 }));
+  const shineStyle = useAnimatedStyle(() => ({ opacity: shine.get() * 0.6 }));
 
   return (
-    <View style={[styles.band, compact && styles.bandCompact]} accessible={false}>
-      {/* Feine Linien oben und unten, damit es wie ein Stück Klebeband wirkt. */}
-      <View style={[styles.edge, styles.edgeTop]} pointerEvents="none" />
-      <View style={[styles.edge, styles.edgeBottom]} pointerEvents="none" />
+    <View style={[styles.label, compact && styles.labelCompact]} accessible={false}>
+      {mega ? (
+        <Zap
+          size={compact ? 13 : 15}
+          color={colors.text.primary}
+          fill={colors.text.primary}
+          strokeWidth={2}
+        />
+      ) : null}
       <Text
         style={[styles.text, compact && styles.textCompact]}
         maxFontSizeMultiplier={Math.min(MAX_FONT_SCALE, 1.3)}
@@ -69,44 +75,30 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
   );
 }
 
-/**
- * Maße des Streifens. Die Mitte liegt auf der Diagonalen der Ecke (Abstand CORNER zu beiden Rändern),
- * dann um 45° gedreht. Sichtbar ist das Stück zwischen den Fotorändern.
- */
-const BAND = { width: 150, height: 30, corner: 34 };
-const BAND_COMPACT = { width: 130, height: 26, corner: 30 };
-
 const styles = StyleSheet.create({
-  band: {
+  label: {
     position: 'absolute',
-    top: BAND.corner - BAND.height / 2,
-    left: BAND.corner - BAND.width / 2,
-    width: BAND.width,
-    height: BAND.height,
+    left: badge.inset,
+    bottom: badge.inset,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background.inverse,
-    transform: [{ rotate: '-45deg' }],
-    boxShadow: '0 2px 6px rgba(10, 10, 10, 0.3)',
+    gap: space[1],
+    paddingHorizontal: space[3],
+    paddingVertical: space[1.5],
+    borderRadius: radii.md,
+    borderCurve: 'continuous',
+    backgroundColor: colors.accent.solid,
+    boxShadow: badge.shadow,
     overflow: 'hidden',
   },
-  bandCompact: {
-    top: BAND_COMPACT.corner - BAND_COMPACT.height / 2,
-    left: BAND_COMPACT.corner - BAND_COMPACT.width / 2,
-    width: BAND_COMPACT.width,
-    height: BAND_COMPACT.height,
+  labelCompact: { paddingHorizontal: space[2], paddingVertical: space[1] },
+  text: {
+    fontFamily: fonts.extrabold,
+    fontSize: 16,
+    lineHeight: 20,
+    color: colors.text.primary,
+    fontVariant: ['tabular-nums'],
   },
-  edge: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: gold[700],
-  },
-  edgeTop: { top: 2 },
-  edgeBottom: { bottom: 2 },
-  text: { fontFamily: fonts.extrabold, fontSize: 15, lineHeight: 18, color: gold[400] },
-  textCompact: { fontSize: 13, lineHeight: 16 },
-  shine: { backgroundColor: gold[200] },
+  textCompact: { fontSize: 14, lineHeight: 18 },
+  shine: { backgroundColor: gold[100] },
 });
