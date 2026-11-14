@@ -1,13 +1,14 @@
-import { formatDiscount, formatPrice, seatsLabel } from '@repo/shared';
+import { formatPrice, seatsLabel } from '@repo/shared';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
+import { DiscountBand } from '@/components/offers/DiscountBand';
 import { PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerWhenText } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { colors, fonts, fun, gold, radii, radius, space } from '@/theme';
+import { colors, fun, radius, space } from '@/theme';
 
 import { OfferImage } from './OfferImage';
 
@@ -72,11 +73,7 @@ export function OfferListRow({ offer, highlighted = false }: OfferListRowProps) 
           <Text variant="footnote" color="tertiary" style={styles.strike}>
             {original}
           </Text>
-          <View style={styles.discount}>
-            <Text variant="caption" style={styles.discountText}>
-              {formatDiscount(offer.discount_percent, locale)}
-            </Text>
-          </View>
+          <DiscountBand percent={offer.discount_percent} compact inline />
         </View>
       </View>
     </PressableScale>
@@ -123,11 +120,4 @@ const styles = StyleSheet.create({
     marginTop: space[1],
   },
   strike: { textDecorationLine: 'line-through' },
-  discount: {
-    paddingHorizontal: space[2],
-    paddingVertical: space[0.5],
-    borderRadius: radii.full,
-    backgroundColor: colors.background.inverse,
-  },
-  discountText: { fontFamily: fonts.bold, color: gold[400] },
 });

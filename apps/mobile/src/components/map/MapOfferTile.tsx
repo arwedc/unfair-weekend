@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { DiscountTag } from '@/components/offers/DiscountTag';
+import { DiscountBand } from '@/components/offers/DiscountBand';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { PriceRow } from '@/components/offers/PriceRow';
 import { PressableScale, Text } from '@/components/ui';
@@ -73,7 +73,7 @@ export function MapOfferTile({ offer, width, position }: MapOfferTileProps) {
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
           />
-          <DiscountTag percent={offer.discount_percent} />
+          <DiscountBand percent={offer.discount_percent} compact inline />
         </View>
       </View>
     </PressableScale>

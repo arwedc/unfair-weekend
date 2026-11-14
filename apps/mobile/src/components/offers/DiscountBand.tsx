@@ -22,14 +22,17 @@ export interface DiscountBandProps {
   percent: number;
   /** Etwas kleiner für Karussell-Karten. */
   compact?: boolean;
+  /** Im Textfluss (z. B. neben dem Preis in Liste und Vorschau) statt unten links auf dem Foto. */
+  inline?: boolean;
 }
 
 /**
- * Rabatt als goldenes Etikett unten links auf dem Foto: eine ruhige Fläche in der Markenfarbe,
+ * Rabatt als goldenes Etikett, überall gleich: auf dem Foto der Angebotskarte (unten links) und
+ * mit `inline` neben dem Preis in Liste und Vorschau-Kachel. Eine ruhige Fläche in der Markenfarbe,
  * schwarze Schrift. Mega-Rabatte bekommen einen Blitz und glänzen beim Erscheinen einmal kurz
  * (bei „Bewegung reduzieren“ nicht).
  */
-export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
+export function DiscountBand({ percent, compact = false, inline = false }: DiscountBandProps) {
   const { locale } = useT();
   const shine = useSharedValue(0);
   const mega = percent >= MEGA_DISCOUNT_PERCENT;
@@ -50,7 +53,14 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
   const shineStyle = useAnimatedStyle(() => ({ opacity: shine.get() * 0.6 }));
 
   return (
-    <View style={[styles.label, compact && styles.labelCompact]} accessible={false}>
+    <View
+      style={[
+        styles.label,
+        inline ? styles.labelInline : styles.labelOnPhoto,
+        compact && styles.labelCompact,
+      ]}
+      accessible={false}
+    >
       {mega ? (
         <Zap
           size={compact ? 13 : 15}
@@ -77,9 +87,6 @@ export function DiscountBand({ percent, compact = false }: DiscountBandProps) {
 
 const styles = StyleSheet.create({
   label: {
-    position: 'absolute',
-    left: badge.inset,
-    bottom: badge.inset,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[1],
@@ -88,9 +95,17 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderCurve: 'continuous',
     backgroundColor: colors.accent.solid,
-    boxShadow: badge.shadow,
     overflow: 'hidden',
   },
+  // Auf dem Foto: unten links, mit Schatten, damit es sich vom Bild löst.
+  labelOnPhoto: {
+    position: 'absolute',
+    left: badge.inset,
+    bottom: badge.inset,
+    boxShadow: badge.shadow,
+  },
+  // Neben dem Preis: im Textfluss, ohne Schatten.
+  labelInline: { alignSelf: 'center' },
   labelCompact: { paddingHorizontal: space[2], paddingVertical: space[1] },
   text: {
     fontFamily: fonts.extrabold,
