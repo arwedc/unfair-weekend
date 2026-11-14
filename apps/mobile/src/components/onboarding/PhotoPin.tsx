@@ -8,6 +8,7 @@ import Animated, {
   Extrapolation,
   interpolate,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -17,6 +18,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { OfferImage } from '@/components/offers/OfferImage';
@@ -27,6 +29,7 @@ import {
   clamp01,
   lerp,
   PIN_HEIGHT,
+  PIN_SELECTED_SCALE,
   PIN_SIZE,
   project,
   type StageGeometry,
@@ -58,8 +61,8 @@ interface PhotoPinProps {
 }
 
 /**
- * Pin mit Foto des Angebots. Fällt beim Start auf die Karte, wächst beim Antippen,
- * färbt sich gold und sendet Ringe aus. Folgt der Kamera, bleibt dabei aber gleich groß.
+ * Pin mit Foto des Angebots. Fällt beim Start auf die Karte, wächst beim Antippen leicht,
+ * färbt sich gold und sendet einen Ring aus. Folgt der Kamera, bleibt dabei aber gleich groß.
  */
 export function PhotoPin({
   offer,
@@ -90,17 +93,11 @@ export function PhotoPin({
       active.set(isSelected ? 1 : 0);
       return;
     }
-    active.set(withSpring(isSelected ? 1 : 0, { damping: 12, stiffness: 210 }));
-    if (!isSelected) {
-      cancelAnimation(pulse);
-      pulse.set(0);
-      return;
-    }
-    // Der erste Ring ist der Klick-Effekt, danach pulsiert der gewählte Ort ruhig weiter.
+    // Ruhig, ohne Nachfedern: der Pin wächst kurz und sendet einen einzigen Ring aus.
+    active.set(withTiming(isSelected ? 1 : 0, { duration: 220, easing: Easing.out(Easing.cubic) }));
+    if (!isSelected) return;
     pulse.set(0);
-    pulse.set(
-      withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false),
-    );
+    pulse.set(withTiming(1, { duration: 750, easing: Easing.out(Easing.quad) }));
     return () => cancelAnimation(pulse);
   }, [active, isSelected, pulse, reduceMotion]);
 
@@ -108,7 +105,6 @@ export function PhotoPin({
     const progress = camera.progress.get();
     const cam = cameraAt(
       progress,
-      camera.selected.get(),
       camera.focusU.get() * geometry.width,
       camera.focusV.get() * geometry.height,
       geometry,
@@ -117,7 +113,7 @@ export function PhotoPin({
     const dropped = drop.get();
     const fade = isSelected
       ? 1 - clamp01((progress - 1.15) * 3)
-      : (1 - 0.45 * camera.selected.get() * (1 - active.get())) * (1 - clamp01(progress * 2.5));
+      : (1 - 0.5 * camera.selected.get() * (1 - active.get())) * (1 - clamp01(progress * 2.5));
     return {
       opacity: clamp01(dropped * 2) * fade,
       transform: [
@@ -128,7 +124,9 @@ export function PhotoPin({
   });
 
   const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: lerp(0.5, 1, drop.get()) * (1 + 0.26 * active.get()) }],
+    transform: [
+      { scale: lerp(0.5, 1, drop.get()) * (1 + (PIN_SELECTED_SCALE - 1) * active.get()) },
+    ],
   }));
 
   const frameStyle = useAnimatedStyle(() => ({
@@ -146,8 +144,8 @@ export function PhotoPin({
     ),
   }));
   const ringStyle = useAnimatedStyle(() => ({
-    opacity: (1 - pulse.get()) * 0.75 * active.get(),
-    transform: [{ scale: 1 + pulse.get() * 1.3 }],
+    opacity: pulse.get() > 0 ? (1 - pulse.get()) * 0.6 : 0,
+    transform: [{ scale: 1 + pulse.get() * 1.1 }],
   }));
 
   return (
@@ -186,22 +184,35 @@ export function PhotoPin({
   );
 }
 
-/** Die Hand zeigt beim ersten Öffnen, dass man auf einen Pin tippen kann. */
+/**
+ * Die Hand zeigt beim ersten Öffnen, wie es geht: Sie fährt zum Pin und tippt ihn an.
+ * Der Tipp öffnet den Pin wirklich (`onTap`), danach verschwindet die Hand.
+ */
 export function CoachHand({
   targetX,
   targetY,
   visible,
+  onTap,
 }: {
   targetX: number;
   targetY: number;
   visible: boolean;
+  onTap: () => void;
 }) {
   const cycle = useSharedValue(0);
+
+  useAnimatedReaction(
+    () => cycle.get() >= 2,
+    (pressed, previous) => {
+      if (pressed && previous === false) scheduleOnRN(onTap);
+    },
+  );
 
   useEffect(() => {
     if (!visible) {
       cancelAnimation(cycle);
-      cycle.set(withTiming(4, { duration: 180 }));
+      // Nach dem Tipp sanft ausblenden; vorher sofort weg, damit kein zweiter Tipp entsteht.
+      cycle.set(cycle.get() >= 2 ? withTiming(4, { duration: 180 }) : 0);
       return;
     }
     cycle.set(0);
@@ -253,7 +264,7 @@ export function CoachHand({
   });
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} collapsable={false}>
       <Animated.View style={[styles.tapRing, tapStyle]} />
       <Animated.View style={[styles.hand, handStyle]}>
         <Pointer
