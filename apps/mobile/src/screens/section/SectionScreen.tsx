@@ -20,7 +20,6 @@ import {
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
-  interpolate,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -52,17 +51,16 @@ type MapWebView = WebView<object>;
 
 /** Ruhige Feder ohne Nachschwingen, wie bei System-Sheets. */
 const SHEET_SPRING = { damping: 32, stiffness: 320, mass: 1 } as const;
-/** Schätzwerte, bis Kopf und erste Zeile gemessen sind. */
+/** Schätzwert, bis der Kopf gemessen ist. */
 const DEFAULT_HEAD = 96;
-const DEFAULT_ROW = 128;
+/** Höhe der Trennlinie zwischen zwei Angeboten (Linie plus Rand oben und unten). */
+const SEPARATOR_HEIGHT = space[2];
 /** Weiter als so viele Punkte über den Listenanfang gezogen: Blatt wieder auf Startgröße. */
 const PULL_DOWN_TO_SHRINK = 56;
 /** Endet ein Zug so nah am oberen Rand, rastet das Blatt ganz oben ein (Liste voll). */
 const TOP_MAGNET = 72;
 /** Zeit, mit der der Schwung in die Endposition hochgerechnet wird. */
 const FLING_PROJECTION_S = 0.18;
-/** Platz über dem Titel, wenn das Blatt ganz oben liegt (für den Zurück-Knopf). */
-const BACK_ZONE = 52;
 
 export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const router = useRouter();
@@ -82,7 +80,6 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   // Liegt das Blatt ganz oben? Dann scrollt die Liste und der Knopf „Karte“ erscheint.
   const [atTop, setAtTop] = useState(false);
   const [headHeight, setHeadHeight] = useState(DEFAULT_HEAD);
-  const [rowHeight, setRowHeight] = useState(DEFAULT_ROW);
   // Wurde schon gezogen? Vorher folgt das Blatt der gemessenen Startlage.
   const [touched, setTouched] = useState(false);
 
@@ -92,12 +89,11 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     max: maxTop,
   } = sheetBounds({
     screenHeight: height,
+    topInset: insets.top,
     bottomInset: insets.bottom,
     headHeight,
-    rowHeight,
+    separatorHeight: SEPARATOR_HEIGHT,
   });
-  // Oberhalb davon schiebt das Blatt seinen Inhalt unter Statusleiste und Zurück-Knopf weg.
-  const topZone = insets.top + BACK_ZONE;
 
   // Obere Kante des Blatts in Punkten vom Bildschirmrand.
   const sheetTop = useSharedValue(startTop);
@@ -196,17 +192,6 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const listPan = usePanGesture(panConfig(!atTop));
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetTop.get() }] }));
-  // Je näher das Blatt dem oberen Rand kommt, desto mehr Platz entsteht über dem Titel,
-  // damit Statusleiste und Zurück-Knopf ihn nie verdecken. Die Karte bleibt sichtbar,
-  // bis das Blatt sie ganz überdeckt.
-  const spacerStyle = useAnimatedStyle(() => ({
-    height: interpolate(sheetTop.get(), [minTop, topZone], [topZone, 0], 'clamp'),
-  }));
-  // Ganz oben werden die Ecken eckig, damit keine Kartenreste in den Ecken bleiben.
-  const cornerStyle = useAnimatedStyle(() => {
-    const r = interpolate(sheetTop.get(), [minTop, topZone], [0, radii['2xl']], 'clamp');
-    return { borderTopLeftRadius: r, borderTopRightRadius: r };
-  });
 
   const handleMessage = (raw: string) => {
     const message = parseMapMessage(raw);
@@ -235,8 +220,6 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
 
   const onHeadLayout = (event: LayoutChangeEvent) =>
     setHeadHeight(Math.round(event.nativeEvent.layout.height));
-  const onFirstRowLayout = (event: LayoutChangeEvent) =>
-    setRowHeight(Math.round(event.nativeEvent.layout.height));
 
   const empty = isPending ? (
     <View style={styles.skeletons}>
@@ -280,8 +263,8 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         </View>
       ) : null}
 
-      <Animated.View style={[styles.sheet, { height }, sheetStyle, cornerStyle]}>
-        <Animated.View style={spacerStyle} />
+      {/* Das Blatt reicht nie höher als unter den Zurück-Knopf; so passt die Höhe genau. */}
+      <Animated.View style={[styles.sheet, { height: height - minTop }, sheetStyle]}>
         <GestureDetector gesture={handlePan}>
           <View onLayout={onHeadLayout}>
             <PressableScale
@@ -311,13 +294,11 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
             ref={list}
             data={isPending ? [] : offers}
             keyExtractor={(offer) => offer.id}
-            renderItem={({ item, index }) => (
-              <View onLayout={index === 0 ? onFirstRowLayout : undefined}>
-                <OfferListRow
-                  offer={item}
-                  highlighted={selectedKey !== null && placeKeyOf(item) === selectedKey}
-                />
-              </View>
+            renderItem={({ item }) => (
+              <OfferListRow
+                offer={item}
+                highlighted={selectedKey !== null && placeKeyOf(item) === selectedKey}
+              />
             )}
             ListEmptyComponent={empty}
             ItemSeparatorComponent={Separator}
@@ -377,6 +358,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.background.default,
+    borderTopLeftRadius: radii['2xl'],
+    borderTopRightRadius: radii['2xl'],
     borderCurve: 'continuous',
     boxShadow: shadow.sheet,
   },
