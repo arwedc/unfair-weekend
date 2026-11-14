@@ -15,18 +15,17 @@ import {
   useFavoriteLocations,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
-import { avatarTint, initials } from '@/features/profile/profile-logic';
+import { initials } from '@/features/profile/profile-logic';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
 import { useSeenStamps } from '@/features/profile/use-seen-stamps';
 import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
+import { ProfileAvatar } from './ProfileAvatar';
 import { StampCard } from './StampCard';
 
-const AVATAR = 76;
-
-/** Kopf: bunter Avatar mit Initialen, Name, „Dabei seit …“ und Bearbeiten-Knopf. */
+/** Kopf: Profilbild (oder bunte Initialen), Name, „Dabei seit …“ und Bearbeiten-Knopf. */
 export function ProfileHero({
   account,
   email,
@@ -39,7 +38,6 @@ export function ProfileHero({
   const router = useRouter();
   const { t } = useT();
   const p = t.common.profile;
-  const tone = fun[avatarTint(account.userId)];
   const name = `${account.firstName} ${account.lastName}`.trim();
 
   let since: string | null = null;
@@ -50,11 +48,7 @@ export function ProfileHero({
 
   return (
     <View style={styles.hero}>
-      <View style={[styles.avatar, { backgroundColor: tone.bg }]} accessible={false}>
-        <Text variant="title1" style={{ color: tone.ink }} maxFontSizeMultiplier={1.2}>
-          {initials(account.firstName, account.lastName)}
-        </Text>
-      </View>
+      <ProfileAvatar account={account} />
       <View style={styles.heroText}>
         <Text variant="title1" accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit>
           {name || p.yourProfile}
@@ -286,13 +280,6 @@ const STAMP_CARD_HEIGHT = 60;
 const styles = StyleSheet.create({
   section: { gap: space[3] },
   hero: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
-  avatar: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   heroText: { flex: 1, gap: space[0.5] },
   editButton: { alignSelf: 'flex-start' },
   stats: { flexDirection: 'row', gap: space[2] },

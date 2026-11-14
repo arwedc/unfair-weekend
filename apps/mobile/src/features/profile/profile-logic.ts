@@ -157,3 +157,11 @@ export function levelUpSince(seen: number, now: number): LevelProgress | null {
   const after = levelProgress(now);
   return after.index > before.index ? after : null;
 }
+
+/**
+ * Speicherort eines neuen Profilbilds im Bucket `avatars`: immer im eigenen Ordner
+ * und mit neuem Namen, damit kein altes Bild aus dem Cache auftaucht.
+ */
+export function avatarStoragePath(userId: string, fileId: string): string {
+  return `${userId}/${fileId}.jpg`;
+}

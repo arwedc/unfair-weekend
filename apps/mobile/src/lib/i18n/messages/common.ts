@@ -146,6 +146,7 @@ export const commonDe = {
     legal: 'Rechtliches',
     privacy: 'Datenschutz',
     imprint: 'Impressum',
+    terms: 'Nutzungsbedingungen',
     deleteTitle: 'Konto wirklich löschen?',
     deleteText:
       'Dein Konto, dein Name und deine Favoriten werden endgültig gelöscht. Aktive Codes werden storniert. Das lässt sich nicht rückgängig machen.',
@@ -211,6 +212,8 @@ export const commonDe = {
     privacyIntro:
       'Hier steht später die Datenschutzerklärung: welche Daten die App speichert (Name, E-Mail, Codes, Favoriten), wofür und wie du sie löschen kannst.',
     imprintIntro: 'Hier stehen später Anbieter, Anschrift und Kontakt nach § 5 DDG.',
+    termsIntro:
+      'Hier stehen später die Nutzungsbedingungen: wie Codes, Stornieren und Sperren funktionieren und was für dein Konto gilt.',
     notPublic:
       'Diese Testversion ist noch nicht öffentlich. Der endgültige Text wird vor dem Start ergänzt.',
   },
@@ -359,6 +362,7 @@ export const commonEn: Widen<typeof commonDe> = {
     legal: 'Legal',
     privacy: 'Privacy policy',
     imprint: 'Legal notice',
+    terms: 'Terms of use',
     deleteTitle: 'Really delete your account?',
     deleteText:
       'Your account, your name and your favourites will be deleted permanently. Active codes will be cancelled. This cannot be undone.',
@@ -422,6 +426,8 @@ export const commonEn: Widen<typeof commonDe> = {
     privacyIntro:
       'The privacy policy will go here: what data the app stores (name, email, codes, favourites), why, and how you can delete it.',
     imprintIntro: 'The provider, address and contact details (§ 5 DDG) will go here.',
+    termsIntro:
+      'The terms of use will go here: how codes, cancelling and blocks work and what applies to your account.',
     notPublic: 'This test version is not public yet. The final text will be added before launch.',
   },
 };

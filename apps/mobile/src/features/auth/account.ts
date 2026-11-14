@@ -20,6 +20,8 @@ export interface Account {
   /** Ende der Sperre nach zu vielen No-Shows, sonst null. */
   blockedUntil: string | null;
   isBlocked: boolean;
+  /** Profilbild im privaten Bucket `avatars` (<user_id>/<datei>), sonst null. */
+  avatarPath: string | null;
 }
 
 function text(value: unknown): string {
@@ -48,6 +50,8 @@ export function parseAccount(json: unknown): Account | null {
     noShowCount: typeof raw.no_show_count === 'number' ? raw.no_show_count : 0,
     blockedUntil: typeof raw.blocked_until === 'string' ? raw.blocked_until : null,
     isBlocked: raw.is_blocked === true,
+    avatarPath:
+      typeof raw.avatar_path === 'string' && raw.avatar_path !== '' ? raw.avatar_path : null,
   };
 }
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  avatarStoragePath,
   avatarTint,
   explorerLevel,
   currentCard,
+  EXPLORER_LEVELS,
   initials,
   levelProgress,
   levelUpSince,
@@ -133,5 +135,18 @@ describe('levelUpSince', () => {
     expect(levelUpSince(3, 11)?.level).toBe('cityExplorer');
     expect(levelUpSince(5, 5)).toBeNull();
     expect(levelUpSince(20, 21)).toBeNull();
+  });
+});
+
+describe('EXPLORER_LEVELS', () => {
+  it('Stufen sind aufsteigend sortiert, je eine Karte auseinander', () => {
+    const froms = EXPLORER_LEVELS.map((level) => level.from);
+    expect(froms).toEqual([0, 5, 10, 15]);
+  });
+});
+
+describe('avatarStoragePath', () => {
+  it('liegt im eigenen Ordner und endet auf .jpg', () => {
+    expect(avatarStoragePath('user-1', 'abc')).toBe('user-1/abc.jpg');
   });
 });

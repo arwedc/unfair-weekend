@@ -12,6 +12,7 @@ import {
   type LocationRatingSummary,
   sectionsByCategory,
   toggleCategory,
+  toggleTime,
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
@@ -61,44 +62,78 @@ function offer(overrides: Partial<FeedOffer> = {}): FeedOffer {
 describe('matchesTimeFilter', () => {
   it('Einzeltermin zählt am Tag seines Beginns', () => {
     const morgen = offer();
-    expect(matchesTimeFilter(morgen, 'heute', NOW)).toBe(false);
-    expect(matchesTimeFilter(morgen, 'morgen', NOW)).toBe(true);
-    expect(matchesTimeFilter(morgen, 'alle', NOW)).toBe(true);
+    expect(matchesTimeFilter(morgen, ['heute'], NOW)).toBe(false);
+    expect(matchesTimeFilter(morgen, ['morgen'], NOW)).toBe(true);
+    expect(matchesTimeFilter(morgen, [], NOW)).toBe(true);
   });
 
   it('Zeitraum zählt an jedem einlösbaren Tag', () => {
     const woche = offer({ type: 'zeitraum', starts_at: at(-2, '00:00'), ends_at: at(5, '22:00') });
-    expect(matchesTimeFilter(woche, 'heute', NOW)).toBe(true);
-    expect(matchesTimeFilter(woche, 'morgen', NOW)).toBe(true);
-    expect(matchesTimeFilter(woche, 'wochenende', NOW)).toBe(true);
+    expect(matchesTimeFilter(woche, ['heute'], NOW)).toBe(true);
+    expect(matchesTimeFilter(woche, ['morgen'], NOW)).toBe(true);
+    expect(matchesTimeFilter(woche, ['uebermorgen'], NOW)).toBe(true);
+    expect(matchesTimeFilter(woche, ['wochenende'], NOW)).toBe(true);
   });
 
   it('Zeitraum, der erst übermorgen beginnt, ist heute nicht dabei', () => {
     const spaeter = offer({ type: 'zeitraum', starts_at: at(2, '00:00'), ends_at: at(9, '22:00') });
-    expect(matchesTimeFilter(spaeter, 'heute', NOW)).toBe(false);
-    expect(matchesTimeFilter(spaeter, 'morgen', NOW)).toBe(false);
+    expect(matchesTimeFilter(spaeter, ['heute'], NOW)).toBe(false);
+    expect(matchesTimeFilter(spaeter, ['morgen'], NOW)).toBe(false);
+    expect(matchesTimeFilter(spaeter, ['uebermorgen'], NOW)).toBe(true);
+  });
+
+  it('Übermorgen ist genau der Tag nach morgen', () => {
+    expect(matchesTimeFilter(offer({ starts_at: at(2) }), ['uebermorgen'], NOW)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(1) }), ['uebermorgen'], NOW)).toBe(false);
+    expect(matchesTimeFilter(offer({ starts_at: at(3) }), ['uebermorgen'], NOW)).toBe(false);
   });
 
   it('Wochenende ist der nächste Samstag und Sonntag', () => {
-    expect(matchesTimeFilter(offer({ starts_at: at(3) }), 'wochenende', NOW)).toBe(true); // Sa.
-    expect(matchesTimeFilter(offer({ starts_at: at(4) }), 'wochenende', NOW)).toBe(true); // So.
-    expect(matchesTimeFilter(offer({ starts_at: at(2) }), 'wochenende', NOW)).toBe(false); // Fr.
-    expect(matchesTimeFilter(offer({ starts_at: at(5) }), 'wochenende', NOW)).toBe(false); // Mo.
+    expect(matchesTimeFilter(offer({ starts_at: at(3) }), ['wochenende'], NOW)).toBe(true); // Sa.
+    expect(matchesTimeFilter(offer({ starts_at: at(4) }), ['wochenende'], NOW)).toBe(true); // So.
+    expect(matchesTimeFilter(offer({ starts_at: at(2) }), ['wochenende'], NOW)).toBe(false); // Fr.
+    expect(matchesTimeFilter(offer({ starts_at: at(5) }), ['wochenende'], NOW)).toBe(false); // Mo.
   });
 
   it('am Samstag zählen heute und morgen, am Sonntag nur heute', () => {
     const samstag = '2026-11-14T09:00:00Z';
     const sonntag = '2026-11-15T09:00:00Z';
-    expect(matchesTimeFilter(offer({ starts_at: at(4) }), 'wochenende', samstag)).toBe(true);
-    expect(matchesTimeFilter(offer({ starts_at: at(4) }), 'wochenende', sonntag)).toBe(true);
-    expect(matchesTimeFilter(offer({ starts_at: at(10) }), 'wochenende', sonntag)).toBe(false);
+    expect(matchesTimeFilter(offer({ starts_at: at(4) }), ['wochenende'], samstag)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(4) }), ['wochenende'], sonntag)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(10) }), ['wochenende'], sonntag)).toBe(false);
+  });
+
+  it('mehrere Tage: passt, wenn das Angebot an irgendeinem davon stattfindet', () => {
+    const tage = ['morgen', 'wochenende'] as const;
+    expect(matchesTimeFilter(offer({ starts_at: at(0) }), tage, NOW)).toBe(false); // Mi.
+    expect(matchesTimeFilter(offer({ starts_at: at(1) }), tage, NOW)).toBe(true); // Do.
+    expect(matchesTimeFilter(offer({ starts_at: at(2) }), tage, NOW)).toBe(false); // Fr.
+    expect(matchesTimeFilter(offer({ starts_at: at(3) }), tage, NOW)).toBe(true); // Sa.
+    expect(matchesTimeFilter(offer({ starts_at: at(4) }), tage, NOW)).toBe(true); // So.
+    const alleTage = ['heute', 'morgen', 'uebermorgen', 'wochenende'] as const;
+    expect(matchesTimeFilter(offer({ starts_at: at(2) }), alleTage, NOW)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(5) }), alleTage, NOW)).toBe(false); // Mo.
   });
 
   it('rechnet in Berliner Kalendertagen, nicht in UTC', () => {
     // 23:30 Uhr Berlin am 11.11. ist in UTC noch der 11.11., 00:30 Uhr Berlin am 12.11. ebenfalls.
-    expect(matchesTimeFilter(offer({ starts_at: at(0, '23:30') }), 'heute', NOW)).toBe(true);
-    expect(matchesTimeFilter(offer({ starts_at: at(1, '00:30') }), 'heute', NOW)).toBe(false);
-    expect(matchesTimeFilter(offer({ starts_at: at(1, '00:30') }), 'morgen', NOW)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(0, '23:30') }), ['heute'], NOW)).toBe(true);
+    expect(matchesTimeFilter(offer({ starts_at: at(1, '00:30') }), ['heute'], NOW)).toBe(false);
+    expect(matchesTimeFilter(offer({ starts_at: at(1, '00:30') }), ['morgen'], NOW)).toBe(true);
+  });
+});
+
+describe('toggleTime', () => {
+  it('wählt Tage an und ab, die Reihenfolge bleibt fest', () => {
+    expect(toggleTime([], 'wochenende')).toEqual(['wochenende']);
+    expect(toggleTime(['wochenende'], 'heute')).toEqual(['heute', 'wochenende']);
+    expect(toggleTime(['heute', 'wochenende'], 'uebermorgen')).toEqual([
+      'heute',
+      'uebermorgen',
+      'wochenende',
+    ]);
+    expect(toggleTime(['heute', 'wochenende'], 'heute')).toEqual(['wochenende']);
+    expect(toggleTime(['morgen'], 'morgen')).toEqual([]);
   });
 });
 
@@ -139,11 +174,14 @@ describe('filterOffers', () => {
         (o) => o.id,
       ),
     ).toEqual(['b']);
-    expect(filterOffers(offers, { ...EMPTY_FILTERS, time: 'heute' }, NOW).map((o) => o.id)).toEqual(
-      ['b'],
-    );
     expect(
-      filterOffers(offers, { categories: ['kochen_essen'], time: 'heute', query: '' }, NOW),
+      filterOffers(offers, { ...EMPTY_FILTERS, times: ['heute'] }, NOW).map((o) => o.id),
+    ).toEqual(['b']);
+    expect(
+      filterOffers(offers, { ...EMPTY_FILTERS, times: ['heute', 'morgen'] }, NOW).map((o) => o.id),
+    ).toEqual(['a', 'b']);
+    expect(
+      filterOffers(offers, { categories: ['kochen_essen'], times: ['heute'], query: '' }, NOW),
     ).toEqual([]);
   });
 
@@ -157,7 +195,7 @@ describe('filterOffers', () => {
   it('erkennt aktive Filter', () => {
     expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '  ' })).toBe(false);
-    expect(hasActiveFilters({ ...EMPTY_FILTERS, time: 'morgen' })).toBe(true);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, times: ['morgen'] })).toBe(true);
   });
 });
 
@@ -334,7 +372,7 @@ describe('sectionsByCategory', () => {
 describe('isListMode', () => {
   it('zeigt eine Liste bei Kategorie oder Suche, nicht beim Zeitfilter', () => {
     expect(isListMode(EMPTY_FILTERS)).toBe(false);
-    expect(isListMode({ ...EMPTY_FILTERS, time: 'heute' })).toBe(false);
+    expect(isListMode({ ...EMPTY_FILTERS, times: ['heute', 'wochenende'] })).toBe(false);
     expect(isListMode({ ...EMPTY_FILTERS, categories: ['kochen_essen'] })).toBe(true);
     expect(isListMode({ ...EMPTY_FILTERS, query: 'yoga' })).toBe(true);
     expect(isListMode({ ...EMPTY_FILTERS, query: '   ' })).toBe(false);

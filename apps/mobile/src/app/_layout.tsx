@@ -26,6 +26,13 @@ import { useLoadLocale, useT } from '@/lib/i18n/context';
 import { queryClient } from '@/lib/query-client';
 import { colors } from '@/theme';
 
+/** Großer Titel für die Ordner aus dem Profil (Einstellungen, Hilfe & Support …). */
+const largeTitle = {
+  headerLargeTitle: true,
+  headerLargeTitleShadowVisible: false,
+  headerLargeStyle: { backgroundColor: colors.background.default },
+} as const;
+
 // Splash bleibt sichtbar, bis die Schrift geladen ist (sonst springt der Text).
 void SplashScreen.preventAutoHideAsync();
 
@@ -107,6 +114,34 @@ export default function RootLayout() {
                       options={{ title: t.common.screens.favorites }}
                     />
                     <Stack.Screen name="stufen" options={{ title: '' }} />
+                    <Stack.Screen
+                      name="einstellungen"
+                      options={{ title: t.profile.settings.title, ...largeTitle }}
+                    />
+                    <Stack.Screen
+                      name="mitgliedschaft"
+                      options={{ title: t.profile.membership.title, ...largeTitle }}
+                    />
+                    <Stack.Screen
+                      name="geschenkkarte"
+                      options={{ title: t.profile.giftCard.title }}
+                    />
+                    <Stack.Screen
+                      name="hilfe/index"
+                      options={{ title: t.profile.help.title, ...largeTitle }}
+                    />
+                    <Stack.Screen
+                      name="hilfe/faq"
+                      options={{ title: t.profile.faq.title, ...largeTitle }}
+                    />
+                    <Stack.Screen
+                      name="hilfe/kontakt"
+                      options={{ title: t.profile.contact.title, ...largeTitle }}
+                    />
+                    <Stack.Screen
+                      name="rechtliches/index"
+                      options={{ title: t.profile.legal.title, ...largeTitle }}
+                    />
                     <Stack.Screen name="rechtliches/[seite]" options={{ title: '' }} />
                     <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
                   </Stack>

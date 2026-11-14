@@ -5,19 +5,20 @@ import { Text } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
-export type LegalPage = 'datenschutz' | 'impressum';
+export type LegalPage = 'nutzungsbedingungen' | 'datenschutz' | 'impressum';
 
 export function isLegalPage(value: unknown): value is LegalPage {
-  return value === 'datenschutz' || value === 'impressum';
+  return value === 'nutzungsbedingungen' || value === 'datenschutz' || value === 'impressum';
 }
 
-/** Platzhalter für Datenschutz und Impressum. Die echten Texte kommen vor dem Start. */
+/** Platzhalter für Nutzungsbedingungen, Datenschutz und Impressum. Die echten Texte kommen vor dem Start. */
 export function LegalScreen({ page }: { page: LegalPage }) {
   const { t } = useT();
-  const content =
-    page === 'datenschutz'
-      ? { title: t.common.profile.privacy, intro: t.common.legal.privacyIntro }
-      : { title: t.common.profile.imprint, intro: t.common.legal.imprintIntro };
+  const content = {
+    nutzungsbedingungen: { title: t.common.profile.terms, intro: t.common.legal.termsIntro },
+    datenschutz: { title: t.common.profile.privacy, intro: t.common.legal.privacyIntro },
+    impressum: { title: t.common.profile.imprint, intro: t.common.legal.imprintIntro },
+  }[page];
   return (
     <ScrollView
       style={styles.screen}
