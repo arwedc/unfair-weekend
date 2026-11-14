@@ -252,7 +252,9 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     if (activeId) void logOfferView(activeId);
   }, [activeId]);
 
-  // Foto: groß, schrumpft beim Scrollen und läuft nach einem kurzen Moment ganz nach oben heraus.
+  // Fotos: groß, schrumpfen beim Scrollen und laufen danach mit dem Inhalt nach oben heraus.
+  // Die Galerie liegt im Scroll-Inhalt und wird per translateY oben gehalten, damit senkrechtes
+  // Wischen die Seite scrollt und waagerechtes Wischen die Bilder wechselt.
   const heroHeight = Math.round(width * 0.85);
   const heroMin = insets.top + HERO_COLLAPSED;
   const heroCollapseAt = heroHeight - heroMin;
@@ -271,8 +273,8 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       {
         translateY: interpolate(
           scrollY.get(),
-          [0, heroCollapseAt, heroCollapseAt + heroMin],
-          [0, 0, -heroMin],
+          [-heroHeight, heroCollapseAt],
+          [-heroHeight, heroCollapseAt],
           Extrapolation.CLAMP,
         ),
       },
@@ -351,8 +353,8 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     : offer?.image_paths.length
       ? offer.image_paths
       : (list[0]?.image_paths ?? []);
-  const heroPath =
-    locationImages[0] ?? offer?.cover_image_path ?? list[0]?.cover_image_path ?? null;
+  const fallbackPath = offer?.cover_image_path ?? list[0]?.cover_image_path ?? null;
+  const heroPaths = locationImages.length > 0 ? locationImages : fallbackPath ? [fallbackPath] : [];
   const categories = [
     ...new Set<OfferCategory>(
       list.map((item) => item.category).concat(offer ? [offer.category] : []),
@@ -389,6 +391,21 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: heroHeight, paddingBottom: insets.bottom + space[12] }}
       >
+        {/* Fotos oben: zum Wischen, schrumpfen beim Scrollen und verschwinden danach */}
+        <Animated.View style={[styles.hero, heroStyle]}>
+          <ImageGallery
+            paths={heroPaths}
+            title={locationName}
+            width={width}
+            fill
+            labels={{
+              gallery: v.imageGalleryLabel,
+              image: v.imageLabel,
+              singleImage: v.singleImageLabel,
+            }}
+          />
+        </Animated.View>
+
         {/* Kopf: Name, Kategorien, Bewertung */}
         <View style={styles.head}>
           <View style={styles.titleRow}>
@@ -452,21 +469,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
             </View>
           ) : null}
         </View>
-
-        {locationImages.length > 0 ? (
-          <View style={styles.locationGallery}>
-            <ImageGallery
-              paths={locationImages}
-              title={locationName}
-              width={width - layout.screenPaddingX * 2}
-              labels={{
-                gallery: v.imageGalleryLabel,
-                image: v.imageLabel,
-                singleImage: v.singleImageLabel,
-              }}
-            />
-          </View>
-        ) : null}
 
         <View style={styles.offerHeading}>
           <HighlightTitle>{`Angebote bei ${name}`}</HighlightTitle>
@@ -690,16 +692,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         ) : null}
       </Animated.ScrollView>
 
-      {/* Foto oben: schrumpft beim Scrollen und verschwindet danach aus dem Viewport */}
-      <Animated.View style={[styles.hero, heroStyle]} pointerEvents="none">
-        <OfferImage
-          path={heroPath}
-          style={StyleSheet.absoluteFill}
-          priority="high"
-          accessibilityLabel={offer?.title ?? name}
-        />
-      </Animated.View>
-
       <BackButton top={buttonTop} />
 
       {offer ? <ClaimSheet ref={claimSheet} offer={offer} /> : null}
@@ -735,7 +727,6 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   offerHeading: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[3] },
-  locationGallery: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[4] },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingTop: space[1] },
   pill: {
     flexDirection: 'row',
