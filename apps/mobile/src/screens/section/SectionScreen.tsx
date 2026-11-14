@@ -81,12 +81,8 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
 
   const toggleMap = () => {
     void Haptics.selectionAsync();
-    // Beim Ausblenden wird die Karte entfernt. Beim Einblenden lädt sie neu und meldet sich
-    // wieder mit „ready“; erst dann kommen Nadeln und Ausschnitt (sonst stünde sie auf Münster).
-    if (mapVisible) {
-      setMapReady(false);
-      setSelectedKey(null);
-    }
+    // Die Karte bleibt geladen und wird nur zusammengeklappt. So muss sie beim Einblenden nicht
+    // neu starten und zeigt nie kurz den Startpunkt (Münster) statt der gewählten Stadt.
     setMapVisible(!mapVisible);
   };
 
@@ -124,12 +120,18 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     <EmptyState icon={Sparkles} title={m.emptyTitle} message={m.emptyText} />
   );
 
-  const showMap = mapVisible && offers.length > 0;
+  const hasOffers = offers.length > 0;
+  const showMap = mapVisible && hasOffers;
 
   return (
     <View style={styles.screen}>
-      {showMap ? (
-        <View style={[styles.mapWrap, { height: mapHeight }]}>
+      {hasOffers ? (
+        <View
+          style={[styles.mapWrap, { height: mapHeight }, !showMap && styles.mapHidden]}
+          pointerEvents={showMap ? 'auto' : 'none'}
+          importantForAccessibility={showMap ? 'auto' : 'no-hide-descendants'}
+          accessibilityElementsHidden={!showMap}
+        >
           <WebView<object>
             ref={webview}
             source={{ html: APP_MAP_HTML }}
@@ -209,6 +211,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
   mapWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
   map: { flex: 1, backgroundColor: colors.background.muted },
+  // Unsichtbar, aber geladen: Nadeln und Ausschnitt bleiben erhalten.
+  mapHidden: { opacity: 0 },
   sheet: {
     flex: 1,
     backgroundColor: colors.background.default,

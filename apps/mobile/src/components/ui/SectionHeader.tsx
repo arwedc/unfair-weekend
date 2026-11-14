@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp, Map } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, fonts, layout, radii, space } from '@/theme';
+import { colors, fonts, layout, radii, soft, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -94,7 +94,7 @@ export function SectionHeader({
           pressedScale={0.95}
           style={styles.more}
         >
-          <Map size={15} color={colors.text.primary} strokeWidth={2.25} />
+          <Map size={15} color={colors.accent.onSubtle} strokeWidth={2.25} />
           {moreLabel ? (
             <Text variant="footnote" numberOfLines={1} style={styles.moreText}>
               {moreLabel}
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: space[1.5],
     borderRadius: radii.full,
-    backgroundColor: colors.background.muted,
+    backgroundColor: soft.tint,
   },
-  moreText: { fontFamily: fonts.semibold, color: colors.text.primary },
+  moreText: { fontFamily: fonts.semibold, color: colors.accent.onSubtle },
 });

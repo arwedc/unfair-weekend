@@ -7,7 +7,7 @@ import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText, type OfferBadge } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, fun, radii, radius, space } from '@/theme';
+import { badge, colors, fun, radii, radius, shadow, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
 import { OfferImage } from './OfferImage';
@@ -74,7 +74,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
         onOpen?.();
         router.push({ pathname: '/angebot/[id]', params: { id: offer.id } });
       }}
-      style={[compact && { width: COMPACT_CARD_WIDTH }, style]}
+      style={[styles.card, compact && { width: COMPACT_CARD_WIDTH }, style]}
     >
       <View>
         {hasPhoto ? (
@@ -132,6 +132,7 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
             {offer.location_name}
           </Text>
         </View>
+        <View style={styles.divider} />
         <View style={styles.price}>
           <PriceRow
             originalPriceCents={offer.original_price_cents}
@@ -147,8 +148,8 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
 export function OfferCardSkeleton({ variant = 'large' }: { variant?: 'large' | 'compact' }) {
   const compact = variant === 'compact';
   return (
-    <View style={compact && { width: COMPACT_CARD_WIDTH }}>
-      <Skeleton height={undefined} radius={radius.card} style={styles.skeletonImage} />
+    <View style={[styles.card, compact && { width: COMPACT_CARD_WIDTH }]}>
+      <Skeleton height={undefined} radius={0} style={styles.skeletonImage} />
       <View style={styles.body}>
         <Skeleton width="80%" height={20} />
         <Skeleton width="55%" height={14} />
@@ -164,15 +165,20 @@ const styles = StyleSheet.create({
   noPhoto: { alignItems: 'center', justifyContent: 'center' },
   noPhotoEmoji: { fontSize: 64, lineHeight: 76 },
   noPhotoEmojiSmall: { fontSize: 48, lineHeight: 58 },
-  image: {
-    width: '100%',
-    aspectRatio: 4 / 3,
+  // Eingeschachtelt: weiße Karte mit feinem Rand und weichem Schatten, das Foto oben bündig.
+  card: {
     borderRadius: radius.card,
     borderCurve: 'continuous',
+    backgroundColor: colors.surface.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.subtle,
+    boxShadow: shadow.card,
+    overflow: 'hidden',
   },
+  image: { width: '100%', aspectRatio: 16 / 10 },
   // Ausgebuchte Angebote treten optisch zurück, bleiben aber sichtbar.
   imageSoldOut: { opacity: 0.55 },
-  skeletonImage: { aspectRatio: 4 / 3 },
+  skeletonImage: { aspectRatio: 16 / 10 },
   badge: { position: 'absolute', top: badge.inset, left: badge.inset },
   categoryDot: {
     position: 'absolute',
@@ -186,7 +192,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.badge.neutral.background,
   },
   categoryEmoji: { fontSize: 16, lineHeight: 20 },
-  body: { paddingTop: space[3], gap: space[1] },
+  body: { padding: space[3], paddingTop: space[3], gap: space[1] },
   meta: { gap: space[0.5] },
-  price: { marginTop: space[1.5] },
+  // Gestrichelte Linie trennt Infos und Preis, wie ein Abriss am Gutschein.
+  divider: {
+    marginTop: space[2],
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border.default,
+  },
+  price: { marginTop: space[1] },
 });

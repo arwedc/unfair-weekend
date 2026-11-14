@@ -363,7 +363,12 @@ const styles = StyleSheet.create({
   greeting: { gap: space[0.5] },
   inset: { paddingHorizontal: layout.screenPaddingX },
   section: { gap: space[3] },
-  carousel: { flexDirection: 'row', paddingHorizontal: layout.screenPaddingX, gap: space[3] },
+  carousel: {
+    flexDirection: 'row',
+    paddingHorizontal: layout.screenPaddingX,
+    paddingVertical: space[2],
+    gap: space[3],
+  },
   loading: { gap: space[6] },
   separator: { height: space[8] },
 });
