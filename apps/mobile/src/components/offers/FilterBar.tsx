@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Chip, Text, type SheetRef } from '@/components/ui';
 import { getCity } from '@/features/offers/cities';
-import { timeFilterLabels, TIME_FILTERS } from '@/features/offers/feed-logic';
+import { timeFilterLabels, TIME_FILTERS, toggleTime } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, layout, radius, space } from '@/theme';
@@ -16,9 +16,6 @@ import { TIME_ICONS } from './time-icons';
 
 export { CATEGORY_ICONS } from './category-icons';
 
-/** Direkt in der Zeile: alles außer „Alle“. Ein zweiter Tipp auf den aktiven Tag hebt ihn auf. */
-const QUICK_TIMES = TIME_FILTERS.filter((time) => time !== 'alle');
-
 export interface FilterBarProps {
   /** Stadt als erste Pille, z. B. auf der Karte (im Feed steht sie in der Kopfzeile). */
   showCity?: boolean;
@@ -26,8 +23,9 @@ export interface FilterBarProps {
 
 /**
  * Eine schlanke Filterzeile für Feed und Karte (beide teilen denselben Stand):
- * „Filter“ öffnet Zeit und Kategorie im Bottom Sheet, daneben die Tage zum schnellen Umschalten.
+ * „Filter“ öffnet die Kategorien im Bottom Sheet, daneben die Tage zum schnellen Umschalten.
  * Sind Kategorien gewählt, stehen sie (bzw. ihre Anzahl) statt „Filter“ in der ersten Pille.
+ * Tage lassen sich mehrfach wählen (z. B. Morgen und Wochenende), ein zweiter Tipp hebt einen auf.
  */
 export function FilterBar({ showCity = false }: FilterBarProps) {
   const { t, locale, labels } = useT();
@@ -77,14 +75,14 @@ export function FilterBar({ showCity = false }: FilterBarProps) {
           onPress={() => filterSheet.current?.present()}
         />
         <View style={styles.divider} />
-        {QUICK_TIMES.map((time) => (
+        {TIME_FILTERS.map((time) => (
           <Chip
             key={time}
             size="sm"
             label={timeFilterLabels(locale)[time]}
             icon={TIME_ICONS[time]}
-            selected={filters.time === time}
-            onPress={() => setFilters({ time: filters.time === time ? 'alle' : time })}
+            selected={filters.times.includes(time)}
+            onPress={() => setFilters({ times: toggleTime(filters.times, time) })}
           />
         ))}
       </ScrollView>
