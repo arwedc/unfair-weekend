@@ -51,10 +51,7 @@ export const profileDe = {
     plan: 'Kostenlos',
     planText: 'Kein Abo, keine Gebühren. Du zahlst nur den vergünstigten Preis für das Angebot.',
     levelTitle: 'Deine Stufe',
-    experienced: (n: number) => (n === 1 ? '1 Erlebnis eingelöst' : `${n} Erlebnisse eingelöst`),
     levelsTitle: 'Alle Stufen',
-    from: (n: number) =>
-      n === 0 ? 'Zum Start' : n === 1 ? 'Ab 1 Erlebnis' : `Ab ${n} Erlebnissen`,
     reached: 'Erreicht',
     howText:
       'Jedes eingelöste Angebot zählt als Erlebnis. Stornierte und verpasste Termine zählen nicht.',
@@ -192,9 +189,7 @@ export const profileEn: Widen<typeof profileDe> = {
     plan: 'Free',
     planText: 'No subscription, no fees. You only pay the discounted price of the offer.',
     levelTitle: 'Your level',
-    experienced: (n) => (n === 1 ? '1 experience redeemed' : `${n} experiences redeemed`),
     levelsTitle: 'All levels',
-    from: (n) => (n === 0 ? 'To start' : n === 1 ? 'From 1 experience' : `From ${n} experiences`),
     reached: 'Reached',
     howText:
       'Every redeemed offer counts as an experience. Cancelled and missed dates do not count.',

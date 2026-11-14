@@ -1,4 +1,5 @@
-/** Bilanz fürs Profil: gespart, erlebt, bewertet. Lädt nur, wenn jemand angemeldet ist. */
+/** Bilanz fürs Profil: gespart, erlebt, bewertet, Stempel. Lädt nur, wenn jemand angemeldet ist. */
+import type { OfferCategory } from '@repo/shared';
 import { useQueries } from '@tanstack/react-query';
 
 import { fetchOffer } from '@/features/offers/api';
@@ -6,7 +7,14 @@ import { offerKeys } from '@/features/offers/queries';
 import { useMyReviews } from '@/features/reviews/queries';
 import { useMyVouchers } from '@/features/vouchers/queries';
 
-import { redeemedVouchers, savedCents } from './profile-logic';
+import { redeemedVouchers, savedCents, stampOrder } from './profile-logic';
+
+/** Ein Stempel auf der Karte: ein eingelöster Code und die Kategorie seines Angebots. */
+export interface Stamp {
+  id: string;
+  /** null, solange das Angebot noch lädt oder nicht mehr sichtbar ist */
+  category: OfferCategory | null;
+}
 
 export function useProfileStats() {
   const vouchers = useMyVouchers();
@@ -28,8 +36,14 @@ export function useProfileStats() {
     offers.flatMap((query) => (query.data ? [[query.data.id, query.data] as const] : [])),
   );
 
+  const stamps: Stamp[] = stampOrder(vouchers.data ?? []).map((voucher) => ({
+    id: voucher.id,
+    category: prices.get(voucher.offer_id)?.category ?? null,
+  }));
+
   return {
     isPending: vouchers.isPending || reviews.isPending,
+    stamps,
     savedCents: savedCents(redeemed, prices),
     experienced: redeemed.length,
     reviewed: reviews.data?.length ?? 0,

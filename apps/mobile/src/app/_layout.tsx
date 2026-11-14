@@ -113,6 +113,7 @@ export default function RootLayout() {
                       name="favoriten"
                       options={{ title: t.common.screens.favorites }}
                     />
+                    <Stack.Screen name="stufen" options={{ title: '' }} />
                     <Stack.Screen
                       name="einstellungen"
                       options={{ title: t.profile.settings.title, ...largeTitle }}

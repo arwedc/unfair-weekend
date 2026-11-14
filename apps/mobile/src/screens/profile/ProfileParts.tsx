@@ -1,4 +1,4 @@
-/** Bausteine des Profils: Kopf mit Avatar, Stufe, Bilanz, Interessen und Lieblingsorte. */
+/** Bausteine des Profils: Kopf mit Avatar, Bilanz mit Stempelkarte, Interessen und Lieblingsorte. */
 import { formatPrice, OFFER_CATEGORIES, STORAGE_BUCKETS, berlinParts } from '@repo/shared';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -9,18 +9,21 @@ import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
 import { OfferImage } from '@/components/offers/OfferImage';
 import { Button, IconButton, PressableScale, SectionHeader, Skeleton, Text } from '@/components/ui';
 import type { Account } from '@/features/auth/account';
+import { useAuth } from '@/features/auth/auth-context';
 import {
   useFavoriteCategories,
   useFavoriteLocations,
   useToggleFavoriteCategory,
 } from '@/features/favorites/queries';
-import { explorerLevel, initials, untilNextLevel } from '@/features/profile/profile-logic';
+import { initials } from '@/features/profile/profile-logic';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
+import { useSeenStamps } from '@/features/profile/use-seen-stamps';
 import { errorMessage } from '@/lib/api-error';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
 import { ProfileAvatar } from './ProfileAvatar';
+import { StampCard } from './StampCard';
 
 /** Kopf: Profilbild (oder bunte Initialen), Name, „Dabei seit …“ und Bearbeiten-Knopf. */
 export function ProfileHero({
@@ -72,25 +75,6 @@ export function ProfileHero({
   );
 }
 
-/** Stufe als Abzeichen plus Hinweis, wie viel bis zur nächsten fehlt. */
-export function LevelBadge({ redeemed }: { redeemed: number }) {
-  const { t } = useT();
-  const p = t.common.profile;
-  const left = untilNextLevel(redeemed);
-  return (
-    <View style={styles.level}>
-      <View style={styles.levelPill}>
-        <Text variant="subhead" style={styles.levelText}>
-          {p.levels[explorerLevel(redeemed)]}
-        </Text>
-      </View>
-      <Text variant="footnote" color="secondary" style={styles.levelHint}>
-        {left === null ? p.topLevel : p.nextLevel(left)}
-      </Text>
-    </View>
-  );
-}
-
 /** Ruhige Kachel: helles Grau, schwarze Zahl, graue Beschriftung. Farbe kommt nur vom Emoji. */
 function StatTile({ emoji, value, label }: { emoji: string; value: string; label: string }) {
   return (
@@ -108,11 +92,13 @@ function StatTile({ emoji, value, label }: { emoji: string; value: string; label
   );
 }
 
-/** Deine Bilanz: gespart, erlebt, bewertet, dazu die Stufe. */
+/** Deine Bilanz: gespart, erlebt, bewertet, darunter die Stempelkarte mit der Stufe. */
 export function StatsSection() {
   const { t, locale } = useT();
   const p = t.common.profile;
   const stats = useProfileStats();
+  const { userId } = useAuth();
+  const seen = useSeenStamps(userId, stats.isPending ? null : stats.stamps.length);
 
   return (
     <View style={styles.section}>
@@ -130,7 +116,11 @@ export function StatsSection() {
             <StatTile emoji="🎟️" label={p.statExperienced} value={String(stats.experienced)} />
             <StatTile emoji="⭐" label={p.statReviewed} value={String(stats.reviewed)} />
           </View>
-          <LevelBadge redeemed={stats.experienced} />
+          {seen === null ? (
+            <Skeleton height={STAMP_CARD_HEIGHT} radius={radius.card} />
+          ) : (
+            <StampCard stamps={stats.stamps} seen={seen} />
+          )}
         </>
       )}
     </View>
@@ -284,21 +274,14 @@ export function GuestCard() {
 }
 
 const CIRCLE = 64;
+/** Ungefähre Höhe der Stempelkarte, damit der Platzhalter nicht springt. */
+const STAMP_CARD_HEIGHT = 60;
 
 const styles = StyleSheet.create({
   section: { gap: space[3] },
   hero: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
   heroText: { flex: 1, gap: space[0.5] },
   editButton: { alignSelf: 'flex-start' },
-  level: { flexDirection: 'row', alignItems: 'center', gap: space[3], flexWrap: 'wrap' },
-  levelPill: {
-    paddingHorizontal: space[3],
-    paddingVertical: space[1.5],
-    borderRadius: radii.full,
-    backgroundColor: colors.background.inverse,
-  },
-  levelText: { color: colors.text.inverse },
-  levelHint: { flexShrink: 1 },
   stats: { flexDirection: 'row', gap: space[2] },
   stat: {
     flex: 1,

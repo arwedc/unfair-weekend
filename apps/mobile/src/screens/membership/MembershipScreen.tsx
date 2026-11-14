@@ -18,12 +18,15 @@ import {
   Text,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
-import { explorerLevel, LEVEL_STEPS, levelProgress } from '@/features/profile/profile-logic';
+import {
+  currentCard,
+  EXPLORER_LEVELS,
+  levelProgress,
+  STAMPS_PER_CARD,
+} from '@/features/profile/profile-logic';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, soft, space } from '@/theme';
-
-import { LevelBadge } from '../profile/ProfileParts';
 
 function PlanCard() {
   const { memberSince } = useAuth();
@@ -61,30 +64,35 @@ function LevelSection() {
 
   if (stats.isPending) return <Skeleton height={160} radius={radius.card} />;
 
-  const current = explorerLevel(stats.experienced);
-  const reachedIndex = LEVEL_STEPS.findIndex((step) => step.level === current);
+  const p = t.common.profile;
+  const level = levelProgress(stats.stamps.length);
+  const card = currentCard(stats.stamps);
+  const progress = level.next === null ? 1 : card.stamps.length / STAMPS_PER_CARD;
+  const name = p.levels[level.level];
 
   return (
     <View style={styles.section}>
-      <SectionHeader title={m.levelTitle} detail={m.experienced(stats.experienced)} />
-      <LevelBadge redeemed={stats.experienced} />
-      <ProgressBar
-        value={levelProgress(stats.experienced)}
-        accessibilityLabel={t.common.profile.levels[current]}
-      />
+      <SectionHeader title={m.levelTitle} detail={p.stampsCollected(stats.stamps.length)} />
+      <Text variant="title3">{`${level.emoji} ${name}`}</Text>
+      <ProgressBar value={progress} accessibilityLabel={name} />
       <Text variant="footnote" color="secondary">
-        {m.howText}
+        {level.next === null || level.left === null
+          ? p.topLevel
+          : p.stampsLeft(level.left, p.levels[level.next])}
+      </Text>
+      <Text variant="footnote" color="secondary">
+        {p.levelIntro} {m.howText}
       </Text>
 
       <SectionHeader title={m.levelsTitle} />
       <ListGroup>
-        {LEVEL_STEPS.map((step, index) => (
+        {EXPLORER_LEVELS.map((item, index) => (
           <ListRow
-            key={step.level}
-            title={t.common.profile.levels[step.level]}
-            detail={m.from(step.from)}
+            key={item.key}
+            title={`${item.emoji} ${p.levels[item.key]}`}
+            detail={p.levelFrom(item.from)}
             trailing={
-              index <= reachedIndex ? (
+              index <= level.index ? (
                 <View style={styles.reached} accessibilityLabel={m.reached}>
                   <Check size={14} color={colors.text.onAccent} strokeWidth={3} />
                 </View>
