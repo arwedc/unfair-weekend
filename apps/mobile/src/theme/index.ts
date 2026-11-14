@@ -20,6 +20,8 @@ import {
 } from '@repo/shared/tokens';
 import type { TextStyle } from 'react-native';
 
+import { SATOSHI_AVAILABLE } from './satoshi.generated';
+
 /**
  * Akzentfarbe der App „Gold“: warmes Goldgelb, Markenton #FCC753 (Stufe 400).
  * Gilt nur in der App; die Website nutzt weiter „Glut“ aus @repo/shared.
@@ -107,11 +109,36 @@ export const fonts = {
   extrabold: nativeFontFamily[800],
 } as const;
 
+/**
+ * Satoshi für Überschriften, Kartentitel und Preise; Fließtext bleibt Inter (ruhiger, gut lesbar).
+ * Die Dateien lädt scripts/fetch-fonts.mjs beim Installieren. Fehlen sie, gilt überall Inter.
+ */
+export { SATOSHI_AVAILABLE };
+
+/** Text-Stile in Satoshi (Überschriften, Titel, Preise, Codes). */
+const DISPLAY_STYLES: ReadonlySet<TextStyleName> = new Set([
+  'display',
+  'title1',
+  'title2',
+  'title3',
+  'headline',
+  'price',
+  'voucherCode',
+]);
+
+/** Satoshi-Schnitt zur Stärke des Tokens: kräftig bleibt kräftig, ohne zu fett zu wirken. */
+export function displayFont(weight: number): string {
+  if (!SATOSHI_AVAILABLE) return nativeFontFamily[weight as keyof typeof nativeFontFamily];
+  if (weight >= 800) return 'Satoshi-Black';
+  if (weight >= 600) return 'Satoshi-Bold';
+  return 'Satoshi-Medium';
+}
+
 /** Wandelt einen Text-Token in einen React-Native-Stil um (Inter in der passenden Stärke). */
-export function toTextStyle(token: TextStyleToken): TextStyle {
+export function toTextStyle(token: TextStyleToken, display = false): TextStyle {
   return {
     // Bei eigenen Schriften wählt die Familie die Stärke; fontWeight würde auf Android stören.
-    fontFamily: nativeFontFamily[token.fontWeight],
+    fontFamily: display ? displayFont(token.fontWeight) : nativeFontFamily[token.fontWeight],
     fontSize: token.fontSize,
     lineHeight: token.lineHeight,
     letterSpacing: token.letterSpacing,
@@ -121,7 +148,7 @@ export function toTextStyle(token: TextStyleToken): TextStyle {
 }
 
 export function textStyle(name: TextStyleName): TextStyle {
-  return toTextStyle(textStyles[name]);
+  return toTextStyle(textStyles[name], DISPLAY_STYLES.has(name));
 }
 
 /** Obergrenze für die Systemschriftgröße, damit Layouts bei sehr großer Schrift nicht brechen. */

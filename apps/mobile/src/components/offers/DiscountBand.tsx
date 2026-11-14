@@ -13,7 +13,7 @@ import Animated, {
 
 import { Text } from '@/components/ui';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, fonts, gold, MAX_FONT_SCALE, radii, space } from '@/theme';
+import { badge, colors, displayFont, gold, MAX_FONT_SCALE, radii, space } from '@/theme';
 
 /** Ab diesem Rabatt bekommt das Etikett einen Blitz und glänzt beim Erscheinen einmal kurz. */
 export const MEGA_DISCOUNT_PERCENT = 50;
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   labelInline: { alignSelf: 'center' },
   labelCompact: { paddingHorizontal: space[2], paddingVertical: space[1] },
   text: {
-    fontFamily: fonts.extrabold,
+    fontFamily: displayFont(800),
     fontSize: 16,
     lineHeight: 20,
     color: colors.text.primary,

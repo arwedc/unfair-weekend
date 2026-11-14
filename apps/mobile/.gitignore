@@ -1,3 +1,7 @@
+# Schrift Satoshi: Lizenz verbietet Weitergabe, wird beim Installieren geladen (scripts/fetch-fonts.mjs)
+assets/fonts/satoshi/
+src/theme/satoshi.generated.ts
+
 # Expo
 .expo/
 dist/
