@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Easing,
   FadeInDown,
   interpolateColor,
@@ -20,12 +21,13 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, PressableScale, Text } from '@/components/ui';
 import { offersInCity } from '@/features/offers/cities';
 import { useOfferFilters } from '@/features/offers/filters-context';
-import { useOffer, useOffers } from '@/features/offers/queries';
+import { useOffers } from '@/features/offers/queries';
 import type { FeedOffer } from '@/features/offers/types';
 import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { nearestTurn, pinOffers, wheelOffers } from '@/features/onboarding/onboarding-logic';
@@ -40,17 +42,17 @@ const STEP_COUNT = 3;
 const STEP_EASING = Easing.bezier(0.2, 0, 0, 1);
 /** So viele volle Umdrehungen macht der Kreis beim Erscheinen. */
 const INTRO_TURNS = 3;
+/** Beim Schließen wirbelt der Kreis wieder los: so viele Umdrehungen in so vielen ms. */
+const EXIT_TURNS = 3;
+const EXIT_MS = 1300;
+const EXIT_FADE_MS = 420;
 
 /** Vollbild-Onboarding: Stadtkarte mit echten Angeboten, ein Ort im Detail, drehbarer 3D-Kreis. */
 export function OnboardingExperience() {
   const { finish, runId, visible } = useOnboarding();
   return (
-    <Modal
-      visible={visible}
-      animationType="none"
-      presentationStyle="fullScreen"
-      onRequestClose={() => undefined}
-    >
+    // Durchsichtig, damit das Onboarding am Ende in die App überblenden kann.
+    <Modal visible={visible} animationType="none" transparent onRequestClose={() => undefined}>
       {visible ? (
         <GestureHandlerRootView style={styles.root}>
           <SafeAreaProvider style={styles.root}>
@@ -73,11 +75,13 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   const { data: offers } = useOffers();
   const [step, setStep] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   // Ablauf der ganzen Szene: 0 = Karte, 1 = Ort, 2 = Kreis (mit Zwischenwerten beim Übergang).
   const progress = useSharedValue(0);
   const rotation = useSharedValue(0);
   const heroIntro = useSharedValue(1);
+  const exit = useSharedValue(0);
 
   const available = offersInCity(offers ?? [], cityId).filter((offer) => offer.free_seats > 0);
   const pins = pinOffers(available);
@@ -86,8 +90,6 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   const selected =
     pins.find((offer) => offer.id === selectedId) ?? (step > 0 ? pins[0] : undefined);
   const wheel = wheelOffers(selected, available);
-  const { data: detail } = useOffer(selected?.id ?? '', { enabled: Boolean(selected) });
-  const description = detail?.description.trim() ?? '';
 
   // Fotos vorladen, damit Pins und Kreis sofort Bilder zeigen.
   const imageKey = available
@@ -104,11 +106,11 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   }, [imageKey]);
 
   const selectPin = (offer: FeedOffer) => {
-    if (step === 0) setSelectedId(offer.id);
+    if (step === 0 && !leaving) setSelectedId(offer.id);
   };
 
   const goTo = (next: number) => {
-    if (next === step || next < 0 || next >= STEP_COUNT) return;
+    if (leaving || next === step || next < 0 || next >= STEP_COUNT) return;
     const forward = next > step;
     if (next > 0 && !selectedId && pins[0]) setSelectedId(pins[0].id);
     setStep(next);
@@ -150,9 +152,33 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   };
 
   const startExploring = () => {
-    onFinish();
+    if (leaving) return;
     router.navigate('/');
+    if (reduceMotion || wheel.length === 0) {
+      onFinish();
+      return;
+    }
+    // Abschied: Der Kreis dreht immer schneller, dann blendet alles in die App über.
+    setLeaving(true);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    cancelAnimation(rotation);
+    rotation.set(
+      withTiming(rotation.get() - 360 * EXIT_TURNS, {
+        duration: EXIT_MS,
+        easing: Easing.in(Easing.cubic),
+      }),
+    );
+    exit.set(
+      withDelay(
+        EXIT_MS - EXIT_FADE_MS,
+        withTiming(1, { duration: EXIT_FADE_MS }, () => {
+          scheduleOnRN(onFinish);
+        }),
+      ),
+    );
   };
+
+  const exitStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.get() }));
 
   const isLast = step === STEP_COUNT - 1;
   const stepCopy = copy.steps[step];
@@ -160,7 +186,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   const barWidth = { maxWidth: Math.min(width - space[8], 680) };
 
   return (
-    <View style={styles.fullScreen}>
+    <Animated.View style={[styles.fullScreen, exitStyle]} accessibilityViewIsModal>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={[styles.topBar, barWidth]}>
@@ -189,12 +215,13 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
             pins={pins}
             wheel={wheel}
             selectedId={selected?.id ?? null}
-            description={description}
             reduceMotion={reduceMotion}
+            interactive={!leaving}
             progress={progress}
             rotation={rotation}
             heroIntro={heroIntro}
             onSelect={selectPin}
+            onOpen={() => goTo(1)}
           />
 
           <View style={styles.copy}>
@@ -256,7 +283,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
           </View>
         </View>
       </SafeAreaView>
-    </View>
+    </Animated.View>
   );
 }
 
