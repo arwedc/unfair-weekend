@@ -20,13 +20,23 @@ const STATUS_CLASS: Record<Enums<'offer_status'>, string> = {
   entfernt: 'bg-background-muted text-text-secondary',
 };
 
+/** `endedLabel` gesetzt: ein zeitlich beendetes, aber nie abgesagtes Angebot. */
 export function OfferStatusBadge({
   status,
   locale,
+  endedLabel,
 }: {
   status: Enums<'offer_status'>;
   locale: Locale;
+  endedLabel?: string;
 }) {
+  if (status === 'aktiv' && endedLabel) {
+    return (
+      <span className="rounded-badge bg-background-muted px-1.5 py-0.5 text-caption text-text-secondary">
+        {endedLabel}
+      </span>
+    );
+  }
   return (
     <span className={`rounded-badge px-1.5 py-0.5 text-caption ${STATUS_CLASS[status]}`}>
       {getLabels(locale).offerStatus[status]}
