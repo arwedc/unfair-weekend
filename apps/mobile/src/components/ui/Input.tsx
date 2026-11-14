@@ -29,6 +29,8 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   onClear?: () => void;
   /** Eigenes Element am Ende des Felds, z. B. ein Knopf zum Schließen der Suche. */
   trailing?: ReactNode;
+  /** Hohes, mehrzeiliges Feld für längere Texte (z. B. Nachricht an den Support). */
+  tall?: boolean;
 }
 
 const bodyText = textStyle('body');
@@ -45,6 +47,7 @@ export function Input({
   elevated = false,
   onClear,
   trailing,
+  tall = false,
   onFocus,
   onBlur,
   ...rest
@@ -72,12 +75,14 @@ export function Input({
           styles.field,
           shape === 'pill' ? styles.pill : styles.rounded,
           elevated && styles.elevated,
+          tall && styles.tallField,
           { borderColor, borderWidth: focused || error ? 1.5 : 1 },
         ]}
       >
         {Icon ? <Icon size={20} color={colors.text.tertiary} /> : null}
         <TextInput
           ref={ref}
+          multiline={tall || rest.multiline}
           accessibilityLabel={label ?? rest.placeholder}
           placeholderTextColor={colors.text.tertiary}
           selectionColor={colors.accent.strong}
@@ -91,7 +96,11 @@ export function Input({
             setFocused(false);
             onBlur?.(event);
           }}
-          style={[rest.multiline ? bodyText : bodyTextSingleLine, styles.input]}
+          style={[
+            tall || rest.multiline ? bodyText : bodyTextSingleLine,
+            styles.input,
+            tall && styles.tallInput,
+          ]}
           {...rest}
         />
         {showClear ? (
@@ -134,6 +143,9 @@ const styles = StyleSheet.create({
   pill: { borderRadius: radius.button },
   elevated: { boxShadow: shadow.floating },
   input: { flex: 1, color: colors.text.primary, paddingVertical: space[3] },
+  // Hohes Feld: Text beginnt oben, Feld ist von Anfang an hoch.
+  tallField: { alignItems: 'flex-start' },
+  tallInput: { minHeight: 144, textAlignVertical: 'top' },
   clear: {
     width: 22,
     height: 22,

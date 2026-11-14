@@ -18,6 +18,7 @@ import {
   type RegisterStep,
 } from '@/features/auth/register-logic';
 import { ApiError, errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, duration, space } from '@/theme';
 
@@ -136,6 +137,7 @@ export function RegisterFlow({ onSignIn, onConfirmationSent }: RegisterFlowProps
       const hasSession = await signUpWithEmail(parsed.data, person);
       if (!hasSession) onConfirmationSent(parsed.data.email);
     } catch (caught) {
+      haptics.error();
       const message = errorMessage(caught);
       const field = caught instanceof ApiError ? authErrorField(caught.code) : null;
       // z. B. „E-Mail schon vergeben“: zurück zum Schritt, in dem man es ändern kann.

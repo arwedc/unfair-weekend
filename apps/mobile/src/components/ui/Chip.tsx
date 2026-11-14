@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet } from 'react-native';
 
+import { haptics } from '@/lib/haptics';
 import { colors, fonts, layout, radius, shadow, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
@@ -45,7 +45,7 @@ export function Chip({
       accessibilityHint={accessibilityHint}
       accessibilityState={{ selected }}
       onPress={() => {
-        void Haptics.selectionAsync();
+        haptics.selection();
         onPress?.();
       }}
       // Kleine Chips sind 32 pt hoch, der hitSlop ergänzt sie auf die Mindestgröße.

@@ -1,5 +1,4 @@
 import type { OfferCategory } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { Search, X } from 'lucide-react-native';
 import { useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Pressable, StyleSheet, View, type TextInputInstance } from 'react-native';
@@ -9,6 +8,7 @@ import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { Input, PressableScale, Text } from '@/components/ui';
 import { categorySuggestions, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -43,7 +43,7 @@ export function MapSearchBar({ children }: MapSearchBarProps) {
   };
 
   const pickCategory = (category: OfferCategory) => {
-    void Haptics.selectionAsync();
+    haptics.selection();
     // Kategorie an- oder abwählen; der getippte Text weicht, sonst filtert beides gleichzeitig.
     // Die Vorschläge bleiben offen, damit man mehrere Kategorien wählen kann.
     setFilters({ categories: toggleCategory(filters.categories, category), query: '' });

@@ -1,6 +1,6 @@
-import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 
+import { haptics } from '@/lib/haptics';
 import { colors, fonts, layout, radii, shadow, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
@@ -34,7 +34,7 @@ export function SegmentedTabs<K extends string>({ tabs, value, onChange }: Segme
             pressedScale={0.97}
             onPress={() => {
               if (selected) return;
-              void Haptics.selectionAsync();
+              haptics.selection();
               onChange(tab.key);
             }}
             style={[styles.tab, selected && styles.tabSelected]}

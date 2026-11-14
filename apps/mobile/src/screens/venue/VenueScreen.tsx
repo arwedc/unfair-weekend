@@ -252,7 +252,9 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
     if (activeId) void logOfferView(activeId);
   }, [activeId]);
 
-  // Foto: groß, schrumpft beim Scrollen und läuft nach einem kurzen Moment ganz nach oben heraus.
+  // Fotos: groß, schrumpfen beim Scrollen und laufen danach mit dem Inhalt nach oben heraus.
+  // Die Galerie liegt im Scroll-Inhalt und wird per translateY oben gehalten, damit senkrechtes
+  // Wischen die Seite scrollt und waagerechtes Wischen die Bilder wechselt.
   const heroHeight = Math.round(width * 0.85);
   const heroMin = insets.top + HERO_COLLAPSED;
   const heroCollapseAt = heroHeight - heroMin;
@@ -271,8 +273,8 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
       {
         translateY: interpolate(
           scrollY.get(),
-          [0, heroCollapseAt, heroCollapseAt + heroMin],
-          [0, 0, -heroMin],
+          [-heroHeight, heroCollapseAt],
+          [-heroHeight, heroCollapseAt],
           Extrapolation.CLAMP,
         ),
       },
@@ -346,7 +348,13 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const website = place.data?.website ?? offer?.location_website ?? '';
   const about = (place.data?.company_description ?? offer?.company_description ?? '').trim();
   const logo = place.data?.company_logo_path ?? offer?.company_logo_path ?? '';
-  const heroPath = offer?.cover_image_path || list[0]?.cover_image_path || null;
+  const locationImages = place.data?.image_paths.length
+    ? place.data.image_paths
+    : offer?.image_paths.length
+      ? offer.image_paths
+      : (list[0]?.image_paths ?? []);
+  const fallbackPath = offer?.cover_image_path ?? list[0]?.cover_image_path ?? null;
+  const heroPaths = locationImages.length > 0 ? locationImages : fallbackPath ? [fallbackPath] : [];
   const categories = [
     ...new Set<OfferCategory>(
       list.map((item) => item.category).concat(offer ? [offer.category] : []),
@@ -383,11 +391,41 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: heroHeight, paddingBottom: insets.bottom + space[12] }}
       >
+        {/* Fotos oben: zum Wischen, schrumpfen beim Scrollen und verschwinden danach */}
+        <Animated.View style={[styles.hero, heroStyle]}>
+          <ImageGallery
+            paths={heroPaths}
+            title={locationName}
+            width={width}
+            fill
+            labels={{
+              gallery: v.imageGalleryLabel,
+              image: v.imageLabel,
+              singleImage: v.singleImageLabel,
+            }}
+          />
+        </Animated.View>
+
         {/* Kopf: Name, Kategorien, Bewertung */}
         <View style={styles.head}>
-          <Text variant="title1" accessibilityRole="header">
-            {name}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text variant="title1" accessibilityRole="header" style={styles.flex}>
+              {name}
+            </Text>
+            <View style={styles.titleActions}>
+              {resolvedLocationId ? (
+                <FavoriteButton locationId={resolvedLocationId} name={name} />
+              ) : null}
+              {offer ? (
+                <IconButton
+                  icon={Share2}
+                  variant="plain"
+                  accessibilityLabel={v.share}
+                  onPress={() => void shareOffer(offer, locale)}
+                />
+              ) : null}
+            </View>
+          </View>
           {showLocationName ? (
             <Text variant="callout" color="secondary">
               {locationName}
@@ -445,18 +483,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         >
           {offer ? (
             <View style={styles.card}>
-              {offer.image_paths.length > 0 ? (
-                <ImageGallery
-                  paths={offer.image_paths}
-                  title={offer.title}
-                  width={width - layout.screenPaddingX * 2}
-                  labels={{
-                    gallery: v.imageGalleryLabel,
-                    image: v.imageLabel,
-                    singleImage: v.singleImageLabel,
-                  }}
-                />
-              ) : null}
               <View style={styles.cardBody}>
                 <View style={styles.offerTitleText}>
                   <Text variant="caption" color="accent" style={styles.semibold}>
@@ -666,31 +692,7 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         ) : null}
       </Animated.ScrollView>
 
-      {/* Foto oben: schrumpft beim Scrollen und verschwindet danach aus dem Viewport */}
-      <Animated.View style={[styles.hero, heroStyle]} pointerEvents="none">
-        <OfferImage
-          path={heroPath}
-          style={StyleSheet.absoluteFill}
-          priority="high"
-          accessibilityLabel={offer?.title ?? name}
-        />
-      </Animated.View>
-
       <BackButton top={buttonTop} />
-      <View style={[styles.topRight, { top: buttonTop }]}>
-        {resolvedLocationId ? (
-          <View style={styles.floatingCircle}>
-            <FavoriteButton locationId={resolvedLocationId} name={name} />
-          </View>
-        ) : null}
-        {offer ? (
-          <IconButton
-            icon={Share2}
-            accessibilityLabel={v.share}
-            onPress={() => void shareOffer(offer, locale)}
-          />
-        ) : null}
-      </View>
 
       {offer ? <ClaimSheet ref={claimSheet} offer={offer} /> : null}
     </View>
@@ -715,17 +717,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.muted,
   },
   back: { position: 'absolute', left: layout.screenPaddingX },
-  topRight: {
-    position: 'absolute',
-    right: layout.screenPaddingX,
-    flexDirection: 'row',
-    gap: space[2],
-  },
-  floatingCircle: {
-    borderRadius: radii.full,
-    backgroundColor: colors.surface.raised,
-    boxShadow: shadow.floating,
-  },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2] },
+  titleActions: { flexDirection: 'row', gap: space[1], marginRight: -space[2] },
 
   head: {
     paddingHorizontal: layout.screenPaddingX,

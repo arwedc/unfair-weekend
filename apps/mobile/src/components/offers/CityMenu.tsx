@@ -1,11 +1,11 @@
 import { MenuView } from '@expo/ui/community/menu';
-import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 import { CITIES, countOffersByCity, isCityId, type CityId } from '@/features/offers/cities';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 
 export interface CityMenuProps {
@@ -40,7 +40,7 @@ export function CityMenu({ children, style }: CityMenuProps) {
       })}
       onPressAction={({ nativeEvent }) => {
         if (!isCityId(nativeEvent.event) || nativeEvent.event === cityId) return;
-        void Haptics.selectionAsync();
+        haptics.selection();
         setCityId(nativeEvent.event);
       }}
     >

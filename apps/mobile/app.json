@@ -50,6 +50,14 @@
           "locationWhenInUsePermission": "Mit deinem Standort zeigen wir dir auf der Karte, welche Angebote in deiner Nähe sind."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Damit du ein Profilbild aus deinen Fotos auswählen kannst.",
+          "cameraPermission": "Damit du ein Foto für dein Profilbild aufnehmen kannst.",
+          "microphonePermission": false
+        }
+      ],
       ["@stripe/stripe-react-native", { "enableGooglePay": false }]
     ],
     "experiments": {

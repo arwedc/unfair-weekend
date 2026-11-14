@@ -44,7 +44,7 @@ export async function logOfferView(offerId: string): Promise<void> {
 /** Freigeschaltete Standorte zu den IDs (max. 100). Unbekannte IDs fehlen im Ergebnis. */
 export async function fetchLocations(locationIds: readonly string[]): Promise<PublicLocation[]> {
   if (locationIds.length === 0) return [];
-  const { data, error } = await supabase.rpc('get_locations_public', {
+  const { data, error } = await supabase.rpc('get_locations_public_with_images', {
     p_location_ids: [...locationIds],
   });
   if (error) throw toApiError(error);

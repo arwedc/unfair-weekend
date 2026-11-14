@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { haptics } from '@/lib/haptics';
 import { colors, layout, radius, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
@@ -20,7 +20,7 @@ export interface ButtonProps {
   disabled?: boolean;
   /** Volle Breite, z. B. für die Hauptaktion unten auf einem Screen. */
   fullWidth?: boolean;
-  /** Haptisches Feedback beim Tippen (für wichtige Aktionen wie „Code holen“). */
+  /** Leichtes haptisches Feedback beim Tippen, nur für Hauptaktionen wie „Code holen“. */
   haptic?: boolean;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
@@ -71,7 +71,7 @@ export function Button({
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={() => {
-        if (haptic) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (haptic) haptics.tap();
         onPress?.();
       }}
       style={[

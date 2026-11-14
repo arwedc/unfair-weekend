@@ -1,5 +1,4 @@
 import { OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { Check, LayoutGrid, type LucideIcon } from 'lucide-react-native';
 import { useState, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -9,6 +8,7 @@ import { offersInCity } from '@/features/offers/cities';
 import { countByCategory, filterOffers, toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, soft, space } from '@/theme';
 
@@ -46,7 +46,7 @@ function CategoryTile({
       accessibilityState={{ selected }}
       pressedScale={0.96}
       onPress={() => {
-        void Haptics.selectionAsync();
+        haptics.selection();
         onPress();
       }}
       style={[

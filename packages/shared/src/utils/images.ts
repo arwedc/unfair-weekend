@@ -3,7 +3,8 @@ import type { StorageBucket } from '../constants/status';
 /**
  * Öffentliche URL eines Bildes. In der DB stehen Storage-Pfade
  * (z. B. `<location_id>/bild.jpg`); Seed-Daten enthalten absolute URLs.
- * Beides wird hier zu einer anzeigbaren URL.
+ * Beides wird hier zu einer anzeigbaren URL. Nur für öffentliche Buckets:
+ * Profilbilder (`avatars`) sind privat und brauchen eine signierte URL.
  *
  * @example storageImageUrl(env.SUPABASE_URL, 'offer-images', offer.cover_image_path)
  */

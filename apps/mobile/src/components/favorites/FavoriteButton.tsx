@@ -1,10 +1,10 @@
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Heart } from 'lucide-react-native';
 
 import { PressableScale } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { useFavoriteLocationIds, useToggleFavoriteLocation } from '@/features/favorites/queries';
+import { haptics } from '@/lib/haptics';
 import { colors, layout } from '@/theme';
 
 export interface FavoriteButtonProps {
@@ -35,7 +35,7 @@ export function FavoriteButton({ locationId, name }: FavoriteButtonProps) {
           router.push('/anmelden');
           return;
         }
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        haptics.tap();
         toggle.mutate({ item: locationId, favorite: !favorite });
       }}
       style={{

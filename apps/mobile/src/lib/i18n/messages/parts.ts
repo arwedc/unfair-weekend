@@ -18,6 +18,13 @@ export const partsDe = {
     next: 'Weiter',
     start: 'Los geht’s',
     previous: 'Vorheriger Schritt',
+    wheelTitle: (count: number) =>
+      count === 1
+        ? 'Ein Angebot.'
+        : `${['Zwei', 'Drei', 'Vier', 'Fünf'][count - 2] ?? String(count)} Angebote.`,
+    wheelValue: (n: number, total: number, title: string) => `Angebot ${n} von ${total}: ${title}`,
+    pinLabel: (company: string, title: string) => `${company}: ${title}`,
+    comingSoon: 'Neue Angebote kommen bald.',
   },
   map: {
     hintTitle: 'Tippe auf einen Pin',
@@ -52,6 +59,14 @@ export const partsDe = {
       'Tipp bei einem Anbieter auf das Herz. Dann sagen wir dir Bescheid, wenn es dort etwas Neues gibt.',
     signInTitle: 'Melde dich an',
     signInText: 'Mit einem Konto merkst du dir Lieblingsorte und findest sie hier wieder.',
+    overline: 'Deine Lieblingsorte',
+    title: 'Favoriten',
+    loading: 'Lieblingsorte werden geladen',
+    discover: 'Orte entdecken',
+    offers: (count: number) => (count === 1 ? '1 Angebot' : `${count} Angebote`),
+    noOffers: 'Gerade nichts frei',
+    next: 'Als Nächstes',
+    open: (name: string, detail: string) => `${name} öffnen. ${detail}`,
   },
   claim: {
     blockedTitle: 'Gerade gesperrt',
@@ -170,6 +185,13 @@ export const partsEn: Widen<typeof partsDe> = {
     next: 'Next',
     start: "Let's go",
     previous: 'Previous step',
+    wheelTitle: (count) =>
+      count === 1
+        ? 'One offer.'
+        : `${['Two', 'Three', 'Four', 'Five'][count - 2] ?? String(count)} offers.`,
+    wheelValue: (n, total, title) => `Offer ${n} of ${total}: ${title}`,
+    pinLabel: (company, title) => `${company}: ${title}`,
+    comingSoon: 'New offers are coming soon.',
   },
   map: {
     hintTitle: 'Tap a pin',
@@ -202,6 +224,14 @@ export const partsEn: Widen<typeof partsDe> = {
     noPlacesText: "Tap the heart on a venue. We'll let you know when there's something new there.",
     signInTitle: 'Sign in',
     signInText: 'With an account, you can save favourite places and find them here again.',
+    overline: 'Your favourite places',
+    title: 'Favourites',
+    loading: 'Loading favourite places',
+    discover: 'Discover places',
+    offers: (count) => (count === 1 ? '1 offer' : `${count} offers`),
+    noOffers: 'Nothing free right now',
+    next: 'Up next',
+    open: (name, detail) => `Open ${name}. ${detail}`,
   },
   pay: {
     summary: 'Your booking',

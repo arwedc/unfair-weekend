@@ -1,5 +1,6 @@
 /** Favoriten: Lieblingsorte, Lieblingskategorien und gemerkte Angebote, eigene Zeilen per RLS abgesichert. */
 import type { OfferCategory } from '@repo/shared';
+import type { RpcRow } from '@repo/shared/types';
 
 import { toApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
@@ -77,4 +78,19 @@ export async function setFavoriteOffer(
         )
     : await supabase.from('favorite_offers').delete().eq('user_id', userId).eq('offer_id', offerId);
   if (error) throw toApiError(error);
+}
+
+/** Lieblingsort mit Fotos der Standortgalerie. */
+export type FavoriteLocation = RpcRow<'get_locations_public_with_images'>;
+
+/** Freigeschaltete Standorte samt Galerie. Nicht mehr öffentliche Orte fehlen einfach. */
+export async function fetchFavoriteLocations(
+  locationIds: readonly string[],
+): Promise<FavoriteLocation[]> {
+  if (locationIds.length === 0) return [];
+  const { data, error } = await supabase.rpc('get_locations_public_with_images', {
+    p_location_ids: [...locationIds],
+  });
+  if (error) throw toApiError(error);
+  return data;
 }

@@ -36,6 +36,16 @@ export const offersDe = {
   inactiveCancelled: 'Dieses Angebot ist abgesagt und kann nicht mehr bearbeitet werden.',
   inactiveRemoved: 'Dieses Angebot ist entfernt und kann nicht mehr bearbeitet werden.',
   notFound: 'Dieses Angebot gibt es nicht (mehr).',
+  views: {
+    label: 'Ansicht',
+    current: 'Aktuell',
+    archive: 'Archiv',
+    ended: 'Beendet',
+    currentEmptyTitle: 'Keine aktuellen Angebote',
+    currentEmptyText: 'Leg ein neues Angebot an. Frühere Angebote findest du im Archiv.',
+    archiveEmptyTitle: 'Das Archiv ist leer',
+    archiveEmptyText: 'Hier landen abgesagte, entfernte und beendete Angebote.',
+  },
   steps: {
     was: {
       title: 'Worum geht es?',
@@ -181,6 +191,16 @@ export const offersEn: Widen<typeof offersDe> = {
   inactiveCancelled: 'This offer has been cancelled and can no longer be edited.',
   inactiveRemoved: 'This offer has been removed and can no longer be edited.',
   notFound: "This offer doesn't exist (anymore).",
+  views: {
+    label: 'View',
+    current: 'Current',
+    archive: 'Archive',
+    ended: 'Ended',
+    currentEmptyTitle: 'No current offers',
+    currentEmptyText: 'Create a new offer. You can find past offers in the archive.',
+    archiveEmptyTitle: 'The archive is empty',
+    archiveEmptyText: 'Cancelled, removed and ended offers end up here.',
+  },
   steps: {
     was: {
       title: "What's it about?",

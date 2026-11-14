@@ -23,13 +23,13 @@ export const commonDe = {
     discover: 'Entdecken',
     map: 'Karte',
     codes: 'Meine Codes',
+    favorites: 'Favoriten',
     profile: 'Profil',
   },
   screens: {
     code: 'Dein Code',
     checkout: 'Bezahlen',
     name: 'Dein Name',
-    favorites: 'Favoriten',
   },
   pushChannel: 'Angebote und Codes',
   auth: {
@@ -133,7 +133,6 @@ export const commonDe = {
     favorites: 'Favoriten',
     tour: 'App kurz erklärt',
     tourHint: 'Den Rundgang jederzeit wiederholen',
-    favoritePlaces: 'Lieblingsorte',
     placesCount: (n: number) => (n === 1 ? '1 Ort' : `${n} Orte`),
     placesHint: 'Tipp bei Anbietern auf das Herz',
     notifications: 'Benachrichtigungen',
@@ -146,6 +145,7 @@ export const commonDe = {
     legal: 'Rechtliches',
     privacy: 'Datenschutz',
     imprint: 'Impressum',
+    terms: 'Nutzungsbedingungen',
     deleteTitle: 'Konto wirklich löschen?',
     deleteText:
       'Dein Konto, dein Name und deine Favoriten werden endgültig gelöscht. Aktive Codes werden storniert. Das lässt sich nicht rückgängig machen.',
@@ -172,21 +172,30 @@ export const commonDe = {
     statExperienced: 'Erlebt',
     statReviewed: 'Bewertet',
     levels: {
-      newbie: 'Neu dabei 🌱',
-      explorer: 'Auf Entdeckungstour 🧭',
-      cityExplorer: 'Stadtentdecker 🏙️',
-      legend: 'Local Legend 🏆',
+      newbie: 'Neu dabei',
+      explorer: 'Auf Entdeckungstour',
+      cityExplorer: 'Stadtentdecker',
+      legend: 'Local Legend',
     },
-    nextLevel: (n: number) =>
-      n === 1
-        ? 'Noch 1 Erlebnis bis zur nächsten Stufe'
-        : `Noch ${n} Erlebnisse bis zur nächsten Stufe`,
+    levelStep: (n: number, total: number) => `Stufe ${n} von ${total}`,
+    stampsLeft: (n: number, next: string) =>
+      n === 1 ? `Noch 1 Stempel bis „${next}“` : `Noch ${n} Stempel bis „${next}“`,
+    firstStamp: 'Jedes eingelöste Erlebnis gibt einen Stempel.',
     topLevel: 'Höchste Stufe erreicht. Respekt!',
+    stampCardA11y: (step: string, level: string, filled: number, total: number, hint: string) =>
+      `Stempelkarte, ${step}: ${level}. ${filled} von ${total} Stempeln. ${hint}`,
+    levelShowAll: 'Zeigt alle Stufen',
+    stampsCollected: (n: number) => (n === 1 ? '1 Stempel gesammelt' : `${n} Stempel gesammelt`),
+    levelIntro:
+      'Jedes eingelöste Erlebnis gibt einen Stempel. Sind fünf Stempel auf der Karte, steigst du eine Stufe auf.',
+    levelFrom: (n: number) => (n === 0 ? 'Hier startet jeder' : `Ab ${n} Stempeln`),
+    levelCurrent: 'Du bist hier',
+    levelUpTitle: 'Level up!',
+    levelUpText: (level: string) => `Karte voll! Du bist jetzt „${level}“.`,
+    levelUpButton: 'Weiter sammeln',
     guestTitle: 'Hol dir deinen ersten Deal 🎉',
     guestText:
       'Mit Konto sicherst du dir Codes, merkst dir Lieblingsorte und siehst, wie viel du sparst.',
-    placesEmpty: 'Noch keine Lieblingsorte. Tipp bei einem Anbieter auf das Herz.',
-    seeAll: 'Alle',
     settings: 'Einstellungen',
     help: 'Hilfe & Infos',
     invite: 'Freunde einladen',
@@ -200,6 +209,8 @@ export const commonDe = {
     privacyIntro:
       'Hier steht später die Datenschutzerklärung: welche Daten die App speichert (Name, E-Mail, Codes, Favoriten), wofür und wie du sie löschen kannst.',
     imprintIntro: 'Hier stehen später Anbieter, Anschrift und Kontakt nach § 5 DDG.',
+    termsIntro:
+      'Hier stehen später die Nutzungsbedingungen: wie Codes, Stornieren und Sperren funktionieren und was für dein Konto gilt.',
     notPublic:
       'Diese Testversion ist noch nicht öffentlich. Der endgültige Text wird vor dem Start ergänzt.',
   },
@@ -227,13 +238,13 @@ export const commonEn: Widen<typeof commonDe> = {
     discover: 'Discover',
     map: 'Map',
     codes: 'My codes',
+    favorites: 'Favourites',
     profile: 'Profile',
   },
   screens: {
     checkout: 'Checkout',
     code: 'Your code',
     name: 'Your name',
-    favorites: 'Favourites',
   },
   pushChannel: 'Offers and codes',
   auth: {
@@ -335,7 +346,6 @@ export const commonEn: Widen<typeof commonDe> = {
     favorites: 'Favourites',
     tour: 'How the app works',
     tourHint: 'Replay the tour any time',
-    favoritePlaces: 'Favourite places',
     placesCount: (n: number) => (n === 1 ? '1 place' : `${n} places`),
     placesHint: 'Tap the heart on a venue',
     notifications: 'Notifications',
@@ -348,6 +358,7 @@ export const commonEn: Widen<typeof commonDe> = {
     legal: 'Legal',
     privacy: 'Privacy policy',
     imprint: 'Legal notice',
+    terms: 'Terms of use',
     deleteTitle: 'Really delete your account?',
     deleteText:
       'Your account, your name and your favourites will be deleted permanently. Active codes will be cancelled. This cannot be undone.',
@@ -373,18 +384,29 @@ export const commonEn: Widen<typeof commonDe> = {
     statExperienced: 'Experienced',
     statReviewed: 'Reviewed',
     levels: {
-      newbie: 'New here 🌱',
-      explorer: 'On the hunt 🧭',
-      cityExplorer: 'City explorer 🏙️',
-      legend: 'Local legend 🏆',
+      newbie: 'New here',
+      explorer: 'On the hunt',
+      cityExplorer: 'City explorer',
+      legend: 'Local legend',
     },
-    nextLevel: (n) =>
-      n === 1 ? '1 more experience to level up' : `${n} more experiences to level up`,
+    levelStep: (n, total) => `Level ${n} of ${total}`,
+    stampsLeft: (n, next) =>
+      n === 1 ? `1 more stamp to “${next}”` : `${n} more stamps to “${next}”`,
+    firstStamp: 'Every redeemed experience earns a stamp.',
     topLevel: 'Top level reached. Respect!',
+    stampCardA11y: (step, level, filled, total, hint) =>
+      `Stamp card, ${step}: ${level}. ${filled} of ${total} stamps. ${hint}`,
+    levelShowAll: 'Shows all levels',
+    stampsCollected: (n) => (n === 1 ? '1 stamp collected' : `${n} stamps collected`),
+    levelIntro:
+      'Every redeemed experience earns a stamp. Once there are five stamps on the card, you level up.',
+    levelFrom: (n) => (n === 0 ? 'Where everyone starts' : `From ${n} stamps`),
+    levelCurrent: 'You are here',
+    levelUpTitle: 'Level up!',
+    levelUpText: (level) => `Card full! You're now “${level}”.`,
+    levelUpButton: 'Keep collecting',
     guestTitle: 'Grab your first deal 🎉',
     guestText: 'With an account you get codes, save favourite places and see how much you save.',
-    placesEmpty: 'No favourite places yet. Tap the heart on a venue.',
-    seeAll: 'All',
     settings: 'Settings',
     help: 'Help & info',
     invite: 'Invite friends',
@@ -398,6 +420,8 @@ export const commonEn: Widen<typeof commonDe> = {
     privacyIntro:
       'The privacy policy will go here: what data the app stores (name, email, codes, favourites), why, and how you can delete it.',
     imprintIntro: 'The provider, address and contact details (§ 5 DDG) will go here.',
+    termsIntro:
+      'The terms of use will go here: how codes, cancelling and blocks work and what applies to your account.',
     notPublic: 'This test version is not public yet. The final text will be added before launch.',
   },
 };

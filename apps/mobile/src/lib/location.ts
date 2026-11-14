@@ -105,3 +105,19 @@ export async function currentPosition(): Promise<PositionResult> {
   const result = await quickPosition();
   return result.status === 'ok' ? { status: 'ok', coords: result.coords } : result;
 }
+
+export type LocationPermissionState = 'granted' | 'denied' | 'undetermined';
+
+/** Stand der Standort-Erlaubnis, ohne zu fragen (für den Schalter in den Einstellungen). */
+export async function locationPermissionState(): Promise<LocationPermissionState> {
+  const current = await Location.getForegroundPermissionsAsync();
+  if (current.granted) return 'granted';
+  return current.canAskAgain ? 'undetermined' : 'denied';
+}
+
+/** Fragt nach der Standort-Erlaubnis (nur möglich, solange noch nicht entschieden). */
+export async function requestLocationPermission(): Promise<LocationPermissionState> {
+  const result = await Location.requestForegroundPermissionsAsync();
+  if (result.granted) return 'granted';
+  return result.canAskAgain ? 'undetermined' : 'denied';
+}

@@ -6,7 +6,6 @@ import {
   reservationSecondsLeft,
 } from '@repo/shared';
 import { PaymentSheet, PaymentSheetError, useStripe } from '@stripe/stripe-react-native';
-import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import { CircleCheck, CloudOff, CreditCard, Lock, TimerOff, Undo2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -30,6 +29,7 @@ import { paymentsAvailable, stripeReturnUrl } from '@/features/payments/stripe-p
 import { askForPushAfterClaim } from '@/features/push/push';
 import { seatsText } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, radius, shadow, space, textStyle } from '@/theme';
 
@@ -98,7 +98,7 @@ export function CheckoutScreen({ offerId, seats }: { offerId: string; seats: num
   const voucherId = booking?.voucher_id ?? null;
   useEffect(() => {
     if (phase !== 'bezahlt') return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
     void refresh();
     const id = setTimeout(() => {
       if (voucherId) router.replace({ pathname: '/code/[id]', params: { id: voucherId } });
@@ -156,7 +156,7 @@ export function CheckoutScreen({ offerId, seats }: { offerId: string; seats: num
       }
       // Abbruch im Sheet: Reservierung bleibt, man kann innerhalb des Timers weitermachen.
       if (error.code !== PaymentSheetError.Canceled) {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics.error();
         setPayError(m.failed);
       }
     } finally {
@@ -179,7 +179,7 @@ export function CheckoutScreen({ offerId, seats }: { offerId: string; seats: num
           void openPaymentSheet(result);
         },
         onError: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
         },
       },
     );

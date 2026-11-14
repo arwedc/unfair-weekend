@@ -1,11 +1,11 @@
 import { OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { Check } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
 import { CATEGORY_ICONS } from '@/components/offers/category-icons';
 import { PressableScale, Text } from '@/components/ui';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
@@ -38,7 +38,7 @@ export function InterestPicker({ selected, onToggle }: InterestPickerProps) {
             accessibilityState={{ checked: active }}
             pressedScale={0.96}
             onPress={() => {
-              void Haptics.selectionAsync();
+              haptics.selection();
               onToggle(category);
             }}
             style={[styles.tile, { backgroundColor: tone.bg }, active ? styles.tileSelected : null]}

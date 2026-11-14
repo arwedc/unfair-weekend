@@ -39,12 +39,32 @@ async function CompanyProfile() {
   );
 }
 
+async function LocationCard() {
+  const [{ location }, { t, labels }] = await Promise.all([requireAccount(), getT()]);
+  return (
+    <div className="mb-6 rounded-card border border-border-subtle bg-surface-default px-5 py-4">
+      <p className="text-footnote text-text-tertiary">{t.profile.location}</p>
+      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-headline text-text-primary">
+        {location.name}
+        {location.status !== 'approved' && (
+          <span className="rounded-badge bg-accent-subtle px-1.5 py-0.5 text-caption text-accent-on-subtle">
+            {labels.locationStatus[location.status]}
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
 export default async function ProfilePage() {
   const { t } = await getT();
   return (
     <>
       <h1 className="text-title2 text-text-primary">{t.profile.title}</h1>
       <p className="mb-6 mt-1 text-subhead text-text-secondary">{t.profile.intro}</p>
+      <Suspense fallback={null}>
+        <LocationCard />
+      </Suspense>
       <Suspense fallback={<p className="text-callout text-text-tertiary">{t.profile.loading}</p>}>
         <CompanyProfile />
       </Suspense>

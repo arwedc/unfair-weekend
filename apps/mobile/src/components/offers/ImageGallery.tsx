@@ -10,6 +10,8 @@ export interface ImageGalleryProps {
   /** Für Screenreader: wozu die Bilder gehören. */
   title: string;
   width?: number;
+  /** Füllt die Höhe des Elternelements statt eines festen Seitenverhältnisses (z. B. als Kopfbild). */
+  fill?: boolean;
   labels: {
     gallery: (title: string) => string;
     image: (position: number, total: number) => string;
@@ -18,15 +20,21 @@ export interface ImageGalleryProps {
 }
 
 /** Bildergalerie über die volle Breite, zum Wischen, mit Punkten als Positionsanzeige. */
-export function ImageGallery({ paths, title, width: contentWidth, labels }: ImageGalleryProps) {
+export function ImageGallery({
+  paths,
+  title,
+  width: contentWidth,
+  fill = false,
+  labels,
+}: ImageGalleryProps) {
   const { width: windowWidth } = useWindowDimensions();
   const width = contentWidth ?? windowWidth;
   const [index, setIndex] = useState(0);
-  const height = Math.round(width * 0.82);
+  const height = fill ? '100%' : Math.round(width * 0.82);
   const images = paths.length > 0 ? paths : [null];
 
   return (
-    <View style={{ height }}>
+    <View style={fill ? styles.fill : { height }}>
       <ScrollView
         horizontal
         pagingEnabled
@@ -67,6 +75,7 @@ export function ImageGallery({ paths, title, width: contentWidth, labels }: Imag
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   dots: {
     position: 'absolute',
     bottom: space[3],

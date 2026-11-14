@@ -1,33 +1,25 @@
-/** Bausteine des Profils: Kopf mit Avatar, Stufe, Bilanz, Interessen und Lieblingsorte. */
-import { formatPrice, OFFER_CATEGORIES, STORAGE_BUCKETS, berlinParts } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
+/** Bausteine des Profils: Kopf mit Avatar, Bilanz mit Stempelkarte, Interessen. */
+import { formatPrice, OFFER_CATEGORIES, berlinParts } from '@repo/shared';
 import { useRouter } from 'expo-router';
-import { Pencil, Store } from 'lucide-react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pencil } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
-import { OfferImage } from '@/components/offers/OfferImage';
 import { Button, IconButton, PressableScale, SectionHeader, Skeleton, Text } from '@/components/ui';
 import type { Account } from '@/features/auth/account';
-import {
-  useFavoriteCategories,
-  useFavoriteLocations,
-  useToggleFavoriteCategory,
-} from '@/features/favorites/queries';
-import {
-  avatarTint,
-  explorerLevel,
-  initials,
-  untilNextLevel,
-} from '@/features/profile/profile-logic';
+import { useAuth } from '@/features/auth/auth-context';
+import { useFavoriteCategories, useToggleFavoriteCategory } from '@/features/favorites/queries';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
+import { useSeenStamps } from '@/features/profile/use-seen-stamps';
 import { errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
-const AVATAR = 76;
+import { ProfileAvatar } from './ProfileAvatar';
+import { StampCard } from './StampCard';
 
-/** Kopf: bunter Avatar mit Initialen, Name, „Dabei seit …“ und Bearbeiten-Knopf. */
+/** Kopf: Profilbild (oder bunte Initialen), Name, „Dabei seit …“ und Bearbeiten-Knopf. */
 export function ProfileHero({
   account,
   email,
@@ -40,7 +32,6 @@ export function ProfileHero({
   const router = useRouter();
   const { t } = useT();
   const p = t.common.profile;
-  const tone = fun[avatarTint(account.userId)];
   const name = `${account.firstName} ${account.lastName}`.trim();
 
   let since: string | null = null;
@@ -51,11 +42,7 @@ export function ProfileHero({
 
   return (
     <View style={styles.hero}>
-      <View style={[styles.avatar, { backgroundColor: tone.bg }]} accessible={false}>
-        <Text variant="title1" style={{ color: tone.ink }} maxFontSizeMultiplier={1.2}>
-          {initials(account.firstName, account.lastName)}
-        </Text>
-      </View>
+      <ProfileAvatar account={account} />
       <View style={styles.heroText}>
         <Text variant="title1" accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit>
           {name || p.yourProfile}
@@ -82,25 +69,6 @@ export function ProfileHero({
   );
 }
 
-/** Stufe als Abzeichen plus Hinweis, wie viel bis zur nächsten fehlt. */
-export function LevelBadge({ redeemed }: { redeemed: number }) {
-  const { t } = useT();
-  const p = t.common.profile;
-  const left = untilNextLevel(redeemed);
-  return (
-    <View style={styles.level}>
-      <View style={styles.levelPill}>
-        <Text variant="subhead" style={styles.levelText}>
-          {p.levels[explorerLevel(redeemed)]}
-        </Text>
-      </View>
-      <Text variant="footnote" color="secondary" style={styles.levelHint}>
-        {left === null ? p.topLevel : p.nextLevel(left)}
-      </Text>
-    </View>
-  );
-}
-
 /** Ruhige Kachel: helles Grau, schwarze Zahl, graue Beschriftung. Farbe kommt nur vom Emoji. */
 function StatTile({ emoji, value, label }: { emoji: string; value: string; label: string }) {
   return (
@@ -118,11 +86,13 @@ function StatTile({ emoji, value, label }: { emoji: string; value: string; label
   );
 }
 
-/** Deine Bilanz: gespart, erlebt, bewertet, dazu die Stufe. */
+/** Deine Bilanz: gespart, erlebt, bewertet, darunter die Stempelkarte mit der Stufe. */
 export function StatsSection() {
   const { t, locale } = useT();
   const p = t.common.profile;
   const stats = useProfileStats();
+  const { userId } = useAuth();
+  const seen = useSeenStamps(userId, stats.isPending ? null : stats.stamps.length);
 
   return (
     <View style={styles.section}>
@@ -140,7 +110,11 @@ export function StatsSection() {
             <StatTile emoji="🎟️" label={p.statExperienced} value={String(stats.experienced)} />
             <StatTile emoji="⭐" label={p.statReviewed} value={String(stats.reviewed)} />
           </View>
-          <LevelBadge redeemed={stats.experienced} />
+          {seen === null ? (
+            <Skeleton height={STAMP_CARD_HEIGHT} radius={radius.card} />
+          ) : (
+            <StampCard stamps={stats.stamps} seen={seen} />
+          )}
         </>
       )}
     </View>
@@ -171,7 +145,7 @@ export function InterestCircles() {
               accessibilityLabel={labels.offerCategory[category]}
               accessibilityState={{ selected: active }}
               onPress={() => {
-                void Haptics.selectionAsync();
+                haptics.selection();
                 toggle.mutate({ item: category, favorite: !active });
               }}
               style={styles.circleItem}
@@ -208,68 +182,6 @@ export function InterestCircles() {
   );
 }
 
-/** Lieblingsorte als Reihe runder Logos. „Alle“ führt zur Favoriten-Seite. */
-export function FavoritePlacesRow() {
-  const router = useRouter();
-  const { locations, isPending } = useFavoriteLocations();
-  const { t } = useT();
-  const p = t.common.profile;
-
-  return (
-    <View style={styles.section}>
-      <SectionHeader
-        title={p.favoritePlaces}
-        actionLabel={locations.length > 0 ? p.seeAll : undefined}
-        onAction={locations.length > 0 ? () => router.push('/favoriten') : undefined}
-      />
-      {isPending ? (
-        <Skeleton height={88} radius={radius.card} />
-      ) : locations.length === 0 ? (
-        <View style={styles.emptyPlaces}>
-          <Store size={20} color={colors.text.tertiary} />
-          <Text variant="footnote" color="secondary" style={styles.emptyText}>
-            {p.placesEmpty}
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.places}
-        >
-          {locations.map((location) => (
-            <PressableScale
-              key={location.id}
-              accessibilityRole="button"
-              accessibilityLabel={location.company_name}
-              onPress={() =>
-                router.push({ pathname: '/standort/[id]', params: { id: location.id } })
-              }
-              style={styles.place}
-            >
-              <View style={styles.logo}>
-                {location.company_logo_path ? (
-                  <OfferImage
-                    path={location.company_logo_path}
-                    bucket={STORAGE_BUCKETS.companyLogos}
-                    contentFit="contain"
-                    style={styles.logoImage}
-                  />
-                ) : (
-                  <Text variant="title3">{initials(location.company_name, '')}</Text>
-                )}
-              </View>
-              <Text variant="caption" numberOfLines={1} style={styles.placeName}>
-                {location.company_name}
-              </Text>
-            </PressableScale>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
 /** Ohne Konto: einladende Kachel statt leerem Profil. */
 export function GuestCard() {
   const router = useRouter();
@@ -294,28 +206,14 @@ export function GuestCard() {
 }
 
 const CIRCLE = 64;
+/** Ungefähre Höhe der Stempelkarte, damit der Platzhalter nicht springt. */
+const STAMP_CARD_HEIGHT = 60;
 
 const styles = StyleSheet.create({
   section: { gap: space[3] },
   hero: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
-  avatar: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   heroText: { flex: 1, gap: space[0.5] },
   editButton: { alignSelf: 'flex-start' },
-  level: { flexDirection: 'row', alignItems: 'center', gap: space[3], flexWrap: 'wrap' },
-  levelPill: {
-    paddingHorizontal: space[3],
-    paddingVertical: space[1.5],
-    borderRadius: radii.full,
-    backgroundColor: colors.background.inverse,
-  },
-  levelText: { color: colors.text.inverse },
-  levelHint: { flexShrink: 1 },
   stats: { flexDirection: 'row', gap: space[2] },
   stat: {
     flex: 1,
@@ -350,30 +248,6 @@ const styles = StyleSheet.create({
   circleEmoji: { fontSize: 28, lineHeight: 34 },
   circleLabel: { color: colors.text.secondary },
   circleLabelActive: { color: colors.text.primary, fontFamily: fonts.bold },
-  emptyPlaces: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    padding: space[4],
-    borderRadius: radius.card,
-    backgroundColor: colors.background.subtle,
-  },
-  emptyText: { flex: 1 },
-  places: { gap: space[4] },
-  place: { width: 72, alignItems: 'center', gap: space[1.5] },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.full,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface.default,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.default,
-  },
-  logoImage: { width: 64, height: 64 },
-  placeName: { color: colors.text.secondary, textAlign: 'center' },
   guest: {
     gap: space[3],
     padding: space[5],

@@ -12,5 +12,5 @@ export type FeedOffer = Offer & { createdAt: string | null };
 /** Angebot auf der Detailseite (aus `get_offer`). */
 export type OfferDetail = RpcRow<'get_offer'>;
 
-/** Freigeschalteter Standort mit Unternehmensinfo (aus `get_locations_public`). */
-export type PublicLocation = RpcRow<'get_locations_public'>;
+/** Freigeschalteter Standort mit Unternehmensinfo und Galerie (öffentlicher Standort-RPC). */
+export type PublicLocation = RpcRow<'get_locations_public_with_images'>;

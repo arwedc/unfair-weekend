@@ -2,6 +2,7 @@ import type { Widen } from '../widen';
 
 export const profileDe = {
   title: 'Unternehmensprofil',
+  location: 'Dein Standort',
   intro: 'Name, Logo und Beschreibung gelten für alle Standorte deines Unternehmens.',
   loading: 'Profil wird geladen …',
   notFound: 'Dein Unternehmen wurde nicht gefunden.',
@@ -48,6 +49,7 @@ export const profileDe = {
 
 export const profileEn: Widen<typeof profileDe> = {
   title: 'Company profile',
+  location: 'Your venue',
   intro: 'Name, logo and description apply to all venues of your company.',
   loading: 'Loading profile …',
   notFound: 'Your company could not be found.',

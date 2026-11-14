@@ -62,6 +62,51 @@ select is((select count(*)::int from public.list_my_reviews(null, 500)), 3, 'Lim
 select throws_ok('select * from public.list_my_reviews(6)', 'P0001', 'UNGUELTIGE_EINGABE', 'Filter 6 Sterne geht nicht');
 select throws_ok('select * from public.list_my_reviews(0)', 'P0001', 'UNGUELTIGE_EINGABE', 'Filter 0 Sterne geht nicht');
 
+-- Sortierung (p_sort) und Zeitraum (p_since)
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_sort => 'neueste') $$,
+  $$ values ('Lea A.'), ('Mia A.'), ('Jonas A.') $$,
+  'Sortierung neueste = Standard'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_sort => null) $$,
+  $$ values ('Lea A.'), ('Mia A.'), ('Jonas A.') $$,
+  'Sortierung null = neueste'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_sort => 'aelteste') $$,
+  $$ values ('Jonas A.'), ('Mia A.'), ('Lea A.') $$,
+  'Sortierung aelteste'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_sort => 'beste') $$,
+  $$ values ('Mia A.'), ('Jonas A.'), ('Lea A.') $$,
+  'Sortierung beste'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_sort => 'schlechteste') $$,
+  $$ values ('Lea A.'), ('Jonas A.'), ('Mia A.') $$,
+  'Sortierung schlechteste'
+);
+select throws_ok(
+  $$ select * from public.list_my_reviews(p_sort => 'zufall') $$,
+  'P0001', 'UNGUELTIGE_EINGABE', 'Unbekannte Sortierung geht nicht'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(p_since => now() - interval '30 days') $$,
+  $$ values ('Lea A.'), ('Mia A.') $$,
+  'Zeitraum: nur Bewertungen ab p_since'
+);
+select results_eq(
+  $$ select author_name from public.list_my_reviews(5, p_since => now() - interval '30 days', p_sort => 'aelteste') $$,
+  $$ values ('Mia A.') $$,
+  'Sterne, Zeitraum und Sortierung kombiniert'
+);
+select is(
+  (select author_name from public.list_my_reviews(null, 1, 1, 'beste')),
+  'Jonas A.', 'Seitenweise mit Sortierung'
+);
+
 -- ---------------------------------------------------------------------------
 -- get_my_review_summary
 -- ---------------------------------------------------------------------------

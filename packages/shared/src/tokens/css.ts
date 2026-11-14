@@ -8,7 +8,7 @@
  * sodass Klassen wie `bg-accent-solid`, `rounded-card` oder `text-title1` entstehen.
  */
 import { radii, radius, shadow, shadows, spacingUnit } from './layout';
-import { glut, gray } from './palette';
+import { glut, gold, gray } from './palette';
 import { type ColorMode, themes } from './themes';
 import { fontFamily, fontWeight, textStyles } from './typography';
 
@@ -41,6 +41,7 @@ export function toCssVariables(mode: ColorMode = 'light'): Record<string, string
   const vars: Record<string, string> = {};
 
   for (const [step, hex] of Object.entries(gray)) vars[`--color-gray-${step}`] = hex;
+  for (const [step, hex] of Object.entries(gold)) vars[`--color-gold-${step}`] = hex;
   for (const [step, hex] of Object.entries(glut)) vars[`--color-glut-${step}`] = hex;
   Object.assign(vars, colorCssVariables(mode));
 

@@ -890,6 +890,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null;
+          avatar_path: string | null;
           blocked_until: string | null;
           created_at: string;
           first_name: string | null;
@@ -902,6 +903,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           age?: number | null;
+          avatar_path?: string | null;
           blocked_until?: string | null;
           created_at?: string;
           first_name?: string | null;
@@ -913,6 +915,7 @@ export type Database = {
         };
         Update: {
           age?: number | null;
+          avatar_path?: string | null;
           blocked_until?: string | null;
           created_at?: string;
           first_name?: string | null;
@@ -1538,6 +1541,25 @@ export type Database = {
           website: string;
         }[];
       };
+      get_locations_public_with_images: {
+        Args: { p_location_ids: string[] };
+        Returns: {
+          city: string;
+          company_description: string;
+          company_id: string;
+          company_logo_path: string;
+          company_name: string;
+          id: string;
+          image_paths: string[];
+          lat: number;
+          lng: number;
+          name: string;
+          phone: string;
+          postal_code: string;
+          street: string;
+          website: string;
+        }[];
+      };
       get_my_account: { Args: Record<PropertyKey, never>; Returns: Json };
       get_my_review_summary: {
         Args: Record<PropertyKey, never>;
@@ -1699,7 +1721,13 @@ export type Database = {
         }[];
       };
       list_my_reviews: {
-        Args: { p_limit?: number; p_offset?: number; p_rating?: number };
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_rating?: number;
+          p_since?: string;
+          p_sort?: string;
+        };
         Returns: {
           author_name: string;
           comment: string;
@@ -1918,6 +1946,7 @@ export type Database = {
         };
       };
       unregister_push_token: { Args: { p_token: string }; Returns: undefined };
+      update_my_avatar: { Args: { p_path: string }; Returns: string };
       update_my_company: {
         Args: { p_description?: string; p_logo_path?: string; p_name: string };
         Returns: {
@@ -1978,6 +2007,7 @@ export type Database = {
         Args: { p_first_name: string; p_last_name: string };
         Returns: {
           age: number | null;
+          avatar_path: string | null;
           blocked_until: string | null;
           created_at: string;
           first_name: string | null;

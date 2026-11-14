@@ -53,10 +53,14 @@ export const VOUCHER_RULES = {
   noShowGraceHours: 48,
 } as const;
 
-/** Storage-Buckets. Pfade: offer-images/<location_id>/…, company-logos/<company_id>/… */
+/**
+ * Storage-Buckets. Pfade: offer-images/<location_id>/…, company-logos/<company_id>/…,
+ * avatars/<user_id>/… (privat, nur über signierte URLs lesbar).
+ */
 export const STORAGE_BUCKETS = {
   offerImages: 'offer-images',
   companyLogos: 'company-logos',
+  avatars: 'avatars',
 } as const;
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
@@ -64,5 +68,6 @@ export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKET
 export const STORAGE_LIMITS = {
   offerImageMaxBytes: 5 * 1024 * 1024,
   companyLogoMaxBytes: 2 * 1024 * 1024,
+  avatarMaxBytes: 2 * 1024 * 1024,
   allowedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
 } as const;
