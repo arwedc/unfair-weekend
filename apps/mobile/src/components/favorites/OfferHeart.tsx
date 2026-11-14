@@ -17,7 +17,7 @@ const HIT_SLOP = (44 - SIZE) / 2;
  * Fester weißer Schleier über der Unschärfe. Anders als Liquid Glass passt er sich nicht dem
  * Foto an: Das Herz sieht auf hellen und dunklen Bildern gleich aus, das Foto scheint nur leicht durch.
  */
-const VEIL = 'rgba(255, 255, 255, 0.72)';
+const VEIL = 'rgba(255, 255, 255, 0.42)';
 
 export interface OfferHeartProps {
   offerId: string;
@@ -52,7 +52,7 @@ export function OfferHeart({ offerId, title }: OfferHeartProps) {
       style={styles.button}
     >
       {Platform.OS === 'ios' ? (
-        <BlurView style={StyleSheet.absoluteFill} tint="light" intensity={40} />
+        <BlurView style={StyleSheet.absoluteFill} tint="light" intensity={25} />
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.veil]} />
       <Heart
