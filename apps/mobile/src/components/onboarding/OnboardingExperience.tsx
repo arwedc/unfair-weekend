@@ -2,7 +2,7 @@ import { STORAGE_BUCKETS, storageImageUrl } from '@repo/shared';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Pointer, Sparkles } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -24,6 +24,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, PressableScale, Text } from '@/components/ui';
+import { useAuth } from '@/features/auth/auth-context';
 import { offersInCity } from '@/features/offers/cities';
 import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
@@ -40,8 +41,10 @@ import { OnboardingStage } from './OnboardingStage';
 
 const STEP_COUNT = 3;
 const STEP_EASING = Easing.bezier(0.2, 0, 0, 1);
-/** So viele volle Umdrehungen macht der Kreis beim Erscheinen. */
-const INTRO_TURNS = 3;
+/** Eine volle Umdrehung reicht, damit alle Karten kurz vorne vorbeikommen. */
+const INTRO_TURNS = 1;
+const INTRO_SPIN_DELAY_MS = 600;
+const INTRO_SPIN_MS = 2400;
 /** Beim Schließen wirbelt der Kreis wieder los: so viele Umdrehungen in so vielen ms. */
 const EXIT_TURNS = 3;
 const EXIT_MS = 1300;
@@ -72,6 +75,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
   const compact = height < 760;
   const reduceMotion = useReducedMotion() ?? false;
   const { cityId } = useOfferFilters();
+  const { ready: authReady, userId } = useAuth();
   const { data: offers } = useOffers();
   const [step, setStep] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -132,7 +136,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
     if (next === 1) {
       // Sticker und Preis-Strich kommen, sobald das Angebot groß ist.
       heroIntro.set(0);
-      heroIntro.set(withDelay(forward ? 620 : 260, withSpring(1, { damping: 9, stiffness: 130 })));
+      heroIntro.set(withDelay(forward ? 620 : 260, withSpring(1, { damping: 16, stiffness: 130 })));
       if (!forward) rotation.set(withTiming(nearestTurn(rotation.get()), { duration: 550 }));
     }
     if (next === 2) {
@@ -141,10 +145,10 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
       rotation.set(base);
       rotation.set(
         withDelay(
-          340,
+          INTRO_SPIN_DELAY_MS,
           withTiming(base - 360 * INTRO_TURNS, {
-            duration: 3000,
-            easing: Easing.out(Easing.cubic),
+            duration: INTRO_SPIN_MS,
+            easing: Easing.out(Easing.quad),
           }),
         ),
       );
@@ -182,7 +186,8 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
 
   const isLast = step === STEP_COUNT - 1;
   const stepCopy = copy.steps[step];
-  const title = step === 2 && wheel.length > 0 ? copy.wheelTitle(wheel.length) : stepCopy?.title;
+  const title = stepCopy?.title;
+  const showSignInOptions = isLast && authReady && userId === null;
   const barWidth = { maxWidth: Math.min(width - space[8], 680) };
 
   return (
@@ -253,20 +258,53 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
               }
             >
               <Text variant="body" color="secondary" numberOfLines={2} style={styles.body}>
-                {stepCopy?.body}
+                {step === 0 && pins.length === 0 ? copy.noOffers : stepCopy?.body}
               </Text>
             </Animated.View>
           </View>
 
           <View style={[styles.footer, barWidth]}>
-            <Button
-              label={isLast ? copy.start : copy.next}
-              icon={isLast ? Sparkles : ArrowRight}
-              size="lg"
-              fullWidth
-              haptic
-              onPress={() => (isLast ? startExploring() : goTo(step + 1))}
-            />
+            {step === 0 && pins.length > 0 ? (
+              <View
+                accessible
+                accessibilityLabel={selectedId ? copy.tapOffer : copy.tapPin}
+                accessibilityLiveRegion="polite"
+                style={styles.coachHint}
+              >
+                <Pointer size={20} color={colors.accent.strong} strokeWidth={2} />
+                <Text variant="subhead" style={styles.coachHintText}>
+                  {selectedId ? copy.tapOffer : copy.tapPin}
+                </Text>
+              </View>
+            ) : showSignInOptions ? (
+              <>
+                <Button
+                  label={t.common.signIn}
+                  size="lg"
+                  fullWidth
+                  haptic
+                  onPress={() => {
+                    router.push('/anmelden');
+                    onFinish();
+                  }}
+                />
+                <Button
+                  label={copy.continueWithoutAccount}
+                  variant="outline"
+                  fullWidth
+                  onPress={startExploring}
+                />
+              </>
+            ) : (
+              <Button
+                label={step === 0 || isLast ? copy.start : copy.next}
+                icon={step === 0 || isLast ? Sparkles : ArrowRight}
+                size="lg"
+                fullWidth
+                haptic
+                onPress={() => (step === 0 || isLast ? startExploring() : goTo(step + 1))}
+              />
+            )}
             <PressableScale
               accessibilityRole="button"
               accessibilityLabel={copy.previous}
@@ -332,6 +370,14 @@ const styles = StyleSheet.create({
   // Zwei Zeilen fest reserviert, damit die Bühne beim Schrittwechsel gleich groß bleibt.
   body: { maxWidth: 520, minHeight: (textStyle('body').lineHeight ?? space[6]) * 2 },
   footer: { width: '100%', alignSelf: 'center', alignItems: 'center', gap: space[1] },
+  coachHint: {
+    minHeight: layout.minTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space[2],
+  },
+  coachHintText: { color: colors.accent.strong },
   backButton: {
     minHeight: layout.minTouchTarget,
     flexDirection: 'row',
