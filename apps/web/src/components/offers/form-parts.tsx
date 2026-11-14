@@ -44,7 +44,7 @@ export function TypePicker({
             key={t}
             className={`relative rounded-input border p-4 transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-border-focus ${
               value === t
-                ? 'border-accent-vivid bg-accent-subtle'
+                ? 'border-accent-strong bg-accent-subtle'
                 : 'border-border-default bg-surface-default hover:border-border-strong'
             } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
           >
@@ -59,10 +59,10 @@ export function TypePicker({
             <span
               aria-hidden
               className={`absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
-                value === t ? 'border-accent-solid' : 'border-border-strong'
+                value === t ? 'border-accent-strong' : 'border-border-strong'
               }`}
             >
-              {value === t ? <span className="h-2.5 w-2.5 rounded-full bg-accent-solid" /> : null}
+              {value === t ? <span className="h-2.5 w-2.5 rounded-full bg-accent-strong" /> : null}
             </span>
             <span className="block pr-8 text-body-strong text-text-primary">
               {labels.offerType[t]}
