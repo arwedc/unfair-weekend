@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { Pointer } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -31,6 +30,7 @@ import {
   project,
   type StageGeometry,
 } from '@/features/onboarding/stage-math';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, radii, shadow, soft } from '@/theme';
 
@@ -166,7 +166,7 @@ export function PhotoPin({
           pressedScale={0.9}
           hitSlop={6}
           onPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptics.tap();
             onPress(offer);
           }}
           style={styles.pressable}

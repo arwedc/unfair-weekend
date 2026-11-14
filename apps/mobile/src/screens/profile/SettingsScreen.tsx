@@ -4,7 +4,6 @@
  */
 import { LOCALE_NAMES, LOCALES } from '@repo/shared/i18n';
 import Constants from 'expo-constants';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   Bell,
@@ -34,6 +33,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useLocationRow } from '@/features/profile/use-location-permission';
 import { usePushStatus, useSetPushEnabled } from '@/features/push/use-push';
 import { errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, space } from '@/theme';
 
@@ -142,10 +142,11 @@ export function SettingsScreen() {
     setDeleting(true);
     try {
       await deleteAccount();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
       deleteSheet.current?.dismiss();
       leave();
     } catch (caught) {
+      haptics.error();
       setDeleteError(errorMessage(caught));
     } finally {
       setDeleting(false);
@@ -211,7 +212,7 @@ export function SettingsScreen() {
               key={key}
               title={LOCALE_NAMES[key]}
               onPress={() => {
-                void Haptics.selectionAsync();
+                haptics.selection();
                 setLocale(key);
                 languageSheet.current?.dismiss();
               }}

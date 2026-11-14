@@ -1,10 +1,10 @@
 import { OFFER_CATEGORIES } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { PressableScale, Text } from '@/components/ui';
 import { toggleCategory } from '@/features/offers/feed-logic';
 import { useOfferFilters } from '@/features/offers/filters-context';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fun, layout, MAX_FONT_SCALE, radii, space } from '@/theme';
 
@@ -41,7 +41,7 @@ export function CategoryCircles() {
             }
             pressedScale={0.92}
             onPress={() => {
-              void Haptics.selectionAsync();
+              haptics.selection();
               setFilters({ categories: toggleCategory(filters.categories, category) });
             }}
             style={styles.item}

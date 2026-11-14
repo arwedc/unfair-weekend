@@ -1,9 +1,9 @@
-import * as Haptics from 'expo-haptics';
 import { Star, StarHalf } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/ui';
 import { formatRating, starFill } from '@/features/reviews/review-logic';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, space } from '@/theme';
 
@@ -76,7 +76,7 @@ export function StarInput({ value, onChange }: StarInputProps) {
             accessibilityState={{ selected: value === index }}
             pressedScale={0.85}
             onPress={() => {
-              void Haptics.selectionAsync();
+              haptics.selection();
               onChange(index);
             }}
             style={styles.inputStar}

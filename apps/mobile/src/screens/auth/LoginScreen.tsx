@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiError, errorMessage } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radius, space } from '@/theme';
 
@@ -92,6 +93,7 @@ export function LoginScreen() {
       await action();
     } catch (caught) {
       if (!(caught instanceof ApiError && caught.code === CANCELLED)) {
+        haptics.error();
         setError(errorMessage(caught), kind === 'dev');
       }
     } finally {

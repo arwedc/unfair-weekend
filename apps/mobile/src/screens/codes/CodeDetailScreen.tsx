@@ -1,6 +1,5 @@
 import { formatPrice } from '@repo/shared';
 import * as Brightness from 'expo-brightness';
-import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import {
   CalendarClock,
@@ -43,6 +42,7 @@ import {
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { env } from '@/lib/env';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { openInMaps } from '@/lib/open-external';
 import { colors, layout, radius, shadow, soft, space, textStyle } from '@/theme';
@@ -170,11 +170,11 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
   const confirmCancel = () => {
     cancel.mutate(paidBooking?.id ?? voucher.id, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
         cancelSheet.current?.dismiss();
       },
       onError: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics.error();
       },
     });
   };
@@ -188,7 +188,10 @@ export function CodeDetailScreen({ voucherId }: { voucherId: string }) {
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
-          onRefresh={() => void refetch()}
+          onRefresh={() => {
+            haptics.selection();
+            void refetch();
+          }}
           tintColor={colors.accent.strong}
           colors={[colors.accent.strong]}
         />

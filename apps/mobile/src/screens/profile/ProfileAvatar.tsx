@@ -1,5 +1,4 @@
 /** Profilbild im Profilkopf: Foto oder bunte Initialen, antippbar zum Ändern. */
-import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Camera, ImagePlus, Images, Trash2 } from 'lucide-react-native';
 import { useRef, useState } from 'react';
@@ -11,6 +10,7 @@ import { CAMERA_DENIED, type AvatarSource } from '@/features/profile/avatar-api'
 import { useAvatarUrl, useChangeAvatar, useRemoveAvatar } from '@/features/profile/avatar-queries';
 import { avatarTint, initials } from '@/features/profile/profile-logic';
 import { ApiError, errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, duration, fun, radii, space } from '@/theme';
 
@@ -70,7 +70,7 @@ export function ProfileAvatar({ account }: { account: Account }) {
     if (!source) return;
     change.mutate(source, {
       onSuccess: (changed) => {
-        if (changed) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (changed) haptics.success();
       },
       // Fehler zeigt das Sheet, dort kann man es direkt nochmal versuchen.
       onError: () => sheet.current?.present(),

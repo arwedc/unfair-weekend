@@ -26,6 +26,7 @@ import {
   type Voucher,
 } from '@/features/vouchers/voucher-logic';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, radius, space, textStyle } from '@/theme';
 
@@ -122,7 +123,10 @@ export function CodesScreen() {
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
-          onRefresh={() => void refetch()}
+          onRefresh={() => {
+            haptics.selection();
+            void refetch();
+          }}
           tintColor={colors.accent.strong}
           colors={[colors.accent.strong]}
         />
