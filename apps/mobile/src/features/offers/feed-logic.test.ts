@@ -6,6 +6,8 @@ import {
   dayPart,
   EMPTY_FILTERS,
   filterOffers,
+  formatDistance,
+  formatRating,
   groupByPlace,
   hasActiveFilters,
   isListMode,
@@ -15,6 +17,7 @@ import {
   matchesSearch,
   matchesTimeFilter,
   offerBadges,
+  pickDealOfTheDay,
   similarOffers,
 } from './feed-logic';
 import type { FeedOffer } from './types';
@@ -424,5 +427,46 @@ describe('dayPart', () => {
     expect(dayPart('2026-11-13T16:00:00Z')).toBe('evening'); // 17:00
     expect(dayPart('2026-11-13T21:00:00Z')).toBe('night'); // 22:00
     expect(dayPart('2026-11-13T03:00:00Z')).toBe('night'); // 04:00
+  });
+});
+
+describe('pickDealOfTheDay', () => {
+  it('nimmt den höchsten Rabatt der nächsten Tage, nicht ausgebuchte', () => {
+    const offers = [
+      offer({ id: 'klein', discount_percent: 20, relevant_at: at(0), starts_at: at(0) }),
+      offer({ id: 'voll', discount_percent: 70, free_seats: 0, relevant_at: at(0) }),
+      offer({ id: 'gross', discount_percent: 50, relevant_at: at(1), starts_at: at(1) }),
+      offer({ id: 'spaet', discount_percent: 60, relevant_at: at(9), starts_at: at(9) }),
+    ];
+    expect(pickDealOfTheDay(offers, NOW)?.id).toBe('gross');
+  });
+
+  it('weicht auf alle Angebote aus und liefert ohne Angebote nichts', () => {
+    const later = [offer({ id: 'spaet', relevant_at: at(9), starts_at: at(9) })];
+    expect(pickDealOfTheDay(later, NOW)?.id).toBe('spaet');
+    expect(pickDealOfTheDay([], NOW)).toBeNull();
+  });
+
+  it('nimmt bei gleichem Rabatt das frühere', () => {
+    const offers = [
+      offer({ id: 'b', discount_percent: 40, relevant_at: at(2) }),
+      offer({ id: 'a', discount_percent: 40, relevant_at: at(1) }),
+    ];
+    expect(pickDealOfTheDay(offers, NOW)?.id).toBe('a');
+  });
+});
+
+describe('formatDistance und formatRating', () => {
+  it('zeigt Meter unter 1 km und km mit Komma', () => {
+    expect(formatDistance(0.34)).toBe('350 m');
+    expect(formatDistance(0.01)).toBe('50 m');
+    expect(formatDistance(1.24)).toBe('1,2 km');
+    expect(formatDistance(1.24, 'en')).toBe('1.2 km');
+    expect(formatDistance(12.6)).toBe('13 km');
+  });
+
+  it('rundet die Bewertung auf eine Stelle', () => {
+    expect(formatRating(4.83)).toBe('4,8');
+    expect(formatRating(5, 'en')).toBe('5.0');
   });
 });

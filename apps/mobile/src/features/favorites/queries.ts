@@ -8,8 +8,10 @@ import { locationKeys } from '@/features/offers/queries';
 import {
   fetchFavoriteCategories,
   fetchFavoriteLocationIds,
+  fetchFavoriteOfferIds,
   setFavoriteCategory,
   setFavoriteLocation,
+  setFavoriteOffer,
 } from './api';
 
 export function useFavoriteLocationIds() {
@@ -89,4 +91,19 @@ export function useToggleFavoriteCategory() {
     userKeys.favoriteCategories(userId ?? 'anon'),
     setFavoriteCategory,
   );
+}
+
+/** Gemerkte Angebote (Herz auf der Angebotskarte). */
+export function useFavoriteOfferIds() {
+  const { userId } = useAuth();
+  return useQuery({
+    queryKey: userKeys.favoriteOffers(userId ?? 'anon'),
+    queryFn: fetchFavoriteOfferIds,
+    enabled: userId !== null,
+  });
+}
+
+export function useToggleFavoriteOffer() {
+  const { userId } = useAuth();
+  return useToggle<string>(userKeys.favoriteOffers(userId ?? 'anon'), setFavoriteOffer);
 }

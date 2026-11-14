@@ -454,3 +454,39 @@ export function dayPart(now: DateInput = new Date()): DayPart {
   if (hour >= 17 && hour < 22) return 'evening';
   return 'night';
 }
+
+/**
+ * „Deal des Tages“ oben im Feed: der höchste Rabatt unter den buchbaren Angeboten,
+ * bevorzugt heute oder in den nächsten Tagen. Gleicher Rabatt: das früher stattfindende.
+ */
+export function pickDealOfTheDay<T extends Offer>(
+  offers: readonly T[],
+  now: DateInput = new Date(),
+): T | null {
+  const available = offers.filter((offer) => offer.free_seats > 0);
+  const soon = available.filter((offer) => {
+    const days = calendarDaysBetween(now, offer.relevant_at);
+    return days >= 0 && days <= DEAL_OF_DAY_WINDOW_DAYS;
+  });
+  const pool = soon.length > 0 ? soon : available;
+  const best = [...pool].sort(
+    (a, b) => b.discount_percent - a.discount_percent || a.relevant_at.localeCompare(b.relevant_at),
+  )[0];
+  return best ?? null;
+}
+
+/** So viele Tage nach vorn sucht der „Deal des Tages“, bevor er auf alle Angebote ausweicht. */
+const DEAL_OF_DAY_WINDOW_DAYS = 3;
+
+/** Entfernung kurz: unter 1 km in Metern (auf 50 gerundet), sonst in km mit einer Stelle. */
+export function formatDistance(km: number, locale: Locale = DEFAULT_LOCALE): string {
+  if (km < 1) return `${Math.max(50, Math.round((km * 1000) / 50) * 50)} m`;
+  const value = km < 10 ? km.toFixed(1) : String(Math.round(km));
+  return `${locale === 'de' ? value.replace('.', ',') : value} km`;
+}
+
+/** Bewertung mit einer Nachkommastelle, im Deutschen mit Komma. */
+export function formatRating(average: number, locale: Locale = DEFAULT_LOCALE): string {
+  const value = average.toFixed(1);
+  return locale === 'de' ? value.replace('.', ',') : value;
+}

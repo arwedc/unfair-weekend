@@ -1,12 +1,13 @@
 import { ChevronDown, CloudOff, MapPin, Search, SearchX, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCircles } from '@/components/feed/CategoryCircles';
 import { LiveDot } from '@/components/feed/LiveDot';
 import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
+import { OfferMetaProvider } from '@/components/offers/offer-meta';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import {
   Appear,
@@ -25,6 +26,7 @@ import {
   filterOffers,
   hasActiveFilters,
   isListMode,
+  pickDealOfTheDay,
   sectionsByCategory,
   type FeedSection,
 } from '@/features/offers/feed-logic';
@@ -133,6 +135,8 @@ export function FeedScreen() {
   // Bei Kategorie-Reihen steht darunter keine zweite, lange Liste.
   // Ohne Kategorie und Suche nur Reihen; bei mehreren Kategorien eine Reihe pro Kategorie.
   const listItems = isPending || byCategory || !listMode ? [] : visible;
+  // Übersicht ohne Filter: ein großer „Deal des Tages“ nach der ersten Reihe bricht das Raster auf.
+  const dealOfDay = !isPending && !listMode && !byCategory ? pickDealOfTheDay(visible) : null;
   const showSearch = searchOpen || filters.query !== '';
 
   const toggleSearch = () => {
@@ -229,9 +233,21 @@ export function FeedScreen() {
 
       {isPending ? <LoadingState /> : null}
 
-      {sections.map((section) => (
-        <Carousel key={section.key} section={section} />
+      {sections.map((section, index) => (
+        <Fragment key={section.key}>
+          <Carousel section={section} />
+          {index === 0 && dealOfDay ? (
+            <View style={styles.inset}>
+              <OfferCard offer={dealOfDay} variant="hero" priority="high" />
+            </View>
+          ) : null}
+        </Fragment>
       ))}
+      {sections.length === 0 && dealOfDay ? (
+        <View style={styles.inset}>
+          <OfferCard offer={dealOfDay} variant="hero" priority="high" />
+        </View>
+      ) : null}
 
       {listItems.length > 0 ? (
         <SectionHeader title={listTitle} detail={m.count(visible.length)} inset />
@@ -272,41 +288,43 @@ export function FeedScreen() {
   );
 
   return (
-    <View style={styles.screen}>
-      <FlatList
-        ref={list}
-        // Ohne Kategorie und Suche zeigt der Feed nur die Reihen, keine Liste darunter.
-        data={listItems}
-        keyExtractor={(offer) => offer.id}
-        renderItem={({ item, index }) => (
-          <Appear index={index} style={styles.inset}>
-            <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
-          </Appear>
-        )}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          (listMode && !byCategory) || sections.length === 0 ? (empty ?? undefined) : undefined
-        }
-        ItemSeparatorComponent={Separator}
-        style={styles.list}
-        contentContainerStyle={[styles.content, { paddingTop: topHeight + space[4] }]}
-        scrollIndicatorInsets={{ top: topHeight }}
-        contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => void refetch()}
-            tintColor={colors.accent.strong}
-            colors={[colors.accent.strong]}
-            progressViewOffset={topHeight}
-          />
-        }
-      />
-      {top}
-    </View>
+    <OfferMetaProvider ratings={ratings}>
+      <View style={styles.screen}>
+        <FlatList
+          ref={list}
+          // Ohne Kategorie und Suche zeigt der Feed nur die Reihen, keine Liste darunter.
+          data={listItems}
+          keyExtractor={(offer) => offer.id}
+          renderItem={({ item, index }) => (
+            <Appear index={index} style={styles.inset}>
+              <OfferCard offer={item} priority={index < 2 ? 'high' : 'normal'} />
+            </Appear>
+          )}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            (listMode && !byCategory) || sections.length === 0 ? (empty ?? undefined) : undefined
+          }
+          ItemSeparatorComponent={Separator}
+          style={styles.list}
+          contentContainerStyle={[styles.content, { paddingTop: topHeight + space[4] }]}
+          scrollIndicatorInsets={{ top: topHeight }}
+          contentInsetAdjustmentBehavior="never"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor={colors.accent.strong}
+              colors={[colors.accent.strong]}
+              progressViewOffset={topHeight}
+            />
+          }
+        />
+        {top}
+      </View>
+    </OfferMetaProvider>
   );
 }
 

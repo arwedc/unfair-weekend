@@ -1,22 +1,34 @@
 import { formatPrice, seatsLabel } from '@repo/shared';
 import { useRouter } from 'expo-router';
+import { Sparkles, Star } from 'lucide-react-native';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
+import { OfferHeart } from '@/components/favorites/OfferHeart';
 import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
-import { offerBadges, offerWhenText, type OfferBadge } from '@/features/offers/feed-logic';
+import {
+  formatDistance,
+  formatRating,
+  offerBadges,
+  offerWhenText,
+  type OfferBadge,
+} from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, fun, radius, shadow, space } from '@/theme';
+import { badge, colors, fonts, fun, radii, radius, shadow, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
+import { useOfferMeta } from './offer-meta';
 import { OfferImage } from './OfferImage';
 import { PriceRow } from './PriceRow';
 
 export interface OfferCardProps {
   offer: Offer;
-  /** „compact“ für Karussells und die Kartenvorschau, „large“ für die Liste. */
-  variant?: 'large' | 'compact';
+  /**
+   * „compact“ für Karussells, „large“ für die Liste, „hero“ für den Deal des Tages
+   * (größeres Foto, goldenes Etikett oben links statt des Hinweises).
+   */
+  variant?: 'large' | 'compact' | 'hero';
   /** Wird nach dem Tippen zusätzlich aufgerufen, z. B. um ein Sheet zu schließen. */
   onOpen?: () => void;
   priority?: 'low' | 'normal' | 'high';
@@ -37,8 +49,8 @@ const BADGE_PRIORITY: Record<OfferBadge['variant'], number> = {
 };
 
 /**
- * Angebotskarte, bewusst schlicht: Foto mit Rabatt-Etikett und höchstens einem Badge,
- * darunter Titel, Zeit, Ort und Preis. Mehr steht auf der Angebotsseite.
+ * Angebotskarte, bewusst schlicht: Foto mit Rabatt-Etikett, höchstens einem Badge und Herz,
+ * darunter Titel, Zeit, Bewertung, Entfernung, Ort und Preis. Mehr steht auf der Angebotsseite.
  */
 export function OfferCard({ offer, variant = 'large', onOpen, priority, style }: OfferCardProps) {
   const router = useRouter();
@@ -49,10 +61,15 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
   const when = offerWhenText(offer, undefined, locale);
   const soldOut = offer.free_seats === 0;
   const compact = variant === 'compact';
+  const hero = variant === 'hero';
   const category = CATEGORY_EMOJIS[offer.category];
   const hasPhoto = Boolean(offer.cover_image_path);
+  const { rating, distance } = useOfferMeta(offer);
+  const ratingText = rating ? formatRating(rating.average, locale) : null;
+  const distanceText = distance !== null ? formatDistance(distance, locale) : null;
 
   const label = [
+    hero ? t.parts.card.dealOfDay : null,
     offer.title,
     labels.offerCategory[offer.category],
     when,
@@ -61,8 +78,12 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
       formatPrice(offer.deal_price_cents, { locale }),
       formatPrice(offer.original_price_cents, { locale }),
     ),
+    rating && ratingText ? t.parts.card.ratingAria(ratingText, rating.count) : null,
+    distanceText ? t.parts.card.distanceAria(distanceText) : null,
     seatsLabel(offer.free_seats, locale),
-  ].join(', ');
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <PressableScale
@@ -81,13 +102,14 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
           <OfferImage
             path={offer.cover_image_path}
             priority={priority}
-            style={[styles.image, soldOut && styles.imageSoldOut]}
+            style={[styles.image, hero && styles.imageHero, soldOut && styles.imageSoldOut]}
           />
         ) : (
           // Kein Foto hinterlegt: Fläche in der Farbe der Kategorie mit großem Emoji.
           <View
             style={[
               styles.image,
+              hero && styles.imageHero,
               styles.noPhoto,
               { backgroundColor: fun[category.tint].bg },
               soldOut && styles.imageSoldOut,
@@ -102,32 +124,63 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
           </View>
         )}
 
-        {topBadge ? (
+        {hero ? (
+          <View style={[styles.badge, styles.heroLabel]}>
+            <Sparkles size={14} color={colors.accent.solid} strokeWidth={2.5} />
+            <Text variant="caption" style={styles.heroLabelText}>
+              {t.parts.card.dealOfDay}
+            </Text>
+          </View>
+        ) : topBadge ? (
           <View style={styles.badge}>
             <Badge label={topBadge.label} variant={topBadge.variant} onImage />
           </View>
         ) : null}
 
         {!soldOut ? <DiscountBand percent={offer.discount_percent} compact={compact} /> : null}
+        <OfferHeart offerId={offer.id} title={offer.title} />
       </View>
 
       <View style={styles.body}>
-        <Text variant={compact ? 'headline' : 'title3'} numberOfLines={compact ? 1 : 2}>
+        <Text
+          variant={hero ? 'title2' : compact ? 'headline' : 'title3'}
+          numberOfLines={compact ? 1 : 2}
+        >
           {offer.title}
         </Text>
         <View style={styles.meta}>
           <Text variant="subhead" color="secondary" numberOfLines={1}>
             {when}
           </Text>
-          <Text variant="subhead" color="tertiary" numberOfLines={1}>
-            {offer.location_name}
-          </Text>
+          {/* Ort, dazu Bewertung und Entfernung, sobald bekannt: „★ 4,8 (31) · 1,2 km · Ort“ */}
+          <View style={styles.trust} accessible={false}>
+            {rating && ratingText ? (
+              <>
+                <Star size={13} color={colors.accent.strong} fill={colors.accent.solid} />
+                <Text variant="subhead" style={styles.rating}>
+                  {ratingText}
+                </Text>
+                <Text variant="subhead" color="tertiary">
+                  ({rating.count}) ·
+                </Text>
+              </>
+            ) : null}
+            {distanceText ? (
+              <Text variant="subhead" color="tertiary">
+                {distanceText} ·
+              </Text>
+            ) : null}
+            <Text variant="subhead" color="tertiary" numberOfLines={1} style={styles.place}>
+              {offer.location_name}
+            </Text>
+          </View>
         </View>
         <View style={styles.divider} />
         <View style={styles.price}>
           <PriceRow
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
+            size={hero ? 'large' : 'default'}
           />
         </View>
       </View>
@@ -165,6 +218,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   image: { width: '100%', aspectRatio: 16 / 10 },
+  imageHero: { aspectRatio: 4 / 3 },
+  // „Deal des Tages“: schwarzes Etikett mit goldenem Funkeln, oben links.
+  heroLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[1],
+    paddingHorizontal: space[2],
+    paddingVertical: space[1],
+    borderRadius: radii.full,
+    backgroundColor: colors.background.inverse,
+    boxShadow: badge.shadow,
+  },
+  heroLabelText: { fontFamily: fonts.bold, color: colors.accent.solid },
   // Ausgebuchte Angebote treten optisch zurück, bleiben aber sichtbar.
   imageSoldOut: { opacity: 0.55 },
   skeletonImage: { aspectRatio: 16 / 10 },
@@ -172,6 +238,9 @@ const styles = StyleSheet.create({
   badge: { position: 'absolute', top: badge.inset, left: badge.inset },
   body: { padding: space[3], paddingTop: space[3], gap: space[1] },
   meta: { gap: space[0.5] },
+  trust: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
+  rating: { fontFamily: fonts.semibold, color: colors.text.primary },
+  place: { flexShrink: 1 },
   // Gestrichelte Linie trennt Infos und Preis, wie ein Abriss am Gutschein.
   divider: {
     marginTop: space[2],
