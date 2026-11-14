@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { CloudOff, LocateFixed, MapPin, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -49,6 +48,7 @@ import {
   type Coordinates,
 } from '@/lib/location';
 import { openWebsite } from '@/lib/open-external';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, duration, layout, radii, shadow, space } from '@/theme';
 
@@ -176,7 +176,7 @@ export function MapScreen() {
         const index = firstIndexAtPlace(offers, message.key);
         const offer = offers[index];
         if (!offer) break;
-        void Haptics.selectionAsync();
+        haptics.selection();
         // Gleicher Ort wie die gezeigte Kachel: dort bleiben (z. B. 2. Angebot an der Adresse).
         if (selected && placeKeyOf(selected) === message.key) break;
         setSelectedId(offer.id);
@@ -223,7 +223,7 @@ export function MapScreen() {
 
   const showMyLocation = async () => {
     if (locating) return;
-    void Haptics.selectionAsync();
+    haptics.selection();
     // Ab dem Tippen dreht sich ein Ladekreis im Knopf, bis die Karte meldet, dass sie am
     // Standort steht ('userShown'). So sieht man immer, dass etwas passiert.
     setLocating(true);
@@ -389,7 +389,7 @@ export function MapScreen() {
                 onIndexChange={(index) => {
                   const offer = carouselOffers[index];
                   if (!offer) return;
-                  void Haptics.selectionAsync();
+                  haptics.selection();
                   setSelectedId(offer.id);
                 }}
               />

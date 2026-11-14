@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useState, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,6 +5,7 @@ import { Button, Input, Sheet, Text, type SheetRef } from '@/components/ui';
 import { useCreateReview } from '@/features/reviews/queries';
 import { ratingWord, REVIEW_COMMENT_MAX } from '@/features/reviews/review-logic';
 import { errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, space } from '@/theme';
 
@@ -31,11 +31,11 @@ export function ReviewSheet({ sheetRef, voucherId, locationName }: ReviewSheetPr
       { voucherId, rating, comment },
       {
         onSuccess: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.success();
           sheetRef.current?.dismiss();
         },
         onError: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
         },
       },
     );

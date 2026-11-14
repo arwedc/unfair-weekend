@@ -1,6 +1,5 @@
-import * as Haptics from 'expo-haptics';
 import { MapPin, Sparkles } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View, type AccessibilityActionEvent } from 'react-native';
 import {
   GestureDetector,
@@ -40,6 +39,7 @@ import {
   stageGeometry,
   type StageGeometry,
 } from '@/features/onboarding/stage-math';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, radii, soft, space } from '@/theme';
 
@@ -165,14 +165,8 @@ function Scene({
   const count = wheel.length;
   const wheelActive = interactive && step === 2 && count > 1;
   const [front, setFront] = useState(0);
-  const lastTick = useRef(0);
-
-  const tick = () => {
-    const now = Date.now();
-    if (now - lastTick.current < 45) return;
-    lastTick.current = now;
-    void Haptics.selectionAsync();
-  };
+  // haptics drosselt selbst, schnelles Drehen verschmilzt also nicht zu einem Brummen.
+  const tick = haptics.selection;
 
   // Klickt wie ein Glücksrad, sobald eine Karte vorne vorbeizieht.
   useAnimatedReaction(

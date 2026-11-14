@@ -1,5 +1,4 @@
 import { STORAGE_BUCKETS, storageImageUrl } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -33,6 +32,7 @@ import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { nearestTurn, pinOffers, wheelOffers } from '@/features/onboarding/onboarding-logic';
 import { clamp01, lerp } from '@/features/onboarding/stage-math';
 import { env } from '@/lib/env';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, layout, radii, space, textStyle } from '@/theme';
 
@@ -114,7 +114,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
     const forward = next > step;
     if (next > 0 && !selectedId && pins[0]) setSelectedId(pins[0].id);
     setStep(next);
-    void Haptics.selectionAsync();
+    haptics.selection();
 
     if (reduceMotion) {
       progress.set(next);
@@ -160,7 +160,7 @@ function OnboardingFlow({ onFinish }: { onFinish: () => void }) {
     }
     // Abschied: Der Kreis dreht immer schneller, dann blendet alles in die App über.
     setLeaving(true);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.tap();
     cancelAnimation(rotation);
     rotation.set(
       withTiming(rotation.get() - 360 * EXIT_TURNS, {

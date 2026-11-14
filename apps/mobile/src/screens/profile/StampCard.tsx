@@ -6,7 +6,6 @@
  * Neue Stempel seit dem letzten Besuch landen mit einer kleinen Stempel-Animation.
  * Ist dabei eine Karte voll geworden, feiert ein Sheet den Aufstieg. Tippen öffnet `/stufen`.
  */
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -30,6 +29,7 @@ import {
   type LevelProgress,
 } from '@/features/profile/profile-logic';
 import type { Stamp } from '@/features/profile/use-profile-stats';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, radii, radius, soft, space } from '@/theme';
 
@@ -72,11 +72,8 @@ function StampMark({
     const delay = STAMP_DELAY + freshIndex * STAMP_STAGGER;
     landed.set(0);
     landed.set(withDelay(delay, withSpring(1, { damping: 12, stiffness: 220 })));
-    // Das Rütteln kommt, wenn der Stempel aufsetzt.
-    const timer = setTimeout(
-      () => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
-      delay + 90,
-    );
+    // Ein weiches Aufsetzen, wenn der Stempel landet.
+    const timer = setTimeout(haptics.land, delay + 90);
     return () => clearTimeout(timer);
   }, [freshIndex, landed, reduceMotion]);
 
@@ -234,14 +231,11 @@ function PopSticker({ emoji, delay }: { emoji: string; delay: number }) {
 
   useEffect(() => {
     if (reduceMotion) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
       return;
     }
     scale.set(withDelay(delay, withSpring(1, { damping: 9, stiffness: 160 })));
-    const timer = setTimeout(
-      () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
-      delay,
-    );
+    const timer = setTimeout(() => haptics.success(), delay);
     return () => clearTimeout(timer);
   }, [delay, reduceMotion, scale]);
 
