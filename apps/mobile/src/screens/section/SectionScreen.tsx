@@ -1,15 +1,35 @@
 /**
- * Abschnitts-Seite (Pfeil neben einer Feed-Reihe): oben die Karte mit den Nadeln dieses
- * Abschnitts, darunter alle Angebote als Liste. Ein Knopf unten blendet die Karte aus und ein.
- * Tippen auf eine Nadel hebt die passenden Angebote in der Liste hervor.
+ * Abschnitts-Seite („Auf der Karte“ neben einer Feed-Reihe): die Karte füllt den Bildschirm,
+ * darüber liegt die Liste als ziehbares Blatt mit drei Stufen.
+ *  - klein: Titel und das oberste Angebot, die Karte ist fast ganz frei
+ *  - mittel: Karte und Liste teilen sich den Bildschirm (Start)
+ *  - groß: die ganze Liste; der Knopf „Karte“ holt die Karte zurück
+ * Tippen auf eine Nadel scrollt das passende Angebot nach oben und hebt es hervor.
  */
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, CloudOff, List, Map as MapIcon, Sparkles } from 'lucide-react-native';
+import { ChevronLeft, CloudOff, Map as MapIcon, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, {
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WebView from 'react-native-webview';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { OfferListRow, OfferListRowSkeleton } from '@/components/offers/OfferListRow';
 import { EmptyState, IconButton, PressableScale, Text } from '@/components/ui';
@@ -20,6 +40,14 @@ import {
   selectPlaceScript,
   setPlacesScript,
 } from '@/features/map/map-html';
+import {
+  clampSheetTop,
+  pickSnap,
+  SHEET_COLLAPSED,
+  SHEET_EXPANDED,
+  SHEET_MIDDLE,
+  sheetSnaps,
+} from '@/features/map/sheet-logic';
 import { groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useSectionOffers } from '@/features/offers/use-section-offers';
 import { errorMessage, isOffline } from '@/lib/api-error';
@@ -28,31 +56,52 @@ import { colors, fonts, layout, radii, shadow, space } from '@/theme';
 
 type MapWebView = WebView<object>;
 
-/** Die Liste überlappt die Karte etwas, damit es wie ein Blatt über der Karte wirkt. */
-const SHEET_OVERLAP = space[5];
+/** Ruhige Feder ohne Nachschwingen, wie bei System-Sheets. */
+const SHEET_SPRING = { damping: 32, stiffness: 320, mass: 1 } as const;
+/** Schätzwerte, bis Kopf und erste Zeile gemessen sind. */
+const DEFAULT_HEAD = 96;
+const DEFAULT_ROW = 128;
+/** Weiter als so viele Punkte über den Listenanfang gezogen: Blatt auf „mittel“ verkleinern. */
+const PULL_DOWN_TO_SHRINK = 56;
 
 export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
   const { t } = useT();
   const m = t.screens.section;
   const { title, offers, error, isPending, refetch } = useSectionOffers(sectionKey);
 
   const webview = useRef<MapWebView>(null);
   const list = useRef<FlatList<(typeof offers)[number]>>(null);
-  const [mapVisible, setMapVisible] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   // Erst sichtbar, wenn der Ausschnitt auf den Angeboten liegt (sonst blitzt der Startpunkt Münster auf).
   const [mapFitted, setMapFitted] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [snap, setSnap] = useState(SHEET_MIDDLE);
+  const [headHeight, setHeadHeight] = useState(DEFAULT_HEAD);
+  const [rowHeight, setRowHeight] = useState(DEFAULT_ROW);
 
-  const mapHeight = Math.round(height * 0.42);
+  const snaps = sheetSnaps({
+    screenHeight: height,
+    topInset: insets.top,
+    bottomInset: insets.bottom,
+    headHeight,
+    rowHeight,
+  });
+  const [expandedTop, middleTop, collapsedTop] = snaps;
+
+  // Obere Kante des Blatts in Punkten vom Bildschirmrand.
+  const sheetTop = useSharedValue(middleTop);
+  const dragStart = useSharedValue(0);
+
   const places = groupByPlace(offers);
   const placesScript = setPlacesScript(places);
+  // Ausschnitt für die Startstufe „mittel“: Nadeln zwischen Zurück-Knopf und Blatt.
   const fitScript = fitPlacesScript(places, {
     top: insets.top + space[16],
-    bottom: SHEET_OVERLAP + space[6],
+    bottom: height - middleTop + space[4],
   });
 
   // Nadeln setzen und den Ausschnitt so wählen, dass alle zu sehen sind.
@@ -64,6 +113,67 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     const timer = setTimeout(() => setMapFitted(true), 120);
     return () => clearTimeout(timer);
   }, [mapReady, placesScript, fitScript]);
+
+  // Stufen ändern sich, wenn Kopf oder Zeile gemessen sind: Blatt an seiner Stufe halten.
+  useEffect(() => {
+    sheetTop.set(snaps[snap] ?? middleTop);
+    // Nur bei neuen Maßen, nicht bei jedem Stufenwechsel (der animiert selbst).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedTop, middleTop, collapsedTop]);
+
+  const snapTo = (index: number) => {
+    const target = snaps[index] ?? middleTop;
+    sheetTop.set(reduceMotion ? withTiming(target) : withSpring(target, SHEET_SPRING));
+    if (index !== snap) void Haptics.selectionAsync();
+    setSnap(index);
+  };
+
+  // Nach dem Loslassen (aus dem Gesten-Worklet aufgerufen): nur Stufe merken.
+  const settle = (index: number) => {
+    if (index !== snap) void Haptics.selectionAsync();
+    setSnap(index);
+  };
+
+  // Verlässt das Blatt die große Stufe, beginnt die Liste wieder oben (oberstes Angebot sichtbar).
+  useEffect(() => {
+    if (snap !== SHEET_EXPANDED) list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [snap]);
+
+  const panConfig = (enabled: boolean) => ({
+    enabled,
+    activeOffsetY: [-8, 8] as [number, number],
+    failOffsetX: [-16, 16] as [number, number],
+    onActivate: () => {
+      'worklet';
+      cancelAnimation(sheetTop);
+      dragStart.set(sheetTop.get());
+    },
+    onUpdate: (event: { translationY: number }) => {
+      'worklet';
+      sheetTop.set(clampSheetTop(dragStart.get() + event.translationY, expandedTop, collapsedTop));
+    },
+    onDeactivate: (event: { velocityY: number }) => {
+      'worklet';
+      const index = pickSnap(sheetTop.get(), event.velocityY, snaps);
+      const target = snaps[index] ?? middleTop;
+      sheetTop.set(
+        reduceMotion
+          ? withTiming(target)
+          : withSpring(target, { ...SHEET_SPRING, velocity: event.velocityY }),
+      );
+      scheduleOnRN(settle, index);
+    },
+  });
+  // Griff und Titel ziehen immer; die Liste zieht das Blatt nur, solange sie nicht groß ist
+  // (groß scrollt sie stattdessen).
+  const handlePan = usePanGesture(panConfig(true));
+  const listPan = usePanGesture(panConfig(snap !== SHEET_EXPANDED));
+
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetTop.get() }] }));
+  // Groß: oben weiße Fläche statt Kartenstreifen, wie eine eigene Listenseite.
+  const coverStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetTop.get(), [expandedTop, middleTop], [1, 0], 'clamp'),
+  }));
 
   const handleMessage = (raw: string) => {
     const message = parseMapMessage(raw);
@@ -77,34 +187,23 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
       void Haptics.selectionAsync();
       setSelectedKey(message.key);
       webview.current?.injectJavaScript(
-        selectPlaceScript(message.key, { top: insets.top + space[16], bottom: SHEET_OVERLAP }),
+        selectPlaceScript(message.key, {
+          top: insets.top + space[16],
+          bottom: height - (snaps[snap] ?? middleTop),
+        }),
       );
+      // Das passende Angebot ganz nach oben holen, auch in der kleinen Stufe.
       const index = offers.findIndex((offer) => placeKeyOf(offer) === message.key);
-      if (index >= 0) list.current?.scrollToIndex({ index, animated: true, viewOffset: space[4] });
+      if (index >= 0) list.current?.scrollToIndex({ index, animated: true, viewOffset: 0 });
     }
-  };
-
-  const toggleMap = () => {
-    void Haptics.selectionAsync();
-    // Die Karte bleibt geladen und wird nur zusammengeklappt. So muss sie beim Einblenden nicht
-    // neu starten und zeigt nie kurz den Startpunkt (Münster) statt der gewählten Stadt.
-    setMapVisible(!mapVisible);
   };
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-  const header = (
-    <View style={styles.header}>
-      <Text variant="title1" accessibilityRole="header" numberOfLines={2}>
-        {title}
-      </Text>
-      {!isPending && offers.length > 0 ? (
-        <Text variant="subhead" color="secondary">
-          {m.count(offers.length)}
-        </Text>
-      ) : null}
-    </View>
-  );
+  const onHeadLayout = (event: LayoutChangeEvent) =>
+    setHeadHeight(Math.round(event.nativeEvent.layout.height));
+  const onFirstRowLayout = (event: LayoutChangeEvent) =>
+    setRowHeight(Math.round(event.nativeEvent.layout.height));
 
   const empty = isPending ? (
     <View style={styles.skeletons}>
@@ -126,17 +225,11 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   );
 
   const hasOffers = offers.length > 0;
-  const showMap = mapVisible && hasOffers;
 
   return (
     <View style={styles.screen}>
       {hasOffers ? (
-        <View
-          style={[styles.mapWrap, { height: mapHeight }, !showMap && styles.mapHidden]}
-          pointerEvents={showMap ? 'auto' : 'none'}
-          importantForAccessibility={showMap ? 'auto' : 'no-hide-descendants'}
-          accessibilityElementsHidden={!showMap}
-        >
+        <View style={styles.mapWrap}>
           <WebView<object>
             ref={webview}
             source={{ html: APP_MAP_HTML }}
@@ -154,31 +247,78 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         </View>
       ) : null}
 
-      <FlatList
-        ref={list}
-        data={isPending ? [] : offers}
-        keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => (
-          <OfferListRow
-            offer={item}
-            highlighted={selectedKey !== null && placeKeyOf(item) === selectedKey}
-          />
-        )}
-        ListHeaderComponent={header}
-        ListEmptyComponent={empty}
-        ItemSeparatorComponent={Separator}
-        onScrollToIndexFailed={({ averageItemLength, index }) =>
-          list.current?.scrollToOffset({ offset: averageItemLength * index, animated: true })
-        }
-        style={[
-          styles.sheet,
-          showMap
-            ? { marginTop: mapHeight - SHEET_OVERLAP }
-            : { paddingTop: insets.top + space[12] },
-        ]}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space[20] }]}
-        showsVerticalScrollIndicator={false}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.cover, { height: expandedTop + radii['2xl'] }, coverStyle]}
       />
+
+      <Animated.View style={[styles.sheet, { height: height - expandedTop }, sheetStyle]}>
+        <GestureDetector gesture={handlePan}>
+          <View onLayout={onHeadLayout}>
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={snap === SHEET_EXPANDED ? m.showMapAria : m.expandAria}
+              onPress={() =>
+                snapTo(
+                  snap === SHEET_COLLAPSED
+                    ? SHEET_MIDDLE
+                    : snap === SHEET_MIDDLE
+                      ? SHEET_EXPANDED
+                      : SHEET_MIDDLE,
+                )
+              }
+              pressedScale={1}
+              style={styles.grabberHit}
+            >
+              <View style={styles.grabber} />
+            </PressableScale>
+            <View style={styles.header}>
+              <Text variant="title1" accessibilityRole="header" numberOfLines={2}>
+                {title}
+              </Text>
+              {!isPending && hasOffers ? (
+                <Text variant="subhead" color="secondary">
+                  {m.count(offers.length)}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </GestureDetector>
+
+        <GestureDetector gesture={listPan}>
+          <FlatList
+            ref={list}
+            data={isPending ? [] : offers}
+            keyExtractor={(offer) => offer.id}
+            renderItem={({ item, index }) => (
+              <View onLayout={index === 0 ? onFirstRowLayout : undefined}>
+                <OfferListRow
+                  offer={item}
+                  highlighted={selectedKey !== null && placeKeyOf(item) === selectedKey}
+                />
+              </View>
+            )}
+            ListEmptyComponent={empty}
+            ItemSeparatorComponent={Separator}
+            onScrollToIndexFailed={({ averageItemLength, index }) =>
+              list.current?.scrollToOffset({ offset: averageItemLength * index, animated: true })
+            }
+            scrollEnabled={snap === SHEET_EXPANDED}
+            onScrollEndDrag={(event) => {
+              // Groß und über den Listenanfang hinaus nach unten gezogen: wieder auf „mittel“.
+              if (
+                snap === SHEET_EXPANDED &&
+                event.nativeEvent.contentOffset.y < -PULL_DOWN_TO_SHRINK
+              ) {
+                snapTo(SHEET_MIDDLE);
+              }
+            }}
+            style={styles.list}
+            contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space[20] }]}
+            showsVerticalScrollIndicator={false}
+          />
+        </GestureDetector>
+      </Animated.View>
 
       <IconButton
         icon={ChevronLeft}
@@ -187,20 +327,16 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         style={[styles.back, { top: insets.top + space[2] }]}
       />
 
-      {offers.length > 0 ? (
+      {hasOffers && snap === SHEET_EXPANDED ? (
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={mapVisible ? m.showListAria : m.showMapAria}
-          onPress={toggleMap}
+          accessibilityLabel={m.showMapAria}
+          onPress={() => snapTo(SHEET_MIDDLE)}
           style={[styles.toggle, { bottom: insets.bottom + space[4] }]}
         >
-          {mapVisible ? (
-            <List size={18} color={colors.text.inverse} strokeWidth={2.5} />
-          ) : (
-            <MapIcon size={18} color={colors.text.inverse} strokeWidth={2.5} />
-          )}
+          <MapIcon size={18} color={colors.text.inverse} strokeWidth={2.5} />
           <Text variant="subhead" style={styles.toggleText}>
-            {mapVisible ? m.showList : m.showMap}
+            {m.showMap}
           </Text>
         </PressableScale>
       ) : null}
@@ -214,26 +350,41 @@ function Separator() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
-  mapWrap: {
+  mapWrap: { ...StyleSheet.absoluteFill, backgroundColor: colors.background.muted },
+  map: { flex: 1, backgroundColor: colors.background.muted },
+  mapLoading: { opacity: 0 },
+  cover: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.background.muted,
+    backgroundColor: colors.background.default,
   },
-  map: { flex: 1, backgroundColor: colors.background.muted },
-  // Unsichtbar, aber geladen: Nadeln und Ausschnitt bleiben erhalten.
-  mapHidden: { opacity: 0 },
-  mapLoading: { opacity: 0 },
   sheet: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: colors.background.default,
     borderTopLeftRadius: radii['2xl'],
     borderTopRightRadius: radii['2xl'],
     borderCurve: 'continuous',
+    boxShadow: shadow.sheet,
   },
-  content: { paddingHorizontal: layout.screenPaddingX - space[2], paddingTop: space[5] },
-  header: { gap: space[1], paddingHorizontal: space[2], paddingBottom: space[3] },
+  grabberHit: { alignItems: 'center', paddingTop: space[2], paddingBottom: space[3] },
+  grabber: {
+    width: 40,
+    height: 5,
+    borderRadius: radii.full,
+    backgroundColor: colors.border.strong,
+  },
+  header: {
+    gap: space[1],
+    paddingHorizontal: layout.screenPaddingX,
+    paddingBottom: space[3],
+  },
+  list: { flex: 1 },
+  content: { paddingHorizontal: layout.screenPaddingX - space[2] },
   skeletons: { gap: space[3] },
   separator: {
     height: StyleSheet.hairlineWidth,
