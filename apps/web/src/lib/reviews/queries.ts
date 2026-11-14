@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import type { ReviewSort } from './filters';
 
 export const REVIEWS_PAGE_SIZE = 20;
 
@@ -46,16 +47,21 @@ export async function getMyReviewSummary(): Promise<ReviewSummary> {
 }
 
 /**
- * Eine Seite Bewertungen des eigenen Standorts, neueste zuerst, auch ausgeblendete
- * (list_my_reviews). Lädt einen Eintrag mehr, um zu wissen, ob es weitergeht.
+ * Eine Seite Bewertungen des eigenen Standorts, auch ausgeblendete (list_my_reviews).
+ * Lädt einen Eintrag mehr, um zu wissen, ob es weitergeht.
  */
 export async function listMyReviews(options: {
   rating?: number;
+  sort: ReviewSort;
+  /** ISO-Zeitpunkt: nur Bewertungen ab hier. */
+  since?: string;
   page: number;
 }): Promise<{ reviews: LocationReview[]; hasMore: boolean }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('list_my_reviews', {
     ...(options.rating ? { p_rating: options.rating } : {}),
+    ...(options.since ? { p_since: options.since } : {}),
+    p_sort: options.sort,
     p_limit: REVIEWS_PAGE_SIZE + 1,
     p_offset: (options.page - 1) * REVIEWS_PAGE_SIZE,
   });
