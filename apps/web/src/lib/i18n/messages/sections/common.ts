@@ -35,6 +35,7 @@ export const commonDe = {
     payouts: 'Auszahlungen',
     profile: 'Profil',
     payments: 'Zahlungen',
+    locations: 'Standorte',
     logout: 'Abmelden',
     adminLoading: 'Admin-Bereich wird geladen …',
   },
@@ -53,6 +54,8 @@ export const commonDe = {
     reasonNoLocation:
       'Dieses Konto gehört zu keinem Standort. Die Website ist nur für Partner. Bitte mit dem Standort-Zugang anmelden.',
     reasonNoAdmin: 'Dieses Konto hat keinen Zugriff auf den Admin-Bereich.',
+    partnerPrompt: 'Du möchtest mit deinem Unternehmen dabei sein?',
+    partnerLink: 'Partnerkonto erstellen',
     devHintBefore: 'Entwicklung: Seed-Zugänge wie',
     devHintMiddle: 'mit dem Passwort aus',
     devHintAfter: '(siehe docs/BACKEND.md).',
@@ -94,6 +97,7 @@ export const commonEn: Widen<typeof commonDe> = {
     payouts: 'Payouts',
     profile: 'Profile',
     payments: 'Payments',
+    locations: 'Venues',
     logout: 'Log out',
     adminLoading: 'Loading admin area …',
   },
@@ -112,6 +116,8 @@ export const commonEn: Widen<typeof commonDe> = {
     reasonNoLocation:
       'This account does not belong to a venue. The website is for partners only. Please log in with your venue account.',
     reasonNoAdmin: 'This account has no access to the admin area.',
+    partnerPrompt: 'Want to join with your business?',
+    partnerLink: 'Create a partner account',
     devHintBefore: 'Development: seed accounts like',
     devHintMiddle: 'with the password from',
     devHintAfter: '(see docs/BACKEND.md).',

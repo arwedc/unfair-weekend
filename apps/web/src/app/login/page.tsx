@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { LocaleSwitcher } from '@/components/i18n/locale-switcher';
 import { Logo } from '@/components/logo';
@@ -57,6 +58,12 @@ export default async function LoginPage({
           <LoginFormWithNext searchParams={searchParams} />
         </Suspense>
       </Card>
+      <p className="mt-5 text-center text-callout text-text-secondary">
+        {t.common.login.partnerPrompt}{' '}
+        <Link href="/partner-werden" className="font-semibold text-accent-solid underline">
+          {t.common.login.partnerLink}
+        </Link>
+      </p>
       {process.env.NODE_ENV !== 'production' && (
         <p className="mt-6 text-center text-footnote text-text-tertiary">
           {t.common.login.devHintBefore} <code>seed-kochwerk-altstadt@example.com</code>{' '}

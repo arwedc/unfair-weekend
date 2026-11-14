@@ -29,6 +29,9 @@ interface NominatimHit {
   display_name: string;
 }
 
+/** Länder, in denen Adressen gesucht werden (Münster und Vilnius). */
+const COUNTRIES = ['de', 'lt'];
+
 const USER_AGENT = 'unfair-weekend/0.1 (+https://github.com/arwedc/unfair-weekend)';
 
 function fail(status: number, code: string, message: string): Response {
@@ -63,7 +66,7 @@ async function geocodeNominatim(
   const url = new URL('https://nominatim.openstreetmap.org/search');
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('limit', '1');
-  url.searchParams.set('countrycodes', 'de');
+  url.searchParams.set('countrycodes', COUNTRIES.join(','));
   url.searchParams.set('street', street);
   url.searchParams.set('postalcode', postalCode);
   url.searchParams.set('city', city);
@@ -82,7 +85,7 @@ async function geocodeNominatim(
     : null;
 }
 
-/** Photon (komoot). Nur Treffer in Deutschland mit passender PLZ. */
+/** Photon (komoot). Nur Treffer in COUNTRIES mit passender PLZ. */
 async function geocodePhoton(
   street: string,
   postalCode: string,
@@ -96,7 +99,9 @@ async function geocodePhoton(
   if (!response.ok) throw new Error(`Photon HTTP ${response.status}`);
   const { features } = (await response.json()) as { features: PhotonFeature[] };
   const hit = features.find(
-    (f) => f.properties.countrycode === 'DE' && f.properties.postcode === postalCode,
+    (f) =>
+      COUNTRIES.includes((f.properties.countrycode ?? '').toLowerCase()) &&
+      (f.properties.postcode ?? '').replace(/\D/g, '') === postalCode,
   );
   if (!hit) return null;
   const p = hit.properties;
@@ -134,13 +139,13 @@ export default {
 
     const body = (await req.json().catch(() => ({}))) as GeocodeBody;
     const street = asText(body.street, 120);
-    const postalCode = asText(body.postal_code, 10);
+    const postalCode = asText(body.postal_code, 10)?.replace(/^LT-/i, '') ?? null;
     const city = asText(body.city, 80);
     if (!street || !postalCode || !/^[0-9]{5}$/.test(postalCode) || !city) {
       return fail(400, 'UNGUELTIGE_EINGABE', 'Bitte Straße, 5-stellige PLZ und Ort angeben.');
     }
 
-    const query = `${street}, ${postalCode} ${city}, Deutschland`;
+    const query = `${street}, ${postalCode} ${city}`;
     const cacheKey = query.toLowerCase();
 
     const { data: cached } = await ctx.supabaseAdmin
@@ -152,12 +157,15 @@ export default {
       return Response.json({ ...cached, cached: true });
     }
 
-    // Erst Nominatim, bei Fehler (z. B. 403 für Cloud-IPs) Photon. Beide nutzen OSM-Daten.
-    let found: GeocodeResult | null;
+    // Erst Nominatim, bei Fehler (z. B. 403 für Cloud-IPs) oder ohne Treffer Photon.
+    // Beide nutzen OSM-Daten.
+    let found: GeocodeResult | null = null;
     try {
       found = await geocodeNominatim(street, postalCode, city);
     } catch (nominatimError) {
       console.warn('geocode: Nominatim nicht nutzbar, versuche Photon', String(nominatimError));
+    }
+    if (!found) {
       try {
         found = await geocodePhoton(street, postalCode, city);
       } catch (photonError) {
