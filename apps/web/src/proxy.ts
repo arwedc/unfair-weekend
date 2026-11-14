@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@repo/shared';
+import { accountHome, type AccountRouting } from '@/lib/account-home';
 import { loginUrl, NEXT_PARAM, safeNext } from '@/lib/safe-redirect';
 import { assertSupabaseEnv, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase/env';
 
@@ -42,7 +43,9 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/einloesen') ||
     path.startsWith('/bewertungen') ||
     path.startsWith('/auszahlungen') ||
-    path.startsWith('/admin');
+    path.startsWith('/admin') ||
+    path.startsWith('/registrieren') ||
+    path.startsWith('/antrag');
   if (!signedIn && protectedPath) {
     // Nach dem Login zurück auf dieselbe Seite (wichtig für gescannte QR-Links).
     const target = loginUrl(path + request.nextUrl.search);
@@ -52,15 +55,11 @@ export async function proxy(request: NextRequest) {
     // Rollen stehen nicht im JWT. Der DB-Vertrag liefert die aktuelle Rolle fürs Login-Routing;
     // die Zielseiten prüfen sie selbst erneut.
     const { data: accountData, error } = await supabase.rpc('get_my_account');
-    const account = accountData as unknown as { role?: string } | null;
-    if (!error && account) {
+    const home = error ? null : accountHome(accountData as unknown as AccountRouting | null);
+    // Nutzerkonten ohne Ziel bleiben auf /login; die Login-Action meldet sie ab.
+    if (home) {
       const next = safeNext(request.nextUrl.searchParams.get(NEXT_PARAM));
-      const destination =
-        account.role === 'admin'
-          ? '/admin/zahlungen'
-          : account.role === 'standort' && next
-            ? next
-            : '/angebote';
+      const destination = home === '/angebote' && next ? next : home;
       return redirectKeepingCookies(new URL(destination, request.url), response);
     }
   }
@@ -84,6 +83,8 @@ export const config = {
     '/bewertungen/:path*',
     '/auszahlungen/:path*',
     '/admin/:path*',
+    '/registrieren',
+    '/antrag',
     '/login',
   ],
 };

@@ -26,6 +26,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/zahlungen" className={buttonClass('ghost', 'px-3')}>
                 {t.common.nav.payments}
               </Link>
+              <Link href="/admin/standorte" className={buttonClass('ghost', 'px-3')}>
+                {t.common.nav.locations}
+              </Link>
             </nav>
             <LocaleSwitcher />
             <form action={logout}>
