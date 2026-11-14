@@ -24,7 +24,7 @@ Bibliotheken nie mit `pnpm add` in der neuesten Version holen, sondern mit `expo
 
 ```
 src/
-  app/              nur Routen (Expo Router). (tabs)/ = die fünf Tabs (Entdecken, Karte, Meine Codes, Favoriten, Profil)
+  app/              nur Routen (Expo Router). (tabs)/ = die vier Tabs (Entdecken, Karte, Meine Codes, Profil)
   screens/          Inhalte der Screens, nach Bereich (feed/, venue/, map/, codes/ …).
                     venue/ = Standort-Seite; Angebote (/angebot/[id]) öffnen sie mit dem Angebot oben
   features/         Daten und Logik ohne Oberfläche, nach Bereich:
@@ -62,7 +62,7 @@ src/
 - **React Compiler ist an.** Shared Values von Reanimated mit `.get()`/`.set()` statt `.value`. Kein `setState` direkt im Effekt-Körper (Daten in einer Funktion laden und im `.then` setzen, mit Abbruch-Flag).
 - **Push:** Die Erlaubnis wird nie beim Start abgefragt, sondern nach dem ersten geholten Code (`askForPushAfterClaim`) oder über den Schalter unter Profil → Einstellungen. Das Gerät meldet sich nach dem Login an (`register_push_token`) und vor dem Abmelden ab. Ein Tap öffnet `data.url` (`/angebot/<id>` oder `/code/<id>`), andere Pfade werden ignoriert. Der Android-Kanal heißt `default`, passend zu `send-push`. In Expo Go, im Simulator und ohne EAS-Projekt-ID passiert nichts; die Einstellungen erklären dann warum.
 - **Zahlungen:** Ob gebucht oder bezahlt wird, entscheidet nur `useBookingMode()` (Flag aus = Code holen wie bisher). Bei Flag an führt „Platz buchen“ zu `/bezahlen/[id]`: reservieren, 10-Minuten-Timer, PaymentSheet, dann wartet die App per Realtime auf den Webhook und springt zum Code. In Expo Go nur Karte; Apple Pay und Google Pay brauchen einen Development Build.
-- **Profil:** Unten stehen die Ordner Mitgliedschaft, Hilfe & Support, Geschenkkarte senden, Einstellungen und Rechtliches (`screens/profile/ProfileMenu.tsx`), jeder als eigene Stack-Seite mit großem Titel (`Page`). Einstellungen, Abmelden und Konto löschen gibt es nur dort. Das Profilbild liegt im privaten Bucket `avatars` und wird über eine signierte URL angezeigt (`features/profile/avatar-api.ts`). „Support kontaktieren“ sendet noch nichts, die E-Mail-Adresse in `lib/support.ts` ist ein Platzhalter.
+- **Profil:** Unten stehen die Ordner Favoriten, Mitgliedschaft, Geschenkkarte senden, Hilfe & Support, Einstellungen und Rechtliches (`screens/profile/ProfileMenu.tsx`), gruppiert unter „Dein Bereich“ und „Service & Rechtliches“. Favoriten, Mitgliedschaft, Hilfe, Einstellungen und Rechtliches sind Stack-Seiten; Favoriten und Mitgliedschaft stehen direkt im Profilmenü. Einstellungen, Abmelden und Konto löschen gibt es nur dort. Das Profilbild liegt im privaten Bucket `avatars` und wird über eine signierte URL angezeigt (`features/profile/avatar-api.ts`). „Support kontaktieren“ sendet noch nichts, die E-Mail-Adresse in `lib/support.ts` ist ein Platzhalter.
 - **Bottom Sheets** über `Sheet` (basiert auf `@expo/ui/community/bottom-sheet`), nicht `@gorhom/bottom-sheet`.
 - **Tabs** sind native Tabs (`expo-router/native-tabs`). Keine selbstgebaute Tab-Leiste.
 - **Bilder** mit `expo-image`. **Icons** in der App mit `lucide-react-native`, in der Tab-Leiste SF Symbols bzw. Material Symbols.

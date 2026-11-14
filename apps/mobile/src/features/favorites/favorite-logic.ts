@@ -1,4 +1,4 @@
-/** Reine Logik für den Tab „Favoriten“: was es an den Lieblingsorten gerade gibt und in welcher Reihenfolge. */
+/** Reine Logik für Favoriten: was es an Lieblingsorten gerade gibt und in welcher Reihenfolge. */
 
 /** Was ein Angebot für die Übersicht mitbringen muss. */
 export interface FavoriteOfferInput {

@@ -6,11 +6,16 @@ import type { Widen } from './widen';
  */
 export const profileDe = {
   menu: {
+    favorites: 'Favoriten',
     membership: 'Mitgliedschaft',
     help: 'Hilfe & Support',
     giftCard: 'Geschenkkarte senden',
     settings: 'Einstellungen',
     legal: 'Rechtliches',
+    sections: {
+      personal: 'Dein Bereich',
+      service: 'Service & Rechtliches',
+    },
   },
   invite: {
     title: 'Zusammen ist es unfairer',
@@ -144,11 +149,16 @@ export const profileDe = {
 
 export const profileEn: Widen<typeof profileDe> = {
   menu: {
+    favorites: 'Favourites',
     membership: 'Membership',
     help: 'Help & support',
     giftCard: 'Send a gift card',
     settings: 'Settings',
     legal: 'Legal',
+    sections: {
+      personal: 'Your space',
+      service: 'Support & legal',
+    },
   },
   invite: {
     title: 'Better together',
