@@ -166,8 +166,8 @@ export function FeedScreen() {
       {/* Weicher weißer Verlauf hinter den Kacheln: Was darunter scrollt, verschwindet sauber. */}
       <LinearGradient
         pointerEvents="none"
-        colors={[colors.background.default, colors.background.default, FADE_END]}
-        locations={[0, 0.7, 1]}
+        colors={FADE.colors}
+        locations={FADE.locations}
         style={styles.fade}
       />
       <View style={styles.titleRow} pointerEvents="box-none">
@@ -344,8 +344,30 @@ function Separator() {
   return <View style={styles.separator} />;
 }
 
-/** Ende des Verlaufs: dasselbe Weiß wie der Hintergrund, nur durchsichtig. */
-const FADE_END = 'rgba(255, 255, 255, 0)';
+/**
+ * Weicher Verlauf hinter dem Kopf: oben voll Weiß, dann sanft ausgeblendet. Die Deckkraft folgt
+ * einer weichen Kurve (statt einer Geraden von Weiß auf durchsichtig), so entsteht auch auf
+ * dunklen Fotos keine sichtbare Kante.
+ */
+const FADE_STOPS: readonly (readonly [number, number])[] = [
+  [0, 1],
+  [0.4, 1],
+  [0.5, 0.94],
+  [0.6, 0.8],
+  [0.7, 0.6],
+  [0.8, 0.38],
+  [0.88, 0.2],
+  [0.95, 0.07],
+  [1, 0],
+];
+const FADE = {
+  colors: FADE_STOPS.map(([, alpha]) => `rgba(255, 255, 255, ${alpha})`) as unknown as readonly [
+    string,
+    string,
+    ...string[],
+  ],
+  locations: FADE_STOPS.map(([at]) => at) as unknown as readonly [number, number, ...number[]],
+};
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
@@ -359,7 +381,7 @@ const styles = StyleSheet.create({
     paddingBottom: space[2],
   },
   // Reicht etwas unter die Kacheln, damit der Übergang weich ausläuft.
-  fade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -space[6] },
+  fade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -space[16] },
   // Leicht durchsichtige Kachel, wie die Tab-Leiste unten.
   // Glas wie die Tab-Leiste kommt aus GlassSurface; hier nur Größe und Platz.
   cityTile: { alignSelf: 'flex-start' },
