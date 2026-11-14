@@ -7,7 +7,7 @@ import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
 import { offerBadges, offerWhenText, type OfferBadge } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { badge, colors, fonts, fun, radius, shadow, space } from '@/theme';
+import { badge, colors, fun, radius, shadow, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
 import { OfferImage } from './OfferImage';
@@ -51,7 +51,6 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
   const compact = variant === 'compact';
   const category = CATEGORY_EMOJIS[offer.category];
   const hasPhoto = Boolean(offer.cover_image_path);
-  const savedCents = offer.original_price_cents - offer.deal_price_cents;
 
   const label = [
     offer.title,
@@ -130,11 +129,6 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
           />
-          {savedCents > 0 ? (
-            <Text variant="footnote" numberOfLines={1} style={styles.saving}>
-              {t.parts.card.youSave(formatPrice(savedCents, { omitZeroCents: true, locale }))}
-            </Text>
-          ) : null}
         </View>
       </View>
     </PressableScale>
@@ -185,12 +179,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: colors.border.default,
   },
-  price: {
-    marginTop: space[1],
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-    columnGap: space[3],
-  },
-  saving: { fontFamily: fonts.semibold, color: colors.accent.strong },
+  // Rabatt steht auf dem Foto, hier nur Deal-Preis und durchgestrichener alter Preis.
+  price: { marginTop: space[1] },
 });
