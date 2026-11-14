@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronDown, CloudOff, MapPin, Search, SearchX, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
@@ -162,6 +163,13 @@ export function FeedScreen() {
       onLayout={(event) => setTopHeight(event.nativeEvent.layout.height)}
       pointerEvents="box-none"
     >
+      {/* Weicher weißer Verlauf hinter den Kacheln: Was darunter scrollt, verschwindet sauber. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[colors.background.default, colors.background.default, FADE_END]}
+        locations={[0, 0.7, 1]}
+        style={styles.fade}
+      />
       <View style={styles.titleRow} pointerEvents="box-none">
         <CityMenu style={styles.cityMenu}>
           <GlassSurface style={styles.cityTile}>
@@ -336,6 +344,9 @@ function Separator() {
   return <View style={styles.separator} />;
 }
 
+/** Ende des Verlaufs: dasselbe Weiß wie der Hintergrund, nur durchsichtig. */
+const FADE_END = 'rgba(255, 255, 255, 0)';
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.default },
   top: {
@@ -347,6 +358,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingBottom: space[2],
   },
+  // Reicht etwas unter die Kacheln, damit der Übergang weich ausläuft.
+  fade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -space[6] },
   // Leicht durchsichtige Kachel, wie die Tab-Leiste unten.
   // Glas wie die Tab-Leiste kommt aus GlassSurface; hier nur Größe und Platz.
   cityTile: { alignSelf: 'flex-start' },
