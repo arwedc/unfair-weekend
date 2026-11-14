@@ -1,9 +1,9 @@
 /**
  * Abschnitts-Seite („Auf der Karte“ neben einer Feed-Reihe): die Karte füllt den Bildschirm,
- * darüber liegt die Liste als ziehbares Blatt mit drei Stufen.
- *  - klein: Titel und das oberste Angebot, die Karte ist fast ganz frei
- *  - mittel: Karte und Liste teilen sich den Bildschirm (Start)
- *  - groß: die ganze Liste; der Knopf „Karte“ holt die Karte zurück
+ * darüber liegt die Liste als Blatt, das man frei hoch- und runterzieht. Es bleibt dort liegen,
+ * wo man es loslässt (mit etwas Schwung). Die Karte ist sichtbar, bis das Blatt sie ganz verdeckt.
+ *  - ganz unten: Titel und das oberste Angebot
+ *  - ganz oben: nur die Liste; der Knopf „Karte“ holt die Karte zurück
  * Tippen auf eine Nadel scrollt das passende Angebot nach oben und hebt es hervor.
  */
 import * as Haptics from 'expo-haptics';
@@ -24,6 +24,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDecay,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -40,14 +41,7 @@ import {
   selectPlaceScript,
   setPlacesScript,
 } from '@/features/map/map-html';
-import {
-  clampSheetTop,
-  pickSnap,
-  SHEET_COLLAPSED,
-  SHEET_EXPANDED,
-  SHEET_MIDDLE,
-  sheetSnaps,
-} from '@/features/map/sheet-logic';
+import { clampSheetTop, isSheetAtTop, sheetBounds } from '@/features/map/sheet-logic';
 import { groupByPlace, placeKeyOf } from '@/features/offers/feed-logic';
 import { useSectionOffers } from '@/features/offers/use-section-offers';
 import { errorMessage, isOffline } from '@/lib/api-error';
@@ -61,8 +55,14 @@ const SHEET_SPRING = { damping: 32, stiffness: 320, mass: 1 } as const;
 /** Schätzwerte, bis Kopf und erste Zeile gemessen sind. */
 const DEFAULT_HEAD = 96;
 const DEFAULT_ROW = 128;
-/** Weiter als so viele Punkte über den Listenanfang gezogen: Blatt auf „mittel“ verkleinern. */
+/** Weiter als so viele Punkte über den Listenanfang gezogen: Blatt wieder auf Startgröße. */
 const PULL_DOWN_TO_SHRINK = 56;
+/** Endet ein Zug so nah am oberen Rand, rastet das Blatt ganz oben ein (Liste voll). */
+const TOP_MAGNET = 72;
+/** Zeit, mit der der Schwung in die Endposition hochgerechnet wird. */
+const FLING_PROJECTION_S = 0.18;
+/** Platz über dem Titel, wenn das Blatt ganz oben liegt (für den Zurück-Knopf). */
+const BACK_ZONE = 52;
 
 export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   const router = useRouter();
@@ -79,29 +79,36 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
   // Erst sichtbar, wenn der Ausschnitt auf den Angeboten liegt (sonst blitzt der Startpunkt Münster auf).
   const [mapFitted, setMapFitted] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [snap, setSnap] = useState(SHEET_MIDDLE);
+  // Liegt das Blatt ganz oben? Dann scrollt die Liste und der Knopf „Karte“ erscheint.
+  const [atTop, setAtTop] = useState(false);
   const [headHeight, setHeadHeight] = useState(DEFAULT_HEAD);
   const [rowHeight, setRowHeight] = useState(DEFAULT_ROW);
+  // Wurde schon gezogen? Vorher folgt das Blatt der gemessenen Startlage.
+  const [touched, setTouched] = useState(false);
 
-  const snaps = sheetSnaps({
+  const {
+    min: minTop,
+    start: startTop,
+    max: maxTop,
+  } = sheetBounds({
     screenHeight: height,
-    topInset: insets.top,
     bottomInset: insets.bottom,
     headHeight,
     rowHeight,
   });
-  const [expandedTop, middleTop, collapsedTop] = snaps;
+  // Oberhalb davon schiebt das Blatt seinen Inhalt unter Statusleiste und Zurück-Knopf weg.
+  const topZone = insets.top + BACK_ZONE;
 
   // Obere Kante des Blatts in Punkten vom Bildschirmrand.
-  const sheetTop = useSharedValue(middleTop);
+  const sheetTop = useSharedValue(startTop);
   const dragStart = useSharedValue(0);
 
   const places = groupByPlace(offers);
   const placesScript = setPlacesScript(places);
-  // Ausschnitt für die Startstufe „mittel“: Nadeln zwischen Zurück-Knopf und Blatt.
+  // Ausschnitt für die Startlage: Nadeln zwischen Zurück-Knopf und Blatt.
   const fitScript = fitPlacesScript(places, {
     top: insets.top + space[16],
-    bottom: height - middleTop + space[4],
+    bottom: height - startTop + space[4],
   });
 
   // Nadeln setzen und den Ausschnitt so wählen, dass alle zu sehen sind.
@@ -114,30 +121,32 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     return () => clearTimeout(timer);
   }, [mapReady, placesScript, fitScript]);
 
-  // Stufen ändern sich, wenn Kopf oder Zeile gemessen sind: Blatt an seiner Stufe halten.
+  // Grenzen ändern sich, wenn Kopf oder Zeile gemessen sind: Blatt in den Grenzen halten.
   useEffect(() => {
-    sheetTop.set(snaps[snap] ?? middleTop);
-    // Nur bei neuen Maßen, nicht bei jedem Stufenwechsel (der animiert selbst).
+    if (sheetTop.get() > maxTop) sheetTop.set(maxTop);
+    else if (!touched) sheetTop.set(startTop);
+    // Nur bei neuen Maßen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedTop, middleTop, collapsedTop]);
+  }, [startTop, maxTop, touched]);
 
-  const snapTo = (index: number) => {
-    const target = snaps[index] ?? middleTop;
+  // Aus dem Gesten-Worklet: merken, ob das Blatt jetzt ganz oben liegt.
+  const markAtTop = (top: boolean) => {
+    setTouched(true);
+    if (top && !atTop) void Haptics.selectionAsync();
+    setAtTop(top);
+  };
+
+  // Blatt animiert an eine Stelle bewegen (Knopf „Karte“, Tipp auf den Griff).
+  const moveTo = (target: number) => {
+    setTouched(true);
     sheetTop.set(reduceMotion ? withTiming(target) : withSpring(target, SHEET_SPRING));
-    if (index !== snap) void Haptics.selectionAsync();
-    setSnap(index);
+    setAtTop(isSheetAtTop(target, minTop));
   };
 
-  // Nach dem Loslassen (aus dem Gesten-Worklet aufgerufen): nur Stufe merken.
-  const settle = (index: number) => {
-    if (index !== snap) void Haptics.selectionAsync();
-    setSnap(index);
-  };
-
-  // Verlässt das Blatt die große Stufe, beginnt die Liste wieder oben (oberstes Angebot sichtbar).
+  // Verlässt das Blatt die oberste Lage, beginnt die Liste wieder oben (oberstes Angebot sichtbar).
   useEffect(() => {
-    if (snap !== SHEET_EXPANDED) list.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [snap]);
+    if (!atTop) list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [atTop]);
 
   const panConfig = (enabled: boolean) => ({
     enabled,
@@ -150,30 +159,54 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
     },
     onUpdate: (event: { translationY: number }) => {
       'worklet';
-      sheetTop.set(clampSheetTop(dragStart.get() + event.translationY, expandedTop, collapsedTop));
+      sheetTop.set(clampSheetTop(dragStart.get() + event.translationY, minTop, maxTop));
     },
     onDeactivate: (event: { velocityY: number }) => {
       'worklet';
-      const index = pickSnap(sheetTop.get(), event.velocityY, snaps);
-      const target = snaps[index] ?? middleTop;
-      sheetTop.set(
-        reduceMotion
-          ? withTiming(target)
-          : withSpring(target, { ...SHEET_SPRING, velocity: event.velocityY }),
-      );
-      scheduleOnRN(settle, index);
+      const top = sheetTop.get();
+      const projected = top + event.velocityY * FLING_PROJECTION_S;
+      // Nah am oberen Rand oder kräftig nach oben gewischt: ganz oben einrasten.
+      if (projected <= minTop + TOP_MAGNET) {
+        sheetTop.set(
+          reduceMotion
+            ? withTiming(minTop)
+            : withSpring(minTop, { ...SHEET_SPRING, velocity: event.velocityY }),
+        );
+        scheduleOnRN(markAtTop, true);
+        return;
+      }
+      // Über den unteren Rand gezogen: zurück an die unterste Lage.
+      if (top >= maxTop) {
+        sheetTop.set(reduceMotion ? withTiming(maxTop) : withSpring(maxTop, SHEET_SPRING));
+        scheduleOnRN(markAtTop, false);
+        return;
+      }
+      // Sonst bleibt das Blatt liegen, wo man es loslässt, mit etwas Schwung.
+      if (!reduceMotion) {
+        sheetTop.set(
+          withDecay({ velocity: event.velocityY, clamp: [minTop + TOP_MAGNET, maxTop] }),
+        );
+      }
+      scheduleOnRN(markAtTop, false);
     },
   });
-  // Griff und Titel ziehen immer; die Liste zieht das Blatt nur, solange sie nicht groß ist
-  // (groß scrollt sie stattdessen).
+  // Griff und Titel ziehen immer; die Liste zieht das Blatt nur, solange es nicht ganz oben
+  // liegt (dort scrollt sie stattdessen).
   const handlePan = usePanGesture(panConfig(true));
-  const listPan = usePanGesture(panConfig(snap !== SHEET_EXPANDED));
+  const listPan = usePanGesture(panConfig(!atTop));
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetTop.get() }] }));
-  // Groß: oben weiße Fläche statt Kartenstreifen, wie eine eigene Listenseite.
-  const coverStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetTop.get(), [expandedTop, middleTop], [1, 0], 'clamp'),
+  // Je näher das Blatt dem oberen Rand kommt, desto mehr Platz entsteht über dem Titel,
+  // damit Statusleiste und Zurück-Knopf ihn nie verdecken. Die Karte bleibt sichtbar,
+  // bis das Blatt sie ganz überdeckt.
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: interpolate(sheetTop.get(), [minTop, topZone], [topZone, 0], 'clamp'),
   }));
+  // Ganz oben werden die Ecken eckig, damit keine Kartenreste in den Ecken bleiben.
+  const cornerStyle = useAnimatedStyle(() => {
+    const r = interpolate(sheetTop.get(), [minTop, topZone], [0, radii['2xl']], 'clamp');
+    return { borderTopLeftRadius: r, borderTopRightRadius: r };
+  });
 
   const handleMessage = (raw: string) => {
     const message = parseMapMessage(raw);
@@ -189,10 +222,10 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
       webview.current?.injectJavaScript(
         selectPlaceScript(message.key, {
           top: insets.top + space[16],
-          bottom: height - (snaps[snap] ?? middleTop),
+          bottom: height - sheetTop.get(),
         }),
       );
-      // Das passende Angebot ganz nach oben holen, auch in der kleinen Stufe.
+      // Das passende Angebot ganz nach oben holen, auch wenn das Blatt ganz unten liegt.
       const index = offers.findIndex((offer) => placeKeyOf(offer) === message.key);
       if (index >= 0) list.current?.scrollToIndex({ index, animated: true, viewOffset: 0 });
     }
@@ -247,26 +280,14 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         </View>
       ) : null}
 
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.cover, { height: expandedTop + radii['2xl'] }, coverStyle]}
-      />
-
-      <Animated.View style={[styles.sheet, { height: height - expandedTop }, sheetStyle]}>
+      <Animated.View style={[styles.sheet, { height }, sheetStyle, cornerStyle]}>
+        <Animated.View style={spacerStyle} />
         <GestureDetector gesture={handlePan}>
           <View onLayout={onHeadLayout}>
             <PressableScale
               accessibilityRole="button"
-              accessibilityLabel={snap === SHEET_EXPANDED ? m.showMapAria : m.expandAria}
-              onPress={() =>
-                snapTo(
-                  snap === SHEET_COLLAPSED
-                    ? SHEET_MIDDLE
-                    : snap === SHEET_MIDDLE
-                      ? SHEET_EXPANDED
-                      : SHEET_MIDDLE,
-                )
-              }
+              accessibilityLabel={atTop ? m.showMapAria : m.expandAria}
+              onPress={() => moveTo(atTop ? startTop : minTop)}
               pressedScale={1}
               style={styles.grabberHit}
             >
@@ -303,14 +324,11 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
             onScrollToIndexFailed={({ averageItemLength, index }) =>
               list.current?.scrollToOffset({ offset: averageItemLength * index, animated: true })
             }
-            scrollEnabled={snap === SHEET_EXPANDED}
+            scrollEnabled={atTop}
             onScrollEndDrag={(event) => {
-              // Groß und über den Listenanfang hinaus nach unten gezogen: wieder auf „mittel“.
-              if (
-                snap === SHEET_EXPANDED &&
-                event.nativeEvent.contentOffset.y < -PULL_DOWN_TO_SHRINK
-              ) {
-                snapTo(SHEET_MIDDLE);
+              // Ganz oben und über den Listenanfang hinaus nach unten gezogen: Karte wieder zeigen.
+              if (atTop && event.nativeEvent.contentOffset.y < -PULL_DOWN_TO_SHRINK) {
+                moveTo(startTop);
               }
             }}
             style={styles.list}
@@ -327,11 +345,11 @@ export function SectionScreen({ sectionKey }: { sectionKey: string }) {
         style={[styles.back, { top: insets.top + space[2] }]}
       />
 
-      {hasOffers && snap === SHEET_EXPANDED ? (
+      {hasOffers && atTop ? (
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={m.showMapAria}
-          onPress={() => snapTo(SHEET_MIDDLE)}
+          onPress={() => moveTo(startTop)}
           style={[styles.toggle, { bottom: insets.bottom + space[4] }]}
         >
           <MapIcon size={18} color={colors.text.inverse} strokeWidth={2.5} />
@@ -353,21 +371,12 @@ const styles = StyleSheet.create({
   mapWrap: { ...StyleSheet.absoluteFill, backgroundColor: colors.background.muted },
   map: { flex: 1, backgroundColor: colors.background.muted },
   mapLoading: { opacity: 0 },
-  cover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.background.default,
-  },
   sheet: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     backgroundColor: colors.background.default,
-    borderTopLeftRadius: radii['2xl'],
-    borderTopRightRadius: radii['2xl'],
     borderCurve: 'continuous',
     boxShadow: shadow.sheet,
   },
