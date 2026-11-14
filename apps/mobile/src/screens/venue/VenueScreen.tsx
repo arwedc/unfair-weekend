@@ -346,7 +346,13 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
   const website = place.data?.website ?? offer?.location_website ?? '';
   const about = (place.data?.company_description ?? offer?.company_description ?? '').trim();
   const logo = place.data?.company_logo_path ?? offer?.company_logo_path ?? '';
-  const heroPath = offer?.cover_image_path || list[0]?.cover_image_path || null;
+  const locationImages = place.data?.image_paths.length
+    ? place.data.image_paths
+    : offer?.image_paths.length
+      ? offer.image_paths
+      : (list[0]?.image_paths ?? []);
+  const heroPath =
+    locationImages[0] ?? offer?.cover_image_path ?? list[0]?.cover_image_path ?? null;
   const categories = [
     ...new Set<OfferCategory>(
       list.map((item) => item.category).concat(offer ? [offer.category] : []),
@@ -432,6 +438,21 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
           ) : null}
         </View>
 
+        {locationImages.length > 0 ? (
+          <View style={styles.locationGallery}>
+            <ImageGallery
+              paths={locationImages}
+              title={locationName}
+              width={width - layout.screenPaddingX * 2}
+              labels={{
+                gallery: v.imageGalleryLabel,
+                image: v.imageLabel,
+                singleImage: v.singleImageLabel,
+              }}
+            />
+          </View>
+        ) : null}
+
         <View style={styles.offerHeading}>
           <HighlightTitle>{`Angebote bei ${name}`}</HighlightTitle>
         </View>
@@ -445,18 +466,6 @@ export function VenueScreen({ locationId, offerId }: VenueScreenProps) {
         >
           {offer ? (
             <View style={styles.card}>
-              {offer.image_paths.length > 0 ? (
-                <ImageGallery
-                  paths={offer.image_paths}
-                  title={offer.title}
-                  width={width - layout.screenPaddingX * 2}
-                  labels={{
-                    gallery: v.imageGalleryLabel,
-                    image: v.imageLabel,
-                    singleImage: v.singleImageLabel,
-                  }}
-                />
-              ) : null}
               <View style={styles.cardBody}>
                 <View style={styles.offerTitleText}>
                   <Text variant="caption" color="accent" style={styles.semibold}>
@@ -734,6 +743,7 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   offerHeading: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[3] },
+  locationGallery: { paddingHorizontal: layout.screenPaddingX, paddingBottom: space[4] },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingTop: space[1] },
   pill: {
     flexDirection: 'row',
