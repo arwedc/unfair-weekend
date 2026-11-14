@@ -1,5 +1,4 @@
 import { claimVoucherSchema } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { CreditCard, Ticket } from 'lucide-react-native';
 import { useState, type RefObject } from 'react';
@@ -16,6 +15,7 @@ import { askForPushAfterClaim } from '@/features/push/push';
 import { useClaimVoucher } from '@/features/vouchers/queries';
 import { maxSelectableSeats, seatsText } from '@/features/vouchers/voucher-logic';
 import { errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, space } from '@/theme';
 
@@ -57,7 +57,7 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
       { offerId: parsed.data.offer_id, seats: parsed.data.seats },
       {
         onSuccess: (voucherId) => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.success();
           ref.current?.dismiss();
           if (voucherId) router.push({ pathname: '/code/[id]', params: { id: voucherId } });
           else router.navigate('/codes');
@@ -65,7 +65,7 @@ export function ClaimSheet({ ref, offer }: ClaimSheetProps) {
           void askForPushAfterClaim();
         },
         onError: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
         },
       },
     );

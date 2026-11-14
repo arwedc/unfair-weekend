@@ -25,6 +25,8 @@ describe('Hellmodus erfüllt WCAG AA (4,5:1) für Text', () => {
     ['Text tertiär auf Hintergrund', t.text.tertiary, t.background.default],
     ['Text tertiär auf gedämpftem Hintergrund', t.text.tertiary, t.background.muted],
     ['Akzent-Text auf Hintergrund', t.text.accent, t.background.default],
+    ['Starker Akzent auf Hintergrund', t.accent.strong, t.background.default],
+    ['Link auf Hintergrund', t.text.link, t.background.default],
     ['Button-Text auf Akzent', t.accent.onSolid, t.accent.solid],
     ['Button-Text auf Akzent (gedrückt)', t.accent.onSolid, t.accent.solidPressed],
     ['Text auf dezentem Akzent', t.accent.onSubtle, t.accent.subtle],
@@ -58,6 +60,7 @@ describe('CSS-Variablen', () => {
     expect(vars['--radius-card']).toBe('16px');
     expect(vars['--text-title1']).toBe('32px');
     expect(vars['--text-title1--line-height']).toBe('38px');
+    expect(vars['--color-gold-400']).toBe('#FCC753');
     expect(vars['--color-glut-500']).toBe('#D9733A');
     expect(vars['--font-sans']).toContain('Inter');
   });

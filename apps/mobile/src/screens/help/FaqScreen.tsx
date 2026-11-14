@@ -1,10 +1,10 @@
 /** Häufige Fragen: Frage antippen klappt die Antwort auf. Mehrere dürfen offen sein. */
-import * as Haptics from 'expo-haptics';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ListGroup, Page, PressableScale, Text } from '@/components/ui';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, space } from '@/theme';
 
@@ -22,7 +22,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
         accessibilityState={{ expanded: open }}
         pressedScale={0.99}
         onPress={() => {
-          void Haptics.selectionAsync();
+          haptics.selection();
           setOpen((value) => !value);
         }}
         style={styles.question}

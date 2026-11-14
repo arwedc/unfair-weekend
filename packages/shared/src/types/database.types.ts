@@ -1541,6 +1541,25 @@ export type Database = {
           website: string;
         }[];
       };
+      get_locations_public_with_images: {
+        Args: { p_location_ids: string[] };
+        Returns: {
+          city: string;
+          company_description: string;
+          company_id: string;
+          company_logo_path: string;
+          company_name: string;
+          id: string;
+          image_paths: string[];
+          lat: number;
+          lng: number;
+          name: string;
+          phone: string;
+          postal_code: string;
+          street: string;
+          website: string;
+        }[];
+      };
       get_my_account: { Args: Record<PropertyKey, never>; Returns: Json };
       get_my_review_summary: {
         Args: Record<PropertyKey, never>;

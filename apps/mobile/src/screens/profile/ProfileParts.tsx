@@ -1,6 +1,5 @@
 /** Bausteine des Profils: Kopf mit Avatar, Bilanz mit Stempelkarte, Interessen und Lieblingsorte. */
 import { formatPrice, OFFER_CATEGORIES, STORAGE_BUCKETS, berlinParts } from '@repo/shared';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Pencil, Store } from 'lucide-react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -19,6 +18,7 @@ import { initials } from '@/features/profile/profile-logic';
 import { useProfileStats } from '@/features/profile/use-profile-stats';
 import { useSeenStamps } from '@/features/profile/use-seen-stamps';
 import { errorMessage } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, MAX_FONT_SCALE, radii, radius, space } from '@/theme';
 
@@ -151,7 +151,7 @@ export function InterestCircles() {
               accessibilityLabel={labels.offerCategory[category]}
               accessibilityState={{ selected: active }}
               onPress={() => {
-                void Haptics.selectionAsync();
+                haptics.selection();
                 toggle.mutate({ item: category, favorite: !active });
               }}
               style={styles.circleItem}

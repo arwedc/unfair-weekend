@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import { Minus, Plus, type LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
+import { haptics } from '@/lib/haptics';
 import { colors, layout, radii, space } from '@/theme';
 
 import { PressableScale } from './PressableScale';
@@ -34,7 +34,7 @@ function StepButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={() => {
-        void Haptics.selectionAsync();
+        haptics.selection();
         onPress();
       }}
       style={[styles.button, disabled && styles.buttonDisabled]}

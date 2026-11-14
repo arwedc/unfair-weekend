@@ -79,9 +79,9 @@ export function StepProgress({
                     done
                       ? 'bg-accent-solid text-accent-on-solid group-enabled:group-hover:bg-accent-solid-pressed'
                       : active
-                        ? 'bg-accent-subtle text-text-accent ring-2 ring-accent-vivid'
+                        ? 'bg-accent-subtle text-text-accent ring-2 ring-accent-strong'
                         : i <= reached
-                          ? 'border border-accent-vivid text-text-accent group-hover:bg-accent-subtle'
+                          ? 'border border-accent-strong text-text-accent group-hover:bg-accent-subtle'
                           : 'border border-border-default text-text-tertiary'
                   }`}
                 >

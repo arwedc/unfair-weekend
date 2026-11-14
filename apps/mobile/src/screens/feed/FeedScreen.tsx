@@ -33,6 +33,7 @@ import { useCityFromLocation } from '@/features/offers/use-location-city';
 import type { FeedOffer } from '@/features/offers/types';
 import { useLocationRatings } from '@/features/reviews/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
+import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
 import { colors, layout, radii, space } from '@/theme';
 
@@ -306,7 +307,10 @@ export function FeedScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={() => void refetch()}
+            onRefresh={() => {
+              haptics.selection();
+              void refetch();
+            }}
             tintColor={colors.accent.strong}
             colors={[colors.accent.strong]}
             progressViewOffset={topHeight}

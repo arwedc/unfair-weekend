@@ -43,7 +43,7 @@ src/
   components/offers/ fachliche Bausteine: OfferCard, OfferImage, PriceRow, FilterBar, ImageGallery
   components/onboarding/ eine durchgehende Szene statt drei Bildern: OnboardingStage (Kamera, Pins, Karten,
                     Drehen), PhotoPin, StageCard (Vorschau → großes Angebot → Karte im 3D-Kreis), CityMapArt
-  lib/              supabase.ts, env.ts, query-client.ts, api-error.ts, open-external.ts
+  lib/              supabase.ts, env.ts, query-client.ts, api-error.ts, open-external.ts, haptics.ts
   theme/            Brücke zu den Tokens aus @repo/shared
 ```
 
@@ -66,6 +66,7 @@ src/
 - **Bottom Sheets** über `Sheet` (basiert auf `@expo/ui/community/bottom-sheet`), nicht `@gorhom/bottom-sheet`.
 - **Tabs** sind native Tabs (`expo-router/native-tabs`). Keine selbstgebaute Tab-Leiste.
 - **Bilder** mit `expo-image`. **Icons** in der App mit `lucide-react-native`, in der Tab-Leiste SF Symbols bzw. Material Symbols.
+- **Haptik** nur über `haptics` aus `@/lib/haptics`, nie `expo-haptics` direkt. Leise dosiert: `selection` bei Auswahlwechsel, `tap` nur für Hauptaktionen (`Button haptic`), `success`/`error` für abgewartete Ergebnisse. Navigation, Links, Icon-Knöpfe und Scrollen bleiben still.
 - **Barrierefreiheit:** jede Touch-Fläche mind. `layout.minTouchTarget`, `accessibilityRole` und Label setzen, „Bewegung reduzieren“ beachten (`useReducedMotion`).
 - **Texte:** Deutsch, Du-Form, kurz. Emojis nur in Leerzuständen und Push-Nachrichten.
 
