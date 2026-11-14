@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { colors, fonts, layout, space } from '@/theme';
@@ -21,6 +22,8 @@ export interface SectionHeaderProps {
   onToggle?: () => void;
   /** Nur mit `onToggle`: ob der Abschnitt gerade offen ist. */
   expanded?: boolean;
+  /** Kleines Zeichen vor dem Titel, z. B. ein pulsierender Punkt bei „Last Minute“. */
+  accessory?: ReactNode;
 }
 
 /** Überschrift eines Abschnitts, z. B. „Heute in Münster“. Mit `onToggle` auf- und zuklappbar. */
@@ -33,6 +36,7 @@ export function SectionHeader({
   actionAccessibilityLabel,
   onToggle,
   expanded = false,
+  accessory,
 }: SectionHeaderProps) {
   if (onToggle) {
     const Chevron = expanded ? ChevronUp : ChevronDown;
@@ -49,7 +53,7 @@ export function SectionHeader({
           inset && { paddingHorizontal: layout.screenPaddingX },
         ]}
       >
-        <Text variant="title2" style={styles.title}>
+        <Text variant="title3" style={styles.title}>
           {title}
         </Text>
         <View style={styles.toggleEnd}>
@@ -66,9 +70,12 @@ export function SectionHeader({
 
   return (
     <View style={[styles.row, inset && { paddingHorizontal: layout.screenPaddingX }]}>
-      <Text variant="title2" accessibilityRole="header" style={styles.title}>
-        {title}
-      </Text>
+      <View style={styles.titleWrap}>
+        {accessory}
+        <Text variant="title3" accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
+      </View>
       {actionLabel && onAction ? (
         <PressableScale
           accessibilityRole="button"
@@ -101,6 +108,7 @@ const styles = StyleSheet.create({
   },
   toggleRow: { alignItems: 'center', minHeight: layout.minTouchTarget },
   toggleEnd: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
+  titleWrap: { flexDirection: 'row', alignItems: 'center', gap: space[2], flexShrink: 1 },
   title: { flexShrink: 1 },
   action: { fontFamily: fonts.semibold },
 });

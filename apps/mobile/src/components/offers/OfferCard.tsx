@@ -1,17 +1,15 @@
 import { formatPrice, seatsLabel } from '@repo/shared';
 import { useRouter } from 'expo-router';
-import { MapPin } from 'lucide-react-native';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
 import { Badge, PressableScale, Skeleton, Text } from '@/components/ui';
-import { offerBadges, offerWhenText } from '@/features/offers/feed-logic';
+import { offerBadges, offerWhenText, type OfferBadge } from '@/features/offers/feed-logic';
 import type { Offer } from '@/features/offers/types';
 import { useT } from '@/lib/i18n/context';
-import { CATEGORY_EMOJIS } from '@/components/feed/category-emojis';
-import { badge, colors, fonts, fun, radii, radius, space } from '@/theme';
+import { badge, colors, fun, radii, radius, space } from '@/theme';
 
 import { DiscountBand } from './DiscountBand';
-
 import { OfferImage } from './OfferImage';
 import { PriceRow } from './PriceRow';
 
@@ -27,20 +25,38 @@ export interface OfferCardProps {
 
 export const COMPACT_CARD_WIDTH = 264;
 
-/** Angebotskarte: großes Foto mit Deal-Badges, darunter Titel, Ort, Zeit und Preis. */
+/**
+ * Höchstens ein Badge auf dem Foto, das stärkste Kaufsignal zuerst:
+ * ausgebucht > knappe Plätze > startet bald. Den Rabatt zeigt das Preisschild unten rechts.
+ */
+const BADGE_PRIORITY: Record<OfferBadge['variant'], number> = {
+  soldOut: 0,
+  neutral: 1,
+  urgent: 2,
+  deal: 9,
+};
+
+/**
+ * Angebotskarte, bewusst schlicht: Foto mit einem Badge, Kategorie-Emoji und Preisschild,
+ * darunter Titel, Zeit, Ort und Preis. Mehr steht auf der Angebotsseite.
+ */
 export function OfferCard({ offer, variant = 'large', onOpen, priority, style }: OfferCardProps) {
   const router = useRouter();
-  const { t, locale } = useT();
-  const badges = offerBadges(offer, undefined, locale).filter((item) => item.variant !== 'deal');
-  const savedCents = offer.original_price_cents - offer.deal_price_cents;
+  const { t, labels, locale } = useT();
+  const topBadge = offerBadges(offer, undefined, locale)
+    .filter((item) => item.variant !== 'deal')
+    .sort((a, b) => BADGE_PRIORITY[a.variant] - BADGE_PRIORITY[b.variant])[0];
   const when = offerWhenText(offer, undefined, locale);
   const soldOut = offer.free_seats === 0;
   const compact = variant === 'compact';
+  const category = CATEGORY_EMOJIS[offer.category];
+  const hasPhoto = Boolean(offer.cover_image_path);
 
   const label = [
     offer.title,
-    offer.location_name,
+    labels.offerCategory[offer.category],
     when,
+    offer.location_name,
     t.parts.card.priceAria(
       formatPrice(offer.deal_price_cents, { locale }),
       formatPrice(offer.original_price_cents, { locale }),
@@ -61,19 +77,19 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
       style={[compact && { width: COMPACT_CARD_WIDTH }, style]}
     >
       <View>
-        {offer.cover_image_path ? (
+        {hasPhoto ? (
           <OfferImage
             path={offer.cover_image_path}
             priority={priority}
             style={[styles.image, soldOut && styles.imageSoldOut]}
           />
         ) : (
-          // Kein Foto hinterlegt: bunte Fläche in der Farbe der Kategorie mit großem Emoji.
+          // Kein Foto hinterlegt: Fläche in der Farbe der Kategorie mit großem Emoji.
           <View
             style={[
               styles.image,
               styles.noPhoto,
-              { backgroundColor: fun[CATEGORY_EMOJIS[offer.category].tint].bg },
+              { backgroundColor: fun[category.tint].bg },
               soldOut && styles.imageSoldOut,
             ]}
           >
@@ -81,55 +97,47 @@ export function OfferCard({ offer, variant = 'large', onOpen, priority, style }:
               style={compact ? styles.noPhotoEmojiSmall : styles.noPhotoEmoji}
               maxFontSizeMultiplier={1}
             >
-              {CATEGORY_EMOJIS[offer.category].emoji}
+              {category.emoji}
             </Text>
           </View>
         )}
-        <View style={styles.badges}>
-          {badges.map((item) => (
-            <Badge key={item.label} label={item.label} variant={item.variant} onImage />
-          ))}
-        </View>
-        <View style={styles.categoryTag} accessible={false}>
-          <Text style={styles.categoryEmoji} maxFontSizeMultiplier={1.2}>
-            {CATEGORY_EMOJIS[offer.category].emoji}
-          </Text>
-          <Text variant="caption" style={styles.categoryText} maxFontSizeMultiplier={1.3}>
-            {t.parts.categoryShort[offer.category]}
-          </Text>
-        </View>
+
+        {topBadge ? (
+          <View style={styles.badge}>
+            <Badge label={topBadge.label} variant={topBadge.variant} onImage />
+          </View>
+        ) : null}
+
+        {/* Kategorie als kleines Emoji. Ohne Foto zeigt die Fläche sie schon groß. */}
+        {hasPhoto ? (
+          <View style={styles.categoryDot} accessible={false}>
+            <Text style={styles.categoryEmoji} maxFontSizeMultiplier={1}>
+              {category.emoji}
+            </Text>
+          </View>
+        ) : null}
+
         {!soldOut ? <DiscountBand percent={offer.discount_percent} compact={compact} /> : null}
       </View>
 
       <View style={styles.body}>
-        <Text variant={compact ? 'bodyStrong' : 'title3'} numberOfLines={2}>
+        <Text variant={compact ? 'headline' : 'title3'} numberOfLines={compact ? 1 : 2}>
           {offer.title}
         </Text>
-        <View style={styles.metaRow}>
-          <MapPin size={14} color={colors.text.tertiary} />
-          <Text variant="footnote" color="secondary" numberOfLines={1} style={styles.metaText}>
+        <View style={styles.meta}>
+          <Text variant="subhead" color="secondary" numberOfLines={1}>
+            {when}
+          </Text>
+          <Text variant="subhead" color="tertiary" numberOfLines={1}>
             {offer.location_name}
           </Text>
         </View>
-        <Text variant="footnote" color="secondary" numberOfLines={1}>
-          {when}
-        </Text>
-        <View style={styles.priceRow}>
+        <View style={styles.price}>
           <PriceRow
             originalPriceCents={offer.original_price_cents}
             dealPriceCents={offer.deal_price_cents}
           />
-          {savedCents > 0 ? (
-            <Text variant="footnote" numberOfLines={1} style={styles.saving}>
-              {t.parts.card.youSave(formatPrice(savedCents, { omitZeroCents: true, locale }))}
-            </Text>
-          ) : null}
         </View>
-        {!compact ? (
-          <Text variant="footnote" color={soldOut ? 'tertiary' : 'secondary'}>
-            {seatsLabel(offer.free_seats, locale)}
-          </Text>
-        ) : null}
       </View>
     </PressableScale>
   );
@@ -143,12 +151,14 @@ export function OfferCardSkeleton({ variant = 'large' }: { variant?: 'large' | '
       <Skeleton height={undefined} radius={radius.card} style={styles.skeletonImage} />
       <View style={styles.body}>
         <Skeleton width="80%" height={20} />
-        <Skeleton width="50%" height={14} />
+        <Skeleton width="55%" height={14} />
         <Skeleton width="35%" height={22} />
       </View>
     </View>
   );
 }
+
+const CATEGORY_DOT = 30;
 
 const styles = StyleSheet.create({
   noPhoto: { alignItems: 'center', justifyContent: 'center' },
@@ -163,39 +173,20 @@ const styles = StyleSheet.create({
   // Ausgebuchte Angebote treten optisch zurück, bleiben aber sichtbar.
   imageSoldOut: { opacity: 0.55 },
   skeletonImage: { aspectRatio: 4 / 3 },
-  badges: {
-    position: 'absolute',
-    top: badge.inset,
-    left: badge.inset,
-    right: badge.inset,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[1.5],
-  },
-  categoryTag: {
+  badge: { position: 'absolute', top: badge.inset, left: badge.inset },
+  categoryDot: {
     position: 'absolute',
     left: badge.inset,
     bottom: badge.inset,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[1],
-    paddingHorizontal: space[2],
-    paddingVertical: space[1],
+    width: CATEGORY_DOT,
+    height: CATEGORY_DOT,
     borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.badge.neutral.background,
   },
-  categoryEmoji: { fontSize: 14, lineHeight: 18 },
-  categoryText: { fontFamily: fonts.bold, color: colors.badge.neutral.foreground },
+  categoryEmoji: { fontSize: 16, lineHeight: 20 },
   body: { paddingTop: space[3], gap: space[1] },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
-  metaText: { flexShrink: 1 },
-  priceRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
-    columnGap: space[3],
-    marginTop: space[1],
-  },
-  // Ersparnis in Gold (dunkler Ton für Kontrast auf Weiß)
-  saving: { fontFamily: fonts.bold, color: colors.accent.strong },
+  meta: { gap: space[0.5] },
+  price: { marginTop: space[1.5] },
 });

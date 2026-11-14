@@ -5,6 +5,7 @@ import { FlatList, Keyboard, RefreshControl, ScrollView, StyleSheet, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCircles } from '@/components/feed/CategoryCircles';
+import { LiveDot } from '@/components/feed/LiveDot';
 import { CityMenu, fallbackCity } from '@/components/offers/CityMenu';
 import { COMPACT_CARD_WIDTH, OfferCard, OfferCardSkeleton } from '@/components/offers/OfferCard';
 import {
@@ -50,6 +51,7 @@ function Carousel({
       <SectionHeader
         title={section.title}
         inset
+        accessory={section.key === 'last-minute' ? <LiveDot /> : undefined}
         actionLabel={category && onShowAll ? t.common.all : undefined}
         actionAccessibilityLabel={t.screens.feed.showAllAria(section.title)}
         onAction={category && onShowAll ? () => onShowAll(category) : undefined}
@@ -220,7 +222,7 @@ export function FeedScreen() {
       <View style={styles.intro}>
         <View style={[styles.inset, styles.greeting]}>
           <Text
-            variant="title2"
+            variant="title1"
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}

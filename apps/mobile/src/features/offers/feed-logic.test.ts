@@ -194,12 +194,12 @@ describe('buildSections', () => {
       'guenstig',
     ]);
     expect(sections.map((s) => s.title)).toEqual([
-      'Gerade angesagt 🔥',
-      'Community-Lieblinge ⭐',
-      'Mega-Rabatte 💥',
-      'Frisch reingekommen ✨',
-      'Bring deine Crew 👯',
-      'Schnäppchen 💸',
+      'Gerade angesagt',
+      'Community-Lieblinge',
+      'Mega-Rabatte',
+      'Frisch reingekommen',
+      'Bring deine Crew',
+      'Schnäppchen',
     ]);
   });
 
@@ -294,13 +294,13 @@ describe('buildSections', () => {
     ];
     const sections = buildSections(offers, { now: NOW });
     expect(sections[0]?.key).toBe('last-minute');
-    expect(sections[0]?.title).toBe('Last Minute ⏰');
+    expect(sections[0]?.title).toBe('Last Minute');
     expect(ids(offers, 'last-minute')).toEqual(['mittag', 'abend']);
   });
 
   it('übersetzt die Titel', () => {
     const offers = [offer({ id: 'a' }), offer({ id: 'b' })];
-    expect(buildSections(offers, { locale: 'en' }).map((s) => s.title)).toContain('Mega deals 💥');
+    expect(buildSections(offers, { locale: 'en' }).map((s) => s.title)).toContain('Mega deals');
   });
 });
 
