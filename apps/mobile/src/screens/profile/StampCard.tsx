@@ -33,8 +33,8 @@ import type { Stamp } from '@/features/profile/use-profile-stats';
 import { useT } from '@/lib/i18n/context';
 import { colors, fonts, fun, radii, radius, soft, space } from '@/theme';
 
-/** Feldgröße: klein im Profil, groß im Level-up-Sheet und auf der Stufen-Seite. */
-const SLOT = { small: 26, large: 48 } as const;
+/** Feldgröße: klein im Profil, mittel auf der Stufen-Seite, groß im Level-up-Sheet. */
+const SLOT = { small: 26, medium: 40, large: 48 } as const;
 type SlotSize = keyof typeof SLOT;
 /** Jeder Stempel sitzt etwas schief, wie von Hand gestempelt. */
 const TILTS = [-7, 4, -3, 6, -5] as const;
@@ -404,5 +404,6 @@ const styles = StyleSheet.create({
 
 const emojiStyle = StyleSheet.create({
   small: { fontSize: 13, lineHeight: 17 },
+  medium: { fontSize: 18, lineHeight: 23 },
   large: { fontSize: 22, lineHeight: 28 },
 });
