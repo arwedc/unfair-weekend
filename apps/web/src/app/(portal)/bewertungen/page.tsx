@@ -3,9 +3,20 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { formatDate } from '@repo/shared/utils';
 import { Stars } from '@/components/reviews/stars';
-import { Card } from '@/components/ui';
+import { buttonClass, Card } from '@/components/ui';
 import { requireAccount } from '@/lib/auth';
 import { getT } from '@/lib/i18n/locale';
+import {
+  hasActiveFilters,
+  parseReviewFilters,
+  periodSince,
+  REVIEW_PARAMS,
+  REVIEW_PERIOD_DAYS,
+  REVIEW_SORTS,
+  reviewsHref,
+  type ReviewFilters,
+  type ReviewSearchParams,
+} from '@/lib/reviews/filters';
 import { formatRating, reviewCountLabel, reviewDateLabel } from '@/lib/reviews/format';
 import {
   getMyReviewSummary,
@@ -22,37 +33,21 @@ export async function generateMetadata(): Promise<Metadata> {
 type I18n = Awaited<ReturnType<typeof getT>>;
 
 interface PageProps {
-  searchParams: Promise<{ sterne?: string; seite?: string }>;
+  searchParams: Promise<ReviewSearchParams>;
 }
 
 const RATINGS = [5, 4, 3, 2, 1] as const;
 
-/** Link auf diese Seite mit Filter und Seite (Standardwerte fallen weg). */
-function reviewsHref(rating: number | undefined, page = 1): string {
-  const params = new URLSearchParams();
-  if (rating) params.set('sterne', String(rating));
-  if (page > 1) params.set('seite', String(page));
-  const query = params.toString();
-  return query ? `/bewertungen?${query}` : '/bewertungen';
-}
-
-function parseRating(value: string | undefined): number | undefined {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : undefined;
-}
-
-function parsePage(value: string | undefined): number {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 ? n : 1;
-}
+const selectClass =
+  'mt-1 block min-h-11 rounded-input border border-border-default bg-surface-default px-3 text-body text-text-primary';
 
 function SummaryCard({
   summary,
-  rating,
+  filters,
   i18n,
 }: {
   summary: ReviewSummary;
-  rating?: number;
+  filters: ReviewFilters;
   i18n: I18n;
 }) {
   const { locale, t } = i18n;
@@ -83,11 +78,11 @@ function SummaryCard({
         <ul className="space-y-1">
           {RATINGS.map((stars) => {
             const count = summary.distribution[stars - 1] ?? 0;
-            const active = rating === stars;
+            const active = filters.rating === stars;
             return (
               <li key={stars}>
                 <Link
-                  href={active ? reviewsHref(undefined) : reviewsHref(stars)}
+                  href={reviewsHref(filters, { rating: active ? undefined : stars })}
                   aria-current={active ? 'true' : undefined}
                   aria-label={r.filterAria(stars, count, active)}
                   className={`grid grid-cols-[3.5rem_1fr_2.5rem] items-center gap-3 rounded-input px-2 py-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-border-focus ${
@@ -111,6 +106,54 @@ function SummaryCard({
         </ul>
       </nav>
     </Card>
+  );
+}
+
+/**
+ * Sortierung und Zeitraum als GET-Formular (funktioniert ohne JavaScript).
+ * Der Sterne-Filter bleibt über ein verstecktes Feld erhalten, die Seite springt auf 1.
+ */
+function ListOptions({ filters, i18n }: { filters: ReviewFilters; i18n: I18n }) {
+  const r = i18n.t.reviews;
+  return (
+    <form
+      method="get"
+      action="/bewertungen"
+      aria-label={r.listOptions}
+      className="flex flex-wrap items-end gap-2"
+    >
+      {filters.rating ? (
+        <input type="hidden" name={REVIEW_PARAMS.rating} value={filters.rating} />
+      ) : null}
+      <label className="text-footnote text-text-secondary">
+        {r.sortLabel}
+        <select name={REVIEW_PARAMS.sort} defaultValue={filters.sort} className={selectClass}>
+          {REVIEW_SORTS.map((sort) => (
+            <option key={sort} value={sort}>
+              {r.sortOptions[sort]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="text-footnote text-text-secondary">
+        {r.periodLabel}
+        <select
+          name={REVIEW_PARAMS.period}
+          defaultValue={filters.period ?? ''}
+          className={selectClass}
+        >
+          <option value="">{r.periodAll}</option>
+          {REVIEW_PERIOD_DAYS.map((days) => (
+            <option key={days} value={days}>
+              {r.periodOption(days)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="submit" className={buttonClass('secondary', 'px-4')}>
+        {r.apply}
+      </button>
+    </form>
   );
 }
 
@@ -160,12 +203,17 @@ function ReviewItem({ review, i18n }: { review: LocationReview; i18n: I18n }) {
 async function Reviews({ searchParams }: PageProps) {
   const [, params, i18n] = await Promise.all([requireAccount(), searchParams, getT()]);
   const r = i18n.t.reviews;
-  const rating = parseRating(params.sterne);
-  const page = parsePage(params.seite);
+  const filters = parseReviewFilters(params);
+  const { rating, page } = filters;
 
   const [summary, { reviews, hasMore }] = await Promise.all([
     getMyReviewSummary(),
-    listMyReviews({ rating, page }),
+    listMyReviews({
+      rating,
+      sort: filters.sort,
+      since: periodSince(filters.period, new Date()),
+      page,
+    }),
   ]);
 
   if (summary.reviewCount === 0 && summary.hiddenCount === 0) {
@@ -179,7 +227,7 @@ async function Reviews({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <SummaryCard summary={summary} rating={rating} i18n={i18n} />
+      <SummaryCard summary={summary} filters={filters} i18n={i18n} />
 
       {summary.hiddenCount > 0 ? (
         <p className="text-footnote text-text-tertiary">
@@ -188,23 +236,23 @@ async function Reviews({ searchParams }: PageProps) {
       ) : null}
 
       <section aria-labelledby="reviews-list">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 id="reviews-list" className="text-headline text-text-primary">
-            {rating ? r.stars(rating) : r.all}
-          </h2>
-          {rating ? (
-            <Link
-              href={reviewsHref(undefined)}
-              className="text-subhead text-text-link hover:underline"
-            >
-              {r.clearFilter}
-            </Link>
-          ) : null}
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-baseline gap-4">
+            <h2 id="reviews-list" className="text-headline text-text-primary">
+              {rating ? r.stars(rating) : r.all}
+            </h2>
+            {hasActiveFilters(filters) ? (
+              <Link href="/bewertungen" className="text-subhead text-text-link hover:underline">
+                {r.clearFilter}
+              </Link>
+            ) : null}
+          </div>
+          <ListOptions filters={filters} i18n={i18n} />
         </div>
 
         {reviews.length === 0 ? (
           <Card className="p-6 text-center text-callout text-text-secondary">
-            {page > 1 ? r.noMoreOnPage : r.noneWithRating}
+            {page > 1 ? r.noMoreOnPage : r.noneForFilters}
           </Card>
         ) : (
           <ul className="space-y-3">
@@ -220,10 +268,10 @@ async function Reviews({ searchParams }: PageProps) {
           <nav aria-label={r.pages} className="mt-5 flex items-center justify-between gap-3">
             {page > 1 ? (
               <Link
-                href={reviewsHref(rating, page - 1)}
+                href={reviewsHref(filters, { page: page - 1 })}
                 className="text-subhead text-text-link hover:underline"
               >
-                {r.newer}
+                {r.previous}
               </Link>
             ) : (
               <span />
@@ -231,10 +279,10 @@ async function Reviews({ searchParams }: PageProps) {
             <span className="text-footnote text-text-tertiary">{r.page(page)}</span>
             {hasMore ? (
               <Link
-                href={reviewsHref(rating, page + 1)}
+                href={reviewsHref(filters, { page: page + 1 })}
                 className="text-subhead text-text-link hover:underline"
               >
-                {r.older}
+                {r.next}
               </Link>
             ) : (
               <span />
