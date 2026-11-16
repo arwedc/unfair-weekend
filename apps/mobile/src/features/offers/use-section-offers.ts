@@ -4,11 +4,10 @@
  */
 import { OFFER_CATEGORIES, type OfferCategory } from '@repo/shared';
 
-import { useLocationRatings } from '@/features/reviews/queries';
 import { useT } from '@/lib/i18n/context';
 
 import { getCity, offersInCity } from './cities';
-import { buildSections, filterOffers } from './feed-logic';
+import { buildSections, filterOffers, ratingsFromOffers } from './feed-logic';
 import { useOfferFilters } from './filters-context';
 import { useOffers } from './queries';
 import type { FeedOffer } from './types';
@@ -27,7 +26,7 @@ export function useSectionOffers(key: string) {
   const { data, error, isPending, refetch } = useOffers();
   const cityOffers = offersInCity(data ?? [], cityId);
   const visible = filterOffers(cityOffers, filters);
-  const { data: ratings } = useLocationRatings(cityOffers.map((offer) => offer.location_id));
+  const ratings = ratingsFromOffers(cityOffers);
 
   const category = categoryFromKey(key);
   const section = category

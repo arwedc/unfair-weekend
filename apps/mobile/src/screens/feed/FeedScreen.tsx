@@ -28,6 +28,7 @@ import {
   hasActiveFilters,
   isListMode,
   pickDealOfTheDay,
+  ratingsFromOffers,
   sectionsByCategory,
   type FeedSection,
 } from '@/features/offers/feed-logic';
@@ -35,7 +36,6 @@ import { useOfferFilters } from '@/features/offers/filters-context';
 import { useOffers } from '@/features/offers/queries';
 import { useCityFromLocation } from '@/features/offers/use-location-city';
 import type { FeedOffer } from '@/features/offers/types';
-import { useLocationRatings } from '@/features/reviews/queries';
 import { errorMessage, isOffline } from '@/lib/api-error';
 import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n/context';
@@ -119,7 +119,7 @@ export function FeedScreen() {
   const filtering = hasActiveFilters(filters);
   const visible = filterOffers(cityOffers, filters);
   // Für „Community-Lieblinge“: Bewertungen der Anbieter in dieser Stadt.
-  const { data: ratings } = useLocationRatings(cityOffers.map((offer) => offer.location_id));
+  const ratings = ratingsFromOffers(cityOffers);
   // Mehrere Kategorien (ohne Suche): je Kategorie eine Reihe zum Wischen, untereinander.
   const byCategory = filters.categories.length > 1 && filters.query.trim() === '';
   // Ohne Kategorie und Suche ist `visible` nur nach Zeit eingegrenzt: Die Abschnitte folgen dem Tag.

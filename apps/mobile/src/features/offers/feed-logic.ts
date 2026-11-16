@@ -22,7 +22,7 @@ import { DEFAULT_LOCALE, getLabels, type Locale } from '@repo/shared/i18n';
 
 import { getMessages } from '../../lib/i18n/messages';
 
-import type { FeedOffer, Offer } from './types';
+import type { FeedOffer, LocationRatingSummary, Offer } from './types';
 
 export const TIME_FILTERS = ['heute', 'morgen', 'uebermorgen', 'wochenende'] as const;
 export type TimeFilter = (typeof TIME_FILTERS)[number];
@@ -208,10 +208,17 @@ export const CREW_MIN_SEATS = 2;
 /** Mega-Rabatte und Schnäppchen erscheinen erst ab so vielen Angeboten, sonst wirken sie leer. */
 const RANKING_MIN_OFFERS = 2;
 
-/** Bewertung eines Anbieters (aus `get_location_ratings`). */
-export interface LocationRatingSummary {
-  average: number;
-  count: number;
+export type { LocationRatingSummary };
+
+/** Bewertungen der Anbieter im Feed als Map (`location_id` → Schnitt und Anzahl). */
+export function ratingsFromOffers(
+  offers: readonly FeedOffer[],
+): Map<string, LocationRatingSummary> {
+  const ratings = new Map<string, LocationRatingSummary>();
+  for (const offer of offers) {
+    if (offer.locationRating) ratings.set(offer.location_id, offer.locationRating);
+  }
+  return ratings;
 }
 
 interface SectionDraft {
