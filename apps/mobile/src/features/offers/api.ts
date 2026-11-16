@@ -7,22 +7,26 @@ import type { AppSettings, FeedOffer, Offer, OfferDetail, PublicLocation } from 
 /** So viele Angebote liefert `list_offers` höchstens pro Aufruf. Reicht für den MVP (5–15 Partner). */
 const FEED_LIMIT = 100;
 
-async function fetchCreatedAt(offers: readonly Offer[]): Promise<Map<string, string>> {
-  if (offers.length === 0) return new Map();
-  const { data, error } = await supabase.rpc('list_offer_created_at', {
-    p_offer_ids: offers.map((offer) => offer.id),
-  });
-  // „Neu dabei“ ist ein Extra: Fällt die Abfrage aus, zeigt der Feed den Abschnitt einfach nicht.
-  if (error) return new Map();
-  return new Map(data.map((row) => [row.id, row.created_at]));
-}
-
-/** Alle holbaren Angebote, sortiert nach „als Nächstes relevant“. */
+/**
+ * Alle holbaren Angebote, sortiert nach „als Nächstes relevant“.
+ * Eine Anfrage: `list_offers_v2` liefert Veröffentlichungszeit und Anbieter-Bewertung gleich mit.
+ */
 export async function fetchOffers(): Promise<FeedOffer[]> {
-  const { data, error } = await supabase.rpc('list_offers', { p_limit: FEED_LIMIT });
+  const { data, error } = await supabase.rpc('list_offers_v2', { p_limit: FEED_LIMIT });
   if (error) throw toApiError(error);
-  const createdAt = await fetchCreatedAt(data);
-  return data.map((offer) => ({ ...offer, createdAt: createdAt.get(offer.id) ?? null }));
+  return data.map(
+    ({ created_at, location_review_count, location_average_rating, ...offer }): FeedOffer => {
+      // Ohne Bewertungen ist der Schnitt null (die generierten Typen kennen das nicht).
+      const average: number | null = location_average_rating;
+      return {
+        ...offer,
+        createdAt: created_at,
+        ...(location_review_count > 0 && average !== null
+          ? { locationRating: { average, count: location_review_count } }
+          : {}),
+      };
+    },
+  );
 }
 
 /** Ein Angebot für die Detailseite. `null`, wenn es nicht (mehr) sichtbar ist. */

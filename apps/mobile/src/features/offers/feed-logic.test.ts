@@ -19,6 +19,7 @@ import {
   matchesTimeFilter,
   offerBadges,
   pickDealOfTheDay,
+  ratingsFromOffers,
   similarOffers,
 } from './feed-logic';
 import type { FeedOffer } from './types';
@@ -199,6 +200,17 @@ describe('filterOffers', () => {
     expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '  ' })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, times: ['morgen'] })).toBe(true);
+  });
+});
+
+describe('ratingsFromOffers', () => {
+  it('sammelt die Bewertung pro Anbieter und lässt Anbieter ohne Bewertung weg', () => {
+    const ratings = ratingsFromOffers([
+      offer({ id: 'a', location_id: 'loc-1', locationRating: { average: 4.5, count: 12 } }),
+      offer({ id: 'b', location_id: 'loc-1', locationRating: { average: 4.5, count: 12 } }),
+      offer({ id: 'c', location_id: 'loc-2' }),
+    ]);
+    expect([...ratings]).toEqual([['loc-1', { average: 4.5, count: 12 }]]);
   });
 });
 
