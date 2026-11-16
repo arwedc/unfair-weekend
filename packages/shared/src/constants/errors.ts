@@ -28,6 +28,9 @@ export const RPC_ERROR_MESSAGES = {
   ZU_VIELE_PLAETZE: 'So viele Plätze kannst du für dieses Angebot nicht holen.',
   UNGUELTIGE_PLATZANZAHL: 'Bitte wähle mindestens einen Platz.',
   BEREITS_AKTIVER_CODE: 'Du hast für dieses Angebot schon einen Code.',
+  ZU_VIELE_AKTIVE_CODES: 'Du hast schon zu viele aktive Codes. Löse einen ein oder storniere ihn.',
+  TAGESLIMIT_ERREICHT:
+    'Du hast heute schon sehr viele Codes geholt. Versuch es später noch einmal.',
   RABATT_ZU_GERING: 'Der Rabatt ist zu gering.',
   PREIS_UNGUELTIG: 'Der Deal-Preis muss unter dem Originalpreis liegen.',
   ZEIT_UNGUELTIG: 'Bitte prüfe Beginn und Ende.',
@@ -105,6 +108,8 @@ export const RPC_ERROR_MESSAGES_EN = {
   ZU_VIELE_PLAETZE: "You can't claim that many spots for this offer.",
   UNGUELTIGE_PLATZANZAHL: 'Please choose at least one spot.',
   BEREITS_AKTIVER_CODE: 'You already have a code for this offer.',
+  ZU_VIELE_AKTIVE_CODES: 'You already have too many active codes. Redeem or cancel one first.',
+  TAGESLIMIT_ERREICHT: "You've claimed a lot of codes today. Please try again later.",
   RABATT_ZU_GERING: 'The discount is too small.',
   PREIS_UNGUELTIG: 'The deal price must be lower than the original price.',
   ZEIT_UNGUELTIG: 'Please check the start and end.',

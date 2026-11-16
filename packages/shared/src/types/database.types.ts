@@ -1033,6 +1033,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
@@ -1044,6 +1046,8 @@ export type Database = {
           block_days?: number;
           cancel_deadline_hours?: number;
           id?: boolean;
+          max_active_vouchers?: number;
+          max_claims_per_day?: number;
           min_discount_percent?: number;
           no_show_limit?: number;
           reminder_hours_before?: number;
@@ -1054,6 +1058,8 @@ export type Database = {
           block_days?: number;
           cancel_deadline_hours?: number;
           id?: boolean;
+          max_active_vouchers?: number;
+          max_claims_per_day?: number;
           min_discount_percent?: number;
           no_show_limit?: number;
           reminder_hours_before?: number;
@@ -1696,6 +1702,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
@@ -2177,6 +2185,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
