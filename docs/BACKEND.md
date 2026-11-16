@@ -205,6 +205,16 @@ Bilder sind optional: Ohne Bild ist `image_paths` leer und `cover_image_path` is
 
 Weitere Filter gehen per PostgREST, z. B. `.rpc('list_offers').gte('discount_percent', 30)`. Entfernung kann der Client aus `lat`/`lng` berechnen.
 
+#### `list_offers_v2(…)` (gleiche Parameter wie `list_offers`)
+
+Der Feed in einer Anfrage. Gleiche Sichtbarkeit, Filter, Sortierung und Grenzen wie `list_offers`, zusätzlich pro Zeile:
+
+- `created_at`: Veröffentlichungszeit (ersetzt den Folgeaufruf `list_offer_created_at`)
+- `location_review_count`: Anzahl sichtbarer Bewertungen des Standorts, `0` ohne Bewertungen
+- `location_average_rating`: Schnitt auf eine Nachkommastelle, `null` ohne Bewertungen (ersetzt `get_location_ratings` im Feed)
+
+Neue Clients nutzen `list_offers_v2`. `list_offers` bleibt unverändert bestehen.
+
 #### `get_offer(p_offer_id)` → 0 oder 1 Zeile
 
 Detail mit allen Feldern von `list_offers` plus `description, status, status_reason, is_claimable, location_street, location_postal_code, location_city, location_phone, location_website, company_description`. Sichtbar, wenn das Angebot aktiv ist und der Standort freigeschaltet. Außerdem immer für den eigenen Standort, für Admins und für Nutzer mit einem Code dafür (auch nach Absage). Sonst ist das Ergebnis leer.
