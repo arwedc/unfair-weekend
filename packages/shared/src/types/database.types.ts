@@ -1033,6 +1033,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
@@ -1044,6 +1046,8 @@ export type Database = {
           block_days?: number;
           cancel_deadline_hours?: number;
           id?: boolean;
+          max_active_vouchers?: number;
+          max_claims_per_day?: number;
           min_discount_percent?: number;
           no_show_limit?: number;
           reminder_hours_before?: number;
@@ -1054,6 +1058,8 @@ export type Database = {
           block_days?: number;
           cancel_deadline_hours?: number;
           id?: boolean;
+          max_active_vouchers?: number;
+          max_claims_per_day?: number;
           min_discount_percent?: number;
           no_show_limit?: number;
           reminder_hours_before?: number;
@@ -1696,6 +1702,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
@@ -1772,6 +1780,43 @@ export type Database = {
           lng: number;
           location_id: string;
           location_name: string;
+          max_per_user: number;
+          original_price_cents: number;
+          relevant_at: string;
+          starts_at: string;
+          title: string;
+          type: Database['public']['Enums']['offer_type'];
+        }[];
+      };
+      list_offers_v2: {
+        Args: {
+          p_category?: Database['public']['Enums']['offer_category'];
+          p_limit?: number;
+          p_location_ids?: string[];
+          p_offset?: number;
+          p_only_available?: boolean;
+        };
+        Returns: {
+          address: string;
+          capacity: number;
+          category: Database['public']['Enums']['offer_category'];
+          company_id: string;
+          company_logo_path: string;
+          company_name: string;
+          cover_image_path: string;
+          created_at: string;
+          deal_price_cents: number;
+          discount_percent: number;
+          ends_at: string;
+          free_seats: number;
+          id: string;
+          image_paths: string[];
+          lat: number;
+          lng: number;
+          location_average_rating: number;
+          location_id: string;
+          location_name: string;
+          location_review_count: number;
           max_per_user: number;
           original_price_cents: number;
           relevant_at: string;
@@ -2140,6 +2185,8 @@ export type Database = {
           block_days: number;
           cancel_deadline_hours: number;
           id: boolean;
+          max_active_vouchers: number;
+          max_claims_per_day: number;
           min_discount_percent: number;
           no_show_limit: number;
           reminder_hours_before: number;
