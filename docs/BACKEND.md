@@ -116,14 +116,18 @@ Mit `get_my_account()` entscheidet die Website, was sie anzeigt: `role`, `locati
 
 Diese Einstellungen sind Projekt-Konfiguration, kein Schema. Sie werden im Dashboard unter **Authentication** gesetzt und gehören zur jeweiligen Session.
 
-| Einstellung                 | Wert                                                                                                                            | Zuständig                            |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Sign In / Providers → Email | aktiviert, „Confirm email“ an                                                                                                   | erledigt (Standard)                  |
-| E-Mail-Bestätigung          | Bestätigungsvorlage verwendet `{{ .ConfirmationURL }}` und Redirect-URLs enthalten das App-Schema                               | App-Session                          |
-| Eigenes SMTP                | **nötig** für Registrierungsbestätigungen an beliebige Adressen; Standard-SMTP ist für Tests begrenzt (z. B. Brevo oder Resend) | vor öffentlichen App-Registrierungen |
-| Apple, Google               | Client-IDs und Secrets eintragen                                                                                                | App-Session                          |
-| URL Configuration           | Site URL der Website; Redirect-URLs: `http://localhost:3000/**`, Live-Domain, `unfairweekend://**` und für Expo Go `exp://**`   | Web- bzw. App-Session                |
-| Passwort                    | min. 8 Zeichen, max. 72 Zeichen (gleich wie `passwordSchema`)                                                                   | App und Web                          |
+| Einstellung                 | Wert                                                                                                                                                                               | Zuständig                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Sign In / Providers → Email | aktiviert, „Confirm email“ an                                                                                                                                                      | erledigt (Standard)                  |
+| E-Mail-Bestätigung          | Bestätigungsvorlage verwendet `{{ .ConfirmationURL }}` und Redirect-URLs enthalten das App-Schema                                                                                  | App-Session                          |
+| Eigenes SMTP                | **nötig** für Registrierungsbestätigungen an beliebige Adressen; Standard-SMTP ist für Tests begrenzt (z. B. Brevo oder Resend)                                                    | vor öffentlichen App-Registrierungen |
+| Apple, Google               | Client-IDs und Secrets eintragen                                                                                                                                                   | App-Session                          |
+| URL Configuration           | Site URL der Website; Redirect-URLs: `http://localhost:3000/**`, Live-Domain, `unfairweekend://**` und für Expo Go `exp://**`                                                      | Web- bzw. App-Session                |
+| Passwort                    | min. 8 Zeichen, max. 72 Zeichen (gleich wie `passwordSchema`)                                                                                                                      | App und Web                          |
+| Leaked Password Protection  | an (Abgleich mit HaveIBeenPwned). Im Dev-Projekt laut Security-Advisor noch **aus**                                                                                                | vor öffentlichen App-Registrierungen |
+| Secure password change      | an (Passwort ändern nur mit frischer Anmeldung)                                                                                                                                    | vor öffentlichen App-Registrierungen |
+| CAPTCHA (Attack Protection) | Cloudflare Turnstile für Sign-up und Passwort-Reset. App und Website müssen das Token mitschicken (`options.captchaToken`), deshalb erst zusammen mit dem Client-Umbau einschalten | vor dem Live-Gang                    |
+| Rate Limits                 | Standardwerte prüfen, Sign-ups und E-Mails pro Stunde nicht hochsetzen                                                                                                             | vor dem Live-Gang                    |
 
 ### Testkonten mit Passwort in der App
 
@@ -614,6 +618,7 @@ Bestehende Migrationen nie ändern. Umbenennen oder Löschen nur nach Absprache.
 3. Migrationen einspielen: `pnpm db:check`, dann `db push`, **nur mit Bens ausdrücklichem OK**.
 4. **Keinen** Seed einspielen. Ersten Admin per SQL setzen.
 5. Auth-Checkliste aus [Abschnitt 3](#auth-einstellungen-im-dashboard-checkliste) umsetzen (eigenes SMTP ist Pflicht).
+   Danach den Security-Advisor im Dashboard öffnen: Außer den bekannten Hinweisen zu `security definer` (Absicht, alles läuft über RPCs) und „RLS ohne Policy“ bei `events`, `geocode_cache`, `notification_outbox` (Absicht) darf nichts offen sein.
 6. Edge Functions `geocode` und `send-push` deployen, `pnpm db:push-secrets` mit den Live-Werten ausführen. Für mehr Last einen Geocoding-Anbieter mit Schlüssel einbauen.
 7. App und Website auf die neuen Werte umstellen (eigene `.env`/Build-Profile).
 8. Legacy-API-Keys (`anon`/`service_role`) deaktiviert lassen. Wir nutzen nur Publishable- und Secret-Keys.
